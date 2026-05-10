@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch10.ipynb)
 
-> **『AI 거버넌스 실무 지침서』** (곽두일, BI Matrix AI 컨설턴트 / 숭실대학교 AI융합학과)
+> **『AI 거버넌스 실무 지침서』** (곽두일, AI 컨설턴트)
 >
 > 이 저장소는 본 저서의 모든 Python 실습 코드를 챕터별 Jupyter Notebook으로 제공합니다.
 > **별도 설치 없이 Google Colab에서 바로 실행**할 수 있습니다.
