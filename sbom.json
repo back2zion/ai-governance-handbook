@@ -1,0 +1,206 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.4",
+  "metadata": {
+    "component": {
+      "type": "library",
+      "name": "ai-governance-handbook",
+      "version": "0.1.0",
+      "description": "The executable standard for AI Governance",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    "author": "곽두일 (AI 컨설턴트)",
+    "timestamp": "2026-05-10T00:00:00+09:00",
+    "note": "AI 기본법 §7: 고영향 AI 시스템 구성 요소 투명성 확보를 위한 SBOM"
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "scikit-learn",
+      "version": "1.7.2",
+      "purl": "pkg:pypi/scikit-learn@1.7.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "pandas",
+      "version": "2.3.3",
+      "purl": "pkg:pypi/pandas@2.3.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "numpy",
+      "version": "2.2.6",
+      "purl": "pkg:pypi/numpy@2.2.6",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "matplotlib",
+      "version": "3.10.3",
+      "purl": "pkg:pypi/matplotlib@3.10.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "PSF"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "scipy",
+      "version": "1.15.3",
+      "purl": "pkg:pypi/scipy@1.15.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "requests",
+      "version": "2.32.3",
+      "purl": "pkg:pypi/requests@2.32.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "fairlearn",
+      "version": ">=0.10.0",
+      "purl": "pkg:pypi/fairlearn@>=0.10.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "shap",
+      "version": ">=0.44.0",
+      "purl": "pkg:pypi/shap@>=0.44.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "mlflow",
+      "version": ">=2.11.0",
+      "purl": "pkg:pypi/mlflow@>=2.11.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "diffprivlib",
+      "version": ">=0.6.4",
+      "purl": "pkg:pypi/diffprivlib@>=0.6.4",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "evidently",
+      "version": ">=0.4.30",
+      "purl": "pkg:pypi/evidently@>=0.4.30",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "torch",
+      "version": ">=2.2.0",
+      "purl": "pkg:pypi/torch@>=2.2.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "flwr",
+      "version": ">=1.8.0",
+      "purl": "pkg:pypi/flwr@>=1.8.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "opacus",
+      "version": ">=1.4.0",
+      "purl": "pkg:pypi/opacus@>=1.4.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    }
+  ]
+}
