@@ -1,0 +1,1776 @@
+%----------------------------------------------------------
+% 제7장. 사례 연구: 한국 기업의 AI 거버넌스 실천
+%----------------------------------------------------------
+
+\chapter{Case 연구: 한국 기업의 AI 거버넌스 실천}
+\label{ch:case_studies}
+
+이론과 프레임워크는 실제 적용을 통해 비로소 의미를 갖는다. 
+본 장에서는 한국 기업과 공공기관\cite{enholm2022artificial}\cite{kuziemski2020ai}의 AI 거버넌스 구축 사례를 분석한다. 
+각 사례는 도입 배경, 거버넌스 체계 설계, 직면한 도전과 해결 방안, 
+성능와 교훈을 포함한다.
+
+본 장의 사례는 공개된 정보, 업계 Report\cite{ransbotham2017reshaping}, 저자의 프로젝트 경험을 바탕으로 
+재구성한 것이다. 일부 세부 사항은 기밀 보호를 위해 일반화하거나 
+유사 사례를 종합하여 제시하였다.
+
+
+%----------------------------------------------------------
+\section{금융 사례: KBank의 AI 신용평가 거버넌스}
+\label{sec:7.1}
+
+\subsection{도입 배경}
+\label{sec:7.1.1}
+
+KBank은 2022년 AI based 신용평가 시스템을 도입\cite{dixon2020machine}하면서 
+포괄적인 AI 거버넌스 체계를 구축하였다. 
+금융 산업의 특성상 규제 준수와 고객 신뢰\cite{bartlett2022consumer}가 핵심 고려사항이었다.
+
+\paragraph{도입 동기}
+
+\begin{itemize}
+ \item 기존 통계 based 신용평가 모델의 한계 (thin-file 고객 Response 어려움)
+ \item 핀테크 경쟁사 대비 심사 속도 개선\cite{philippon2020fintech} 필요
+ \item 대안 Data(Alternative 데이터) 활용을 통한 금융 포용성\cite{cao2022ai} 확대
+ \item 금융위원회 AI 가이드라인\cite{fsc2024ai}(2021) Response
+\end{itemize}
+
+\paragraph{초기 도전}
+
+\begin{table}[htbp]
+\centering
+\caption{KBank AI 신용평가 도입 시 주요 도전}
+\label{tab:kbank_challenges}
+\begin{tabularx}{\textwidth}{p{3cm}X}
+\toprule
+\textbf{영역} & \textbf{도전 과제} \\
+\midrule
+규제 준수 & 
+신용정보법 상 금지 변수 정의 불명확; 대안 데이터의 적법성 결정 기준 부재 \\
+\midrule
+공정성 & 
+역사적 대출 데이터에 내재된 편향\cite{buolamwini2018gender}; 연령.지역별 승인율 격차 우려 \\
+\midrule
+설명가능성\cite{arrieta2020explainable} & 
+딥러닝 모델의 블랙박스 특성; 고객 거절 사유 설명 의무 \\
+\midrule
+내부 역량 & 
+AI 윤리 전문 인력 부재; 기존 MRM(Model 리스크 관리) 체계와 AI 거버넌스 통합 필요 \\
+\midrule
+조직 문화 & 
+영업 부서의 AI 결과 불신\cite{davenport2018artificial}; ``왜 거절되었는지 모르겠다''는 내부 반발 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\subsection{거버넌스 체계 설계}
+\label{sec:7.1.2}
+
+KBank은 기존 MRM 체계를 확장하여 AI 특화 거버넌스\cite{occ2011sr117}를 구축하였다.
+
+\paragraph{조직 구조}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+ node distance=1.5cm,
+ box/.style={rectangle, draw, rounded corners, minimum width=3cm, minimum height=0.8cm, align=center, font=\small},
+ committee/.style={box, fill=blue!20},
+ team/.style={box, fill=green!10},
+ unit/.style={box, fill=yellow!10},
+]
+
+% 위원회
+\node[committee] (board) at (0, 4) {이사회};
+\node[committee] (risk) at (0, 2.5) {Risk관리위원회};
+\node[committee] (ai) at (0, 1) {AI 거버넌스 위원회};
+
+% 실무 조직
+\node[team] (cro) at (-4, 1) {CRO 조직\\(AI 리스크)};
+\node[team] (cdo) at (4, 1) {CDO 조직\\(AI 개발)};
+
+% 하위 조직
+\node[unit] (mrm) at (-4, -0.5) {ModelRisk관리팀};
+\node[unit] (ethics) at (0, -0.5) {AI 윤리팀};
+\node[unit] (dev) at (4, -0.5) {AI 개발팀};
+
+% 연결
+\draw[->] (board) -- (risk);
+\draw[->] (risk) -- (ai);
+\draw[->] (ai) -- (cro);
+\draw[->] (ai) -- (cdo);
+\draw[->] (cro) -- (mrm);
+\draw[->] (ai) -- (ethics);
+\draw[->] (cdo) -- (dev);
+
+% 점선 연결 (협업)
+\draw[dashed, <->] (mrm) -- (ethics);
+\draw[dashed, <->] (ethics) -- (dev);
+
+\end{tikzpicture}
+\caption{KBank AI 거버넌스 조직 구조}
+\label{fig:kbank_org}
+\end{figure}
+
+\paragraph{핵심 정책}
+
+KBank이 수립한 AI 신용평가 거버넌스 정책의 핵심 요소:
+
+\begin{enumerate}
+ \item \textbf{금지 변수 명확화}: 
+ 신용정보법 based 금지 변수(성별, 출신 지역, 혼인 여부 등) 목록화 및 
+ 프록시 의심 변수(우편번호, University명 등) 사용 제한
+ 
+ \item \textbf{공정성 기준 Setup}: 
+ 4/5 규칙(DP Ratio >= 0.8) 필수 충족; 
+ 연령대별, 지역별 승인율 분석 의무화
+ 
+ \item \textbf{설명 제공 의무}: 
+ 모든 거절 건에 대해 상위 4개 영향 요인 제공; 
+ SHAP\cite{lundberg2017unified} based 개별 설명 시스템 구축
+ 
+ \item \textbf{인간 검토 기준}: 
+ 경계선 Case(승인 확률 40-60\%) 및 이의 제기 건 전수 인간 검토
+ 
+ \item \textbf{모니터링\cite{klaise2021monitoring} 주기}: 
+ 일간 성능 모니터링, 주간 공정성 분석, 분기별 독립 감사
+\end{enumerate}
+
+
+\subsection{공정성 관리 체계}
+\label{sec:7.1.3}
+
+KBank의 AI 신용평가 공정성 관리 체계를 상세히 분석한다.
+
+\begin{lstlisting}[language=Python, caption={K-Bank Style Fairness Evaluation Framework}, label={lst:kbank_fairness}]
+"""
+Financial AI Credit Scoring Fairness Evaluation Framework
+Implemented based on K-Bank case (Generalised)
+- Prohibited variable check
+- Proxy discrimination analysis
+- 4/5 rule evaluation
+- Adverse Action explanation generation
+"""
+
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+import numpy as np
+import pandas as pd
+
+@dataclass
+class CreditFairnessConfig:
+ """Credit Scoring Fairness Configuration"""
+ 
+ # Prohibited variables (Based on Credit Information Act)
+ prohibited_variables: List[str] = field(default_factory=lambda: [
+ 'gender', 'sex',
+ 'birth_region', 'origin_region',
+ 'marital_status',
+ 'religion',
+ 'political_view',
+ ])
+ 
+ # Proxy suspect variables
+ proxy_suspects: List[str] = field(default_factory=lambda: [
+ 'zip_code', 'postal_code',
+ 'university', 'college',
+ 'employer_industry',
+ ])
+ 
+ # Protected attributes for analysis
+ protected_attributes: List[str] = field(default_factory=lambda: [
+ 'age_group', # Young/Middle/Senior
+ 'region', # Urban/Rural
+ 'income_level', # Low/Mid/High Income
+ ])
+ 
+ # Thresholds
+ dp_ratio_threshold: float = 0.8
+ proxy_correlation_threshold: float = 0.3
+
+
+class CreditScoringFairnessEvaluator:
+ """
+ Credit Scoring AI Fairness Evaluator
+ Compliant with FSC guidelines and Credit Information Act
+ """
+ 
+ def __init__(self, config: Optional[CreditFairnessConfig] = None):
+ self.config = config or CreditFairnessConfig()
+ 
+ def validate_features(
+ self,
+ feature_names: List[str],
+ ) -> Dict[str, List[str]]:
+ """Feature validation: Check prohibited and proxy suspect variables"""
+ 
+ prohibited_found = []
+ proxy_found = []
+ 
+ for feat in feature_names:
+ feat_lower = feat.lower()
+ 
+ # Check prohibited variables
+ for prohibited in self.config.prohibited_variables:
+ if prohibited in feat_lower:
+ prohibited_found.append(feat)
+ break
+ 
+ # Check proxy suspect variables
+ for proxy in self.config.proxy_suspects:
+ if proxy in feat_lower:
+ proxy_found.append(feat)
+ break
+ 
+ return {
+ 'prohibited': prohibited_found,
+ 'proxy_suspects': proxy_found,
+ 'clean': [f for f in feature_names 
+ if f not in prohibited_found and f not in proxy_found],
+ }
+ 
+ def analyze_proxy_discrimination(
+ self,
+ df: pd.DataFrame,
+ feature_name: str,
+ protected_attribute: str,
+ ) -> Dict:
+ """Proxy discrimination analysis"""
+ 
+ # Correlation analysis
+ if df[feature_name].dtype == 'object':
+ # Categorical: Cramer's V
+ from scipy.stats import chi2_contingency
+ contingency = pd.crosstab(df[feature_name], df[protected_attribute])
+ chi2, p_value, dof, expected = chi2_contingency(contingency)
+ n = len(df)
+ min_dim = min(contingency.shape) - 1
+ cramers_v = np.sqrt(chi2 / (n * min_dim)) if min_dim > 0 else 0
+ correlation = cramers_v
+ else:
+ # Numerical: Point Biserial or Spearman
+ if df[protected_attribute].nunique() == 2:
+ from scipy.stats import pointbiserialr
+ # Binary conversion
+ binary = pd.factorize(df[protected_attribute])[0]
+ corr, p_value = pointbiserialr(binary, df[feature_name])
+ correlation = abs(corr)
+ else:
+ correlation = abs(df[feature_name].corr(
+ pd.factorize(df[protected_attribute])[0]
+ ))
+ 
+ is_proxy = correlation >= self.config.proxy_correlation_threshold
+ 
+ return {
+ 'feature': feature_name,
+ 'protected_attribute': protected_attribute,
+ 'correlation': correlation,
+ 'is_proxy': is_proxy,
+ 'recommendation': 'Remove or Use with Caution' if is_proxy else 'Safe to Use',
+ }
+ 
+ def evaluate_approval_rates(
+ self,
+ y_pred: np.ndarray,
+ sensitive_features: pd.DataFrame,
+ ) -> Dict[str, Dict]:
+ """Approval rate analysis by group (4/5 rule)"""
+ 
+ results = {}
+ 
+ for attr in self.config.protected_attributes:
+ if attr not in sensitive_features.columns:
+ continue
+ 
+ groups = sensitive_features[attr].unique()
+ group_rates = {}
+ 
+ for group in groups:
+ mask = sensitive_features[attr] == group
+ approval_rate = y_pred[mask].mean()
+ group_rates[group] = {
+ 'approval_rate': approval_rate,
+ 'count': mask.sum(),
+ 'approved': y_pred[mask].sum(),
+ }
+ 
+ # 4/5 rule evaluation
+ rates = [g['approval_rate'] for g in group_rates.values()]
+ max_rate = max(rates) if rates else 0
+ 
+ for group, stats in group_rates.items():
+ stats['ratio_to_max'] = stats['approval_rate'] / max_rate if max_rate > 0 else 1.0
+ stats['passes_4_5'] = stats['ratio_to_max'] >= 0.8
+ 
+ results[attr] = {
+ 'groups': group_rates,
+ 'max_rate': max_rate,
+ 'overall_pass': all(g['passes_4_5'] for g in group_rates.values()),
+ 'min_ratio': min(g['ratio_to_max'] for g in group_rates.values()),
+ }
+ 
+ return results
+ 
+ def generate_adverse_action_notice(
+ self,
+ shap_values: Dict[str, float],
+ feature_descriptions: Dict[str, str],
+ customer_name: str = "Customer",
+ application_id: str = "",
+ ) -> str:
+ """
+ Generate Adverse Action Notice
+ Compliance with Article 36-2 of the Credit Information Act and ECOA Regulation B
+ """
+ 
+ # Negative contributing factors (SHAP < 0)
+ negative_factors = sorted(
+ [(k, v) for k, v in shap_values.items() if v < 0],
+ key=lambda x: x[1]
+ )[:4] # Top 4
+ 
+ notice = f"""
+
+ Credit Decision Notice
+
+
+Dear {customer_name},
+
+Application No: {application_id}
+Decision Date: {pd.Timestamp.now().strftime('%Y-%m-%d')}
+
+After careful review of your credit application,
+we regret to inform you that we are unable to approve it at this time.
+
+
+
+ Key Influencing Factors
+
+The following factors primarily influenced this decision:
+
+"""
+ 
+ for i, (feat, _) in enumerate(negative_factors, 1):
+ desc = feature_descriptions.get(feat, feat)
+ notice += f" {i}. {desc}\n"
+ 
+ notice += """
+
+
+ Your Rights
+
+1. Request for Further Explanation
+ - You may request a detailed explanation of this decision.
+
+2. Right to Appeal
+ - If you disagree with this decision, you may appeal within 30 days.
+
+3. Request for Human Review
+ - You may request a review by a credit officer.
+
+4. Credit Information Inquiry
+ - You may check your credit info once a year for free.
+
+
+
+ Contact Us
+
+Customer Center: 1234-5678 (Weekdays 09:00-18:00)
+Email: credit@kbank.co.kr
+Website: www.kbank.co.kr/credit-decision
+
+
+
+This notice is sent in accordance with Article 36-2 of the 
+Act on the Use and Protection of Credit Information.
+
+K-Bank Credit Approval Department
+"""
+ 
+ return notice
+ 
+ def generate_regulatory_report(
+ self,
+ model_name: str,
+ evaluation_period: str,
+ approval_results: Dict,
+ total_applications: int,
+ ) -> str:
+ """Generate report for Financial Supervisory Service submission"""
+ 
+ report = f"""
+# AI Credit Scoring Model Fairness Evaluation Report
+
+Model Name: {model_name} 
+Evaluation Period: {evaluation_period} 
+Total Reviews: {total_applications:,} 
+Report Date: {pd.Timestamp.now().strftime('%Y-%m-%d')}
+
+---
+
+## 1. Overview
+
+This report presents the fairness evaluation results for the AI credit scoring model
+in compliance with the FSC "AI Guidelines for the Financial Sector" and
+the "Act on the Use and Protection of Credit Information".
+
+---
+
+## 2. Approval Rate Analysis by Group
+
+"""
+ 
+ overall_pass = True
+ 
+ for attr, result in approval_results.items():
+ attr_pass = result.get('overall_pass', False)
+ overall_pass = overall_pass and attr_pass
+ 
+ report += f"### {attr}\n\n"
+ report += f"4/5 Rule Met: {'[PASS] Yes' if attr_pass else '[FAIL] No'}\n"
+ report += f"Minimum Ratio: {result.get('min_ratio', 0):.4f}\n\n"
+ 
+ report += "| Group | Reviews | Approved | Approval Rate | Ratio to Max | 4/5 Rule |\n"
+ report += "|------|----------|----------|--------|--------------|----------|\n"
+ 
+ for group, stats in result.get('groups', {}).items():
+ passed = '[PASS]' if stats['passes_4_5'] else '[FAIL]'
+ report += f"| {group} | {stats['count']:,} | {stats['approved']:,} | {stats['approval_rate']:.2%} | {stats['ratio_to_max']:.4f} | {passed} |\n"
+ 
+ report += "\n"
+ 
+ report += f"""
+---
+
+## 3. Comprehensive Evaluation
+
+| Evaluation Item | Result |
+|----------|------|
+| Use of Prohibited Variables | [PASS] None |
+| Proxy Discrimination Risk | [WARN] Under Monitoring |
+| 4/5 Rule Met Overall | {'[PASS] Met' if overall_pass else '[FAIL] Not Met'} |
+| Explanation System | [PASS] Operational |
+
+---
+
+## 4. Required Actions
+
+"""
+ 
+ if not overall_pass:
+ report += """
+### Immediate Action Required
+
+The following actions are applied for groups not meeting the 4/5 rule:
+
+1. Increase human review rate for affected groups (30% -> 50%)
+2. Review data augmentation for affected group data during retraining
+3. Strengthen monthly fairness monitoring
+
+"""
+ else:
+ report += """
+### Status Quo Maintained
+
+All fairness criteria are currently met.
+Maintain regular quarterly monitoring.
+
+"""
+ 
+ report += """
+---
+
+## 5. Attachments
+
+1. Detailed Statistical Data (Attachment 1)
+2. Model Card (Attachment 2)
+3. Fairness Evaluation Methodology (Attachment 3)
+
+---
+
+Author: AI Ethics Team 
+Reviewer: Head of Model Risk Management 
+Approver: CRO
+
+*Retained for 5 years per Article 15.*
+"""
+ 
+ return report
+\end{lstlisting}
+
+
+\subsection{성능 및 교훈}
+\label{sec:7.1.4}
+
+\paragraph{주요 성능}
+
+KBank의 AI 신용평가 거버넌스 도입 2년 후 주요 성능:
+
+\begin{table}[htbp]
+\centering
+\caption{KBank AI 거버넌스 도입 성능}
+\label{tab:kbank_outcomes}
+\begin{tabularx}{\textwidth}{p{4cm}XX}
+\toprule
+\textbf{지표} & \textbf{도입 전} & \textbf{도입 2년 후} \\
+\midrule
+심사 소요 시간 (평균) & 3일 & 10분 (실시간 90\%) \\
+연령별 승인율 격차 & 최대 25\%p & 최대 8\%p \\
+고객 이의 제기 건수 & 월 150건 & 월 45건 \\
+이의 제기 인용률 & 12\% & 8\% \\
+금융감독원 지적 사항 & 3건 & 0건 \\
+thin-file 고객 승인율 & 15\% & 28\% \\
+연체율 (승인 건 기준) & 2.1\% & 2.0\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{핵심 교훈}
+
+\begin{enumerate}
+ \item \textbf{기존 MRM 체계 활용}: 
+ 금융권의 기존 모델 리스크 관리 체계를 AI 거버넌스의 based으로 활용함으로써 
+ 조직 저항을 최소화하고 빠른 정착이 가능했다.
+ 
+ \item \textbf{설명가능성이 신뢰의 핵심}: 
+ 영업 부서와 고객 모두 ``왜''에 대한 답변을 원했다. 
+ SHAP based 설명 시스템 도입 후 내부 수용도가 급격히 높아졌다.
+ 
+ \item \textbf{프록시 차별 관리의 어려움}: 
+ 금지 변수는 명확하지만, 프록시 변수는 결정이 어렵다. 
+ 지속적인 모니터링과 전문가 검토가 필수적이다.
+ 
+ \item \textbf{규제 기관과의 사전 소통}: 
+ 금융감독원과 AI 모델 도입 전 사전 협의를 통해 
+ 규제 불확실성을 줄이고 적법성을 확보하였다.
+\end{enumerate}
+
+%----------------------------------------------------------
+\section{의료 사례: AUniversityHospital의 의료 AI 거버넌스}
+\label{sec:7.2}
+
+\subsection{도입 배경}
+\label{sec:7.2.1}
+
+AUniversityHospital은 국내 최초로 AI 의료영상 진단 보조\cite{rajpurkar2022ai} 시스템을 
+전면 도입한 대형 상급종합Hospital이다. 
+흉부 X-ray, CT 폐결절, 유방 촬영술 등 다수의 AI 시스템을 운영하면서 
+체계적인 거버넌스 필요성이 대두되었다.
+
+\paragraph{도입 현황 (2025년 기준)}
+
+\begin{table}[htbp]
+\centering
+\caption{AUniversityHospital AI 의료기기 현황}
+\label{tab:hospital_ai_inventory}
+\begin{tabularx}{\textwidth}{p{3.5cm}p{2cm}p{2cm}X}
+\toprule
+\textbf{System} & \textbf{등급} & \textbf{일 처리량} & \textbf{주요 용도} \\
+\midrule
+흉부 X-ray AI & Class III & 약 2,000건 & 폐렴, 결핵, 폐암 의심 소견 검출 \\
+CT 폐결절 AI & Class III & 약 300건 & 폐결절 검출 및 악성도 예측 \\
+유방 촬영 AI & Class III & 약 500건 & 유방암 검출 보조 \\
+심전도 AI & Class II & 약 1,500건 & 부정맥, 심근경색 조기 경보 \\
+안저 영상 AI & Class II & 약 200건 & 당뇨망막병증 선별 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\paragraph{거버넌스 구축 동기}
+
+\begin{itemize}
+ \item 다수 AI 시스템의 통합 관리 필요
+ \item 의료기기법 및 의료법 준수 체계화
+ \item AI 오류로 인한 의료 사고 예방
+ \item 의료진의 AI 활용 표준화
+ \item 환자 설명 및 동의 절차 정립
+\end{itemize}
+
+
+\subsection{거버넌스 체계}
+\label{sec:7.2.2}
+
+AUniversityHospital은 기존 의료기기 관리 위원회를 확장하여 
+AI 특화 거버넌스 체계를 구축하였다.
+
+\paragraph{조직 구조}
+
+\begin{itemize}
+ \item \textbf{AI 의료기기 관리위원회}: 
+ 진료부원장(위원장), 의료정보실장, 의료기기관리자, 
+ 관련 진료과장, 법무팀장, 간호부장으로 구성. 분기별 회의.
+ 
+ \item \textbf{AI 임상검증팀}: 
+ 각 AI 시스템별 전문의 1인 + 전공의 1인 + 의료정보 연구원 1인으로 구성. 
+ 월간 성능 검토.
+ 
+ \item \textbf{의료정보실 AI 담당}: 
+ AI 시스템 운영, 모니터링, 문서화 담당.
+\end{itemize}
+
+\paragraph{핵심 정책}
+
+\begin{enumerate}
+ \item \textbf{최종 판독권}: 
+ AI 결과는 ``참고 소견''이며, 최종 진단은 반드시 전문의가 수행
+ 
+ \item \textbf{불일치 관리}: 
+ AI와 전문의 판독이 불일치하는 경우 전수 기록 및 월간 분석
+ 
+ \item \textbf{환자 고지}: 
+ AI 보조 진단 활용 사실을 환자에게 고지 (검사 동의서에 포함)
+ 
+ \item \textbf{하위 집단 모니터링}: 
+ 연령, 성별, 기저 질환별 성능 분석 수행
+ 
+ \item \textbf{이상사례 보고}: 
+ AI 관련 이상사례 발생 시 24시간 내 보고 및 분석
+\end{enumerate}
+
+
+\subsection{임상 검증 및 모니터링}
+\label{sec:7.2.3}
+
+\begin{lstlisting}[language=Python, caption={Healthcare AI Clinical Monitoring System}, label={lst:hospital_monitoring}]
+"""
+Healthcare AI Clinical Monitoring System
+
+Implementation based on A-University Hospital case (Generalized)
+- Interpretation Discrepancy Analysis
+- Sub-group Performance Monitoring
+- Adverse Case Tracking
+"""
+
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timedelta
+import numpy as np
+import pandas as pd
+from enum import Enum
+
+class DiscrepancyType(Enum):
+ """ days """
+ AI_POSITIVE_PHYSICIAN_NEGATIVE = "AI , "
+ AI_NEGATIVE_PHYSICIAN_POSITIVE = "AI , "
+ SEVERITY_DISAGREEMENT = " Decision days "
+ LOCATION_DISAGREEMENT = " Location days "
+
+@dataclass
+class ClinicalCase:
+ """Clinical """
+ case_id: str
+ patient_id: str
+ modality: str # X-ray, CT, MRI 
+ ai_result: Dict # AI physician_result: Dict # final_diagnosis: Optional[Dict] = None # Final (Tracking )
+ timestamp: datetime = field(default_factory=datetime.now)
+ 
+ # information ( )
+ patient_age: int = 0
+ patient_sex: str = ""
+ comorbidities: List[str] = field(default_factory=list)
+
+
+class MedicalAIClinicalMonitor:
+ """
+ Healthcare AI Clinical Monitoring
+ 
+ Performance Tracking, days Analysis, Monitoring
+ """
+ 
+ def __init__(
+ self,
+ system_name: str,
+ sensitivity_threshold: float = 0.90,
+ specificity_threshold: float = 0.85,
+ ):
+ self.system_name = system_name
+ self.sensitivity_threshold = sensitivity_threshold
+ self.specificity_threshold = specificity_threshold
+ 
+ self.cases: List[ClinicalCase] = []
+ self.alerts: List[Dict] = []
+ 
+ def record_case(self, case: ClinicalCase) -> None:
+ """ """
+ self.cases.append(case)
+ 
+ # days discrepancy = self._check_discrepancy(case)
+ if discrepancy:
+ self._handle_discrepancy(case, discrepancy)
+ 
+ def _check_discrepancy(self, case: ClinicalCase) -> Optional[DiscrepancyType]:
+ """ days """
+ 
+ ai_positive = case.ai_result.get('finding_positive', False)
+ physician_positive = case.physician_result.get('finding_positive', False)
+ 
+ if ai_positive and not physician_positive:
+ return DiscrepancyType.AI_POSITIVE_PHYSICIAN_NEGATIVE
+ elif not ai_positive and physician_positive:
+ return DiscrepancyType.AI_NEGATIVE_PHYSICIAN_POSITIVE
+ 
+ return None
+ 
+ def _handle_discrepancy(
+ self,
+ case: ClinicalCase,
+ discrepancy: DiscrepancyType,
+ ) -> None:
+ """ days """
+ 
+ alert = {
+ 'case_id': case.case_id,
+ 'timestamp': datetime.now(),
+ 'discrepancy_type': discrepancy.value,
+ 'severity': 'high' if discrepancy == DiscrepancyType.AI_NEGATIVE_PHYSICIAN_POSITIVE else 'medium',
+ 'ai_result': case.ai_result,
+ 'physician_result': case.physician_result,
+ }
+ 
+ self.alerts.append(alert)
+ 
+ # AI , ( )
+ if discrepancy == DiscrepancyType.AI_NEGATIVE_PHYSICIAN_POSITIVE:
+ self._escalate_alert(alert)
+ 
+ def _escalate_alert(self, alert: Dict) -> None:
+ """ """
+ # Implementation: days, SMS, print(f"[CRITICAL] : {alert['case_id']}")
+ 
+ def calculate_performance(
+ self,
+ start_date: Optional[datetime] = None,
+ end_date: Optional[datetime] = None,
+ ) -> Dict:
+ """Period Performance Calculation"""
+ 
+ # Final evaluated_cases = [
+ c for c in self.cases
+ if c.final_diagnosis is not None
+ ]
+ 
+ if start_date:
+ evaluated_cases = [c for c in evaluated_cases if c.timestamp >= start_date]
+ if end_date:
+ evaluated_cases = [c for c in evaluated_cases if c.timestamp <= end_date]
+ 
+ if not evaluated_cases:
+ return {'error': 'No evaluated cases'}
+ 
+ # AI vs Final 
+ ai_positive = np.array([c.ai_result.get('finding_positive', False) for c in evaluated_cases])
+ final_positive = np.array([c.final_diagnosis.get('confirmed_positive', False) for c in evaluated_cases])
+ 
+ tp = ((ai_positive == True) & (final_positive == True)).sum()
+ fn = ((ai_positive == False) & (final_positive == True)).sum()
+ fp = ((ai_positive == True) & (final_positive == False)).sum()
+ tn = ((ai_positive == False) & (final_positive == False)).sum()
+ 
+ sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+ specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+ ppv = tp / (tp + fp) if (tp + fp) > 0 else 0
+ npv = tn / (tn + fn) if (tn + fn) > 0 else 0
+ 
+ return {
+ 'n_cases': len(evaluated_cases),
+ 'sensitivity': sensitivity,
+ 'specificity': specificity,
+ 'ppv': ppv,
+ 'npv': npv,
+ 'tp': tp, 'fn': fn, 'fp': fp, 'tn': tn,
+ 'meets_sensitivity_threshold': sensitivity >= self.sensitivity_threshold,
+ 'meets_specificity_threshold': specificity >= self.specificity_threshold,
+ }
+ 
+ def analyze_subgroups(
+ self,
+ subgroup_column: str,
+ ) -> Dict[str, Dict]:
+ """ Performance Analysis"""
+ 
+ evaluated_cases = [c for c in self.cases if c.final_diagnosis is not None]
+ 
+ if subgroup_column == 'age_group':
+ # Classification
+ def get_age_group(age):
+ if age < 40:
+ return '40 '
+ elif age < 60:
+ return '40-59 '
+ elif age < 80:
+ return '60-79 '
+ else:
+ return '80 '
+ 
+ groups = {}
+ for case in evaluated_cases:
+ group = get_age_group(case.patient_age)
+ if group not in groups:
+ groups[group] = []
+ groups[group].append(case)
+ 
+ elif subgroup_column == 'sex':
+ groups = {' ': [], ' ': []}
+ for case in evaluated_cases:
+ if case.patient_sex in ['M', 'male', ' ']:
+ groups[' '].append(case)
+ elif case.patient_sex in ['F', 'female', ' ']:
+ groups[' '].append(case)
+ 
+ else:
+ return {'error': f'Unknown subgroup column: {subgroup_column}'}
+ 
+ # Performance Calculation
+ results = {}
+ for group_name, cases in groups.items():
+ if len(cases) < 30: # Minimum 
+ results[group_name] = {'n': len(cases), 'insufficient_data': True}
+ continue
+ 
+ ai_pos = np.array([c.ai_result.get('finding_positive', False) for c in cases])
+ final_pos = np.array([c.final_diagnosis.get('confirmed_positive', False) for c in cases])
+ 
+ tp = ((ai_pos == True) & (final_pos == True)).sum()
+ fn = ((ai_pos == False) & (final_pos == True)).sum()
+ fp = ((ai_pos == True) & (final_pos == False)).sum()
+ tn = ((ai_pos == False) & (final_pos == False)).sum()
+ 
+ sens = tp / (tp + fn) if (tp + fn) > 0 else 0
+ spec = tn / (tn + fp) if (tn + fp) > 0 else 0
+ 
+ results[group_name] = {
+ 'n': len(cases),
+ 'sensitivity': sens,
+ 'specificity': spec,
+ 'positive_rate': final_pos.mean(),
+ }
+ 
+ # Analysis
+ sensitivities = [r['sensitivity'] for r in results.values() 
+ if not r.get('insufficient_data', False)]
+ if len(sensitivities) >= 2:
+ max_gap = max(sensitivities) - min(sensitivities)
+ results['_gap_analysis'] = {
+ 'max_sensitivity_gap': max_gap,
+ 'equity_concern': max_gap > 0.10,
+ }
+ 
+ return results
+ 
+ def generate_monthly_report(self, month: str) -> str:
+ """ Clinical Performance Report Generation"""
+ 
+ perf = self.calculate_performance()
+ 
+ report = f"""
+# {self.system_name} Clinical Performance Report
+
+Period: {month} 
+ : {perf.get('n_cases', 0):,} 
+
+---
+
+## 1. Performance Metric
+
+| Metric | | | |
+|------|-----|------|------|
+| (Sensitivity) | {perf.get('sensitivity', 0):.2%} | >={self.sensitivity_threshold:.0%} | {'[PASS]' if perf.get('meets_sensitivity_threshold', False) else '[FAIL]'} |
+| (Specificity) | {perf.get('specificity', 0):.2%} | >={self.specificity_threshold:.0%} | {'[PASS]' if perf.get('meets_specificity_threshold', False) else '[FAIL]'} |
+| (PPV) | {perf.get('ppv', 0):.2%} | - | - |
+| (NPV) | {perf.get('npv', 0):.2%} | - | - |
+
+---
+
+## 2. | | AI | AI |
+|--|---------|---------|
+| Final | {perf.get('tp', 0)} | {perf.get('fn', 0)} |
+| Final | {perf.get('fp', 0)} | {perf.get('tn', 0)} |
+
+---
+
+## 3. Interpretation Discrepancy Analysis
+
+| days | |
+|------------|------|
+"""
+ 
+ # days discrepancy_counts = {}
+ for alert in self.alerts:
+ dtype = alert['discrepancy_type']
+ discrepancy_counts[dtype] = discrepancy_counts.get(dtype, 0) + 1
+ 
+ for dtype, count in discrepancy_counts.items():
+ report += f"| {dtype} | {count} |\n"
+ 
+ report += f"""
+
+---
+
+## 4. Performance
+
+### 
+"""
+ 
+ age_analysis = self.analyze_subgroups('age_group')
+ report += "| | N | | |\n"
+ report += "|--------|---|--------|--------|\n"
+ for group, stats in age_analysis.items():
+ if group.startswith('_'):
+ continue
+ if stats.get('insufficient_data', False):
+ report += f"| {group} | {stats['n']} | Data | - |\n"
+ else:
+ report += f"| {group} | {stats['n']} | {stats['sensitivity']:.2%} | {stats['specificity']:.2%} |\n"
+ 
+ report += """
+
+---
+
+## 5. """
+ 
+ if perf.get('fn', 0) > 0:
+ report += f"- [WARN] {perf['fn']} Analysis \n"
+ 
+ if not perf.get('meets_sensitivity_threshold', True):
+ report += "- [FAIL] : Model \n"
+ 
+ gap_analysis = age_analysis.get('_gap_analysis', {})
+ if gap_analysis.get('equity_concern', False):
+ report += f"- [WARN] {gap_analysis['max_sensitivity_gap']:.1%}: Equity \n"
+ 
+ report += """
+
+---
+
+ : AI Clinical 
+ : 
+Approval: 
+
+* Report Healthcare 15 5years .*
+"""
+ 
+ return report
+\end{lstlisting}
+
+
+\subsection{성능 및 교훈}
+\label{sec:7.2.4}
+
+\paragraph{주요 성능}
+
+\begin{itemize}
+ \item 응급 흉부 X-ray AI 도입으로 야간 판독 대기 시간 평균 4시간 -> 30분 단축
+ \item 폐결절 AI 활용으로 조기 폐암 발견율 12\% 향상
+ \item AI-전문의 불일치 분석을 통한 교육 효과 (전공의 판독 정확도 향상)
+ \item 0건의 AI 관련 의료 사고 (거버넌스 도입 후 2년간)
+\end{itemize}
+
+\paragraph{핵심 교훈}
+
+\begin{enumerate}
+ \item \textbf{전문의 최종 권한의 명확화}: 
+ AI는 보조 Tool이며, 최종 결정은 전문의에게 있음을 명확히 함으로써 
+ 의료진의 수용도를 높이고 법적 책임 소재를 명확히 했다.
+ 
+ \item \textbf{불일치 분석의 가치}: 
+ AI와 전문의 판독 불일치는 단순한 오류가 아니라 
+ 학습 기회로 활용되었다. 이를 통해 AI와 의료진 모두 개선되었다.
+ 
+ \item \textbf{하위 집단 모니터링 필수}: 
+ 고령 환자에서 AI 성능이 상대적으로 낮음을 발견하고 
+ 해당 집단에 대한 주의를 강화했다.
+ 
+ \item \textbf{환자 커뮤니케이션}: 
+ ``AI가 진단한다''는 오해를 막기 위해 
+ ``AI가 의사의 진단을 돕는다''라는 표현을 일관되게 사용했다.
+\end{enumerate}
+
+%----------------------------------------------------------
+\section{Public 사례: H공공기관의 AI 행정 서비스}
+\label{sec:7.3}
+
+\subsection{도입 배경}
+\label{sec:7.3.1}
+
+H공공기관은 대규모 인프라를 관리하는 공기업으로, 
+AI를 활용한 행정 효율화와 시민 서비스 개선을 추진하였다. 
+PublicInstitution 특성상 투명성, 형평성, 민원 Response이 핵심 고려사항이었다.
+
+\paragraph{AI 도입 현황}
+
+\begin{table}[htbp]
+\centering
+\caption{HPublicInstitution AI 시스템 현황}
+\label{tab:public_ai_inventory}
+\begin{tabularx}{\textwidth}{p{3cm}p{2cm}X}
+\toprule
+\textbf{System} & \textbf{리스크 Level} & \textbf{용도} \\
+\midrule
+민원 자동 분류 & 저위험 & 접수 민원을 담당 부서로 자동 라우팅 \\
+\midrule
+이용료 감면 심사 Support & 고위험 & 감면 대상 자격 심사 Support (최종 결정은 담당자) \\
+\midrule
+시설물 이상 탐지 & 중위험 & CCTV, 센서 데이터 based 시설물 이상 감지 \\
+\midrule
+수요 예측 & 저위험 & 교통량, 이용량 예측을 통한 Resource 배분 \\
+\midrule
+챗봇 민원 상담 & 저위험 & 단순 문의 자동 응답 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\subsection{거버넌스 체계}
+\label{sec:7.3.2}
+
+H공공기관은 행정기본법 제20조와 AI 기본법\cite{cset2025korea_ai_act} 시행령을 준수하기 위한 
+체계적인 거버넌스를 구축하였다.
+
+\paragraph{핵심 Principle}
+
+\begin{enumerate}
+ \item \textbf{재량 행위 자동화 금지}: 
+ 행정기본법 제20조에 따라, 담당자 재량이 필요한 결정은 
+ AI가 Support하되 최종 결정은 담당자가 수행
+ 
+ \item \textbf{Guarantee of Citizen Rights}: 
+ 모든 AI based 결정에 대해 설명 요구권, 이의 제기권, 인적 검토권 보장
+ 
+ \item \textbf{알고리즘 투명성}: 
+ 정보공개법에 따라 알고리즘 정보를 적극적으로 공개
+ 
+ \item \textbf{Equity 모니터링}: 
+ 지역, 소득 수준, 연령별 서비스 접근성 및 결과 형평성 분석
+\end{enumerate}
+
+
+\paragraph{이용료 감면 심사 AI 거버넌스}
+
+이용료 감면 심사 Support AI는 시민의 경제적 권리에 직접 영향을 미치므로 
+가장 엄격한 거버넌스가 적용되었다.
+
+\begin{lstlisting}[language=Python, caption={Public Service AI Governance System}, label={lst:public_governance}]
+"""
+Public Service AI Governance System
+
+Implementation based on H-Public Institution case (Generalized)
+- Discretionary Action Judgment
+- Guarantee of Citizen Rights
+- Equity Monitoring
+"""
+
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from enum import Enum
+import pandas as pd
+
+class DecisionType(Enum):
+ """ """
+ BOUND = " " # DISCRETIONARY = "Discretionary " # Discretionary 
+
+class OversightLevel(Enum):
+ """ Level"""
+ FULL_AUTO = " " # HUMAN_APPROVAL = " Approval" # Approval AI_SUPPORT = "AI Support" # AI information @dataclass
+class CitizenRequest:
+ """ """
+ request_id: str
+ citizen_id: str # 
+ request_type: str
+ submitted_data: Dict
+ timestamp: datetime = field(default_factory=datetime.now)
+ 
+ # information
+ ai_recommendation: Optional[Dict] = None
+ human_decision: Optional[Dict] = None
+ final_decision: Optional[Dict] = None
+ 
+ # information (Equity Analysis , )
+ region: str = ""
+ age_group: str = ""
+ income_level: str = ""
+
+@dataclass
+class AppealRequest:
+ """ """
+ appeal_id: str
+ original_request_id: str
+ citizen_id: str
+ appeal_reason: str
+ submitted_at: datetime = field(default_factory=datetime.now)
+ 
+ # review_result: Optional[str] = None
+ reviewed_by: Optional[str] = None
+ reviewed_at: Optional[datetime] = None
+
+
+class PublicServiceAIGovernance:
+ """
+ Public AI Governance
+ 
+ 20 , AI Compliance
+ """
+ 
+ def __init__(self, service_name: str):
+ self.service_name = service_name
+ self.requests: List[CitizenRequest] = []
+ self.appeals: List[AppealRequest] = []
+ 
+ def classify_decision_type(
+ self,
+ request_type: str,
+ has_discretion: bool,
+ ) -> Tuple[DecisionType, OversightLevel]:
+ """
+ Level Classification
+ 
+ 20 Discretionary Automation 
+ """
+ 
+ if has_discretion:
+ return DecisionType.DISCRETIONARY, OversightLevel.AI_SUPPORT
+ else:
+ return DecisionType.BOUND, OversightLevel.HUMAN_APPROVAL
+ 
+ def process_request(
+ self,
+ request: CitizenRequest,
+ ai_model,
+ decision_type: DecisionType,
+ oversight: OversightLevel,
+ ) -> Dict:
+ """ """
+ 
+ # AI Generation
+ ai_recommendation = ai_model.predict(request.submitted_data)
+ request.ai_recommendation = {
+ 'recommendation': ai_recommendation,
+ 'confidence': ai_model.get_confidence(),
+ 'explanation': ai_model.get_explanation(),
+ 'generated_at': datetime.now().isoformat(),
+ }
+ 
+ # Level if oversight == OversightLevel.FULL_AUTO:
+ # Automation ( )
+ if decision_type != DecisionType.BOUND:
+ raise ValueError("Discretionary Automation ( 20 )")
+ 
+ request.final_decision = {
+ 'decision': ai_recommendation,
+ 'decision_type': 'automated',
+ 'legal_basis': ' 20 1 ',
+ }
+ 
+ else:
+ # request.final_decision = {
+ 'decision': None, # 'decision_type': 'pending_human_review',
+ 'ai_recommendation': ai_recommendation,
+ }
+ 
+ self.requests.append(request)
+ 
+ return {
+ 'request_id': request.request_id,
+ 'ai_recommendation': ai_recommendation,
+ 'oversight_level': oversight.value,
+ 'requires_human_review': oversight != OversightLevel.FULL_AUTO,
+ }
+ 
+ def record_human_decision(
+ self,
+ request_id: str,
+ decision: str,
+ decided_by: str,
+ override_ai: bool = False,
+ override_reason: str = "",
+ ) -> None:
+ """ """
+ 
+ request = next((r for r in self.requests if r.request_id == request_id), None)
+ if not request:
+ raise ValueError(f"Request not found: {request_id}")
+ 
+ request.human_decision = {
+ 'decision': decision,
+ 'decided_by': decided_by,
+ 'decided_at': datetime.now().isoformat(),
+ 'override_ai': override_ai,
+ 'override_reason': override_reason if override_ai else None,
+ }
+ 
+ request.final_decision = {
+ 'decision': decision,
+ 'decision_type': 'human_reviewed',
+ 'ai_recommendation': request.ai_recommendation['recommendation'],
+ 'ai_followed': not override_ai,
+ }
+ 
+ def process_appeal(
+ self,
+ appeal: AppealRequest,
+ ) -> Dict:
+ """ """
+ 
+ self.appeals.append(appeal)
+ 
+ # return {
+ 'appeal_id': appeal.appeal_id,
+ 'status': 'assigned_for_review',
+ 'expected_response_days': 14, # 14days 'citizen_rights': [
+ ' ',
+ 'Addition ',
+ ' ',
+ ],
+ }
+ 
+ def analyze_equity(self) -> Dict:
+ """Equity Analysis"""
+ 
+ if not self.requests:
+ return {'error': 'No data'}
+ 
+ # Analysis
+ region_stats = {}
+ for request in self.requests:
+ if not request.final_decision:
+ continue
+ 
+ region = request.region or 'unknown'
+ if region not in region_stats:
+ region_stats[region] = {'total': 0, 'approved': 0}
+ 
+ region_stats[region]['total'] += 1
+ if request.final_decision.get('decision') == 'approved':
+ region_stats[region]['approved'] += 1
+ 
+ # Approval Calculation
+ for region, stats in region_stats.items():
+ stats['approval_rate'] = stats['approved'] / stats['total'] if stats['total'] > 0 else 0
+ 
+ # Analysis
+ rates = [s['approval_rate'] for s in region_stats.values() if s['total'] >= 30]
+ if len(rates) >= 2:
+ max_gap = max(rates) - min(rates)
+ equity_concern = max_gap > 0.15 # 15%p else:
+ max_gap = 0
+ equity_concern = False
+ 
+ return {
+ 'by_region': region_stats,
+ 'max_gap': max_gap,
+ 'equity_concern': equity_concern,
+ }
+ 
+ def generate_transparency_report(self) -> str:
+ """ Report"""
+ 
+ total_requests = len(self.requests)
+ decided_requests = [r for r in self.requests if r.final_decision]
+ 
+ # AI ai_followed = sum(
+ 1 for r in decided_requests 
+ if r.final_decision.get('ai_followed', False)
+ )
+ ai_follow_rate = ai_followed / len(decided_requests) if decided_requests else 0
+ 
+ # total_appeals = len(self.appeals)
+ resolved_appeals = [a for a in self.appeals if a.review_result]
+ upheld_appeals = sum(1 for a in resolved_appeals if a.review_result == 'upheld')
+ upheld_rate = upheld_appeals / len(resolved_appeals) if resolved_appeals else 0
+ 
+ equity = self.analyze_equity()
+ 
+ report = f"""
+# {self.service_name} Report
+
+Period: {datetime.now().strftime('%Yyears %m ')} 
+days: {datetime.now().strftime('%Yyears %m %ddays')}
+
+---
+
+## 1. | Items | |
+|------|------|
+| | {total_requests:,} |
+| | {len(decided_requests):,} |
+| AI | {ai_follow_rate:.1%} |
+
+---
+
+## 2. | Items | / |
+|------|----------|
+| | {total_appeals:,} |
+| | {len(resolved_appeals):,} |
+| | {upheld_rate:.1%} |
+
+---
+
+## 3. Equity Analysis
+
+### Approval 
+
+| | | Approval |
+|------|----------|--------|
+"""
+ 
+ for region, stats in equity.get('by_region', {}).items():
+ if stats['total'] >= 30:
+ report += f"| {region} | {stats['total']:,} | {stats['approval_rate']:.1%} |\n"
+ 
+ if equity.get('equity_concern', False):
+ report += f"\n[WARN] Approval ({equity['max_gap']:.1%}p) (15%p) . Analysis .\n"
+ 
+ report += f"""
+
+---
+
+## 4. :
+
+1.  : AI based Definition Major .
+2.  : 14days .
+3.  : .
+4. information: Addition information .
+
+---
+
+ : {self.service_name} (1234-5678)
+
+* Report PublicInstitution information .*
+"""
+ 
+ return report
+\end{lstlisting}
+
+
+\subsection{성능 및 교훈}
+\label{sec:7.3.3}
+
+\paragraph{주요 성능}
+
+\begin{itemize}
+ \item 민원 처리 시간 평균 45\% 단축
+ \item 민원 분류 정확도 92\% (수동 대비 15\%p 향상)
+ \item 이의 제기 인용률 8\% (거버넌스 도입 전 15\%)로 감소 -> 초기 결정 품질 향상 반증
+ \item 알고리즘 투명성 Report에 대한 시민 긍정 반응
+\end{itemize}
+
+\paragraph{핵심 교훈}
+
+\begin{enumerate}
+ \item \textbf{행정기본법 준수의 중요성}: 
+ 재량행위 자동화 금지 원칙을 명확히 함으로써 법적 Risk를 사전에 차단하였다.
+ 
+ \item \textbf{Guarantee of Citizen Rights이 신뢰의 based}: 
+ 이의 제기 절차를 쉽게 만들고 투명하게 운영함으로써 
+ 오히려 이의 제기가 감소하는 역설적 효과가 나타났다.
+ 
+ \item \textbf{Equity Monitoring의 가치}: 
+ 지역별 승인율 분석을 통해 비수도권 시민에 대한 
+ 정보 접근성 문제를 발견하고 개선하였다.
+ 
+ \item \textbf{투명성 Report의 소통 효과}: 
+ 정기적인 알고리즘 투명성 Report 공개가 
+ 시민 단체 및 언론의 우려를 해소하는 데 효과적이었다.
+\end{enumerate}
+
+%----------------------------------------------------------
+\section{제조 사례: MHeavy Industries의 AI 품질 관리}
+\label{sec:7.4}
+
+\subsection{도입 배경}
+\label{sec:7.4.1}
+
+MHeavy Industries은 대형 선박 및 해양 플랜트를 제조하는 기업으로, 
+AI 비전 검사 시스템을 도입하여 용접 품질 검사를 Automation하였다. 
+제조업 특성상 산업 안전과 품질 보증이 핵심 고려사항이었다.
+
+\paragraph{AI 도입 현황}
+
+\begin{table}[htbp]
+\centering
+\caption{MHeavy Industries AI 시스템 현황}
+\label{tab:manufacturing_ai_inventory}
+\begin{tabularx}{\textwidth}{p{3cm}p{2cm}p{2.5cm}X}
+\toprule
+\textbf{System} & \textbf{리스크 Level} & \textbf{일 처리량} & \textbf{용도} \\
+\midrule
+용접부 비전 검사 & 고위험 & 약 5,000건 & 용접 결함 자동 검출 \\
+\midrule
+표면 결함 검사 & 중위험 & 약 3,000건 & 도장 전 표면 결함 검출 \\
+\midrule
+예측 정비 & 중위험 & 실시간 & 크레인, 절단기 고장 예측 \\
+\midrule
+안전 모니터링 & 고위험 & 실시간 & 작업자 안전 장구 착용 감지, 위험 구역 침입 탐지 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\subsection{거버넌스 체계}
+\label{sec:7.4.2}
+
+MHeavy Industries은 기존 품질 관리 System(QMS)과 안전 관리 System(SMS)을 
+AI 거버넌스와 통합하였다.
+
+\paragraph{핵심 Principle}
+
+\begin{enumerate}
+ \item \textbf{안전 최우선}: 
+ AI 시스템 오류로 인한 안전사고 가능점이 있는 경우 
+ 보수적으로 결정 (안전 마진 확보)
+ 
+ \item \textbf{품질 보증 연계}: 
+ AI 검사 결과는 품질 기록의 일부로 관리되며, 
+ 고객(선주) 검수 시 제공
+ 
+ \item \textbf{숙련공 검증}: 
+ AI 판정에 대한 최종 확인은 숙련 검사원이 수행
+ 
+ \item \textbf{지속적 Learning}: 
+ 현장 피드백을 반영한 모델 업데이트 체계 구축
+\end{enumerate}
+
+\begin{lstlisting}[language=Python, caption={Manufacturing AI Quality Management System}, label={lst:manufacturing_qms}]
+"""
+Manufacturing AI Quality Management System
+
+Implementation based on M-Heavy Industries case (Generalized)
+- Welding Defect Inspection
+- Quality Record Management
+- Skilled Worker Verification System
+"""
+
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from enum import Enum
+import numpy as np
+
+class DefectSeverity(Enum):
+ """ ( )"""
+ NONE = " None"
+ MINOR = " ( )"
+ MAJOR = " ( )"
+ CRITICAL = " ( )"
+
+class InspectionResult(Enum):
+ """ """
+ PASS = " "
+ CONDITIONAL_PASS = " "
+ FAIL = " "
+ REINSPECTION = " "
+
+@dataclass
+class WeldInspection:
+ """ """
+ inspection_id: str
+ work_order: str # weld_location: str # Location Code
+ welder_id: str # ID
+ 
+ # AI ai_result: Dict = field(default_factory=dict)
+ ai_confidence: float = 0.0
+ ai_defects_detected: List[Dict] = field(default_factory=list)
+ 
+ # Skilled Worker Verification
+ inspector_id: Optional[str] = None
+ inspector_result: Optional[Dict] = None
+ inspector_override: bool = False
+ override_reason: str = ""
+ 
+ # Final 
+ final_result: Optional[InspectionResult] = None
+ 
+ timestamp: datetime = field(default_factory=datetime.now)
+
+
+class ManufacturingQualityAI:
+ """
+ Manufacturing AI Management
+ 
+ Welding Defect Inspection, Quality Record Management
+ """
+ 
+ def __init__(
+ self,
+ system_name: str,
+ min_detection_rate: float = 0.99, # Minimum 
+ max_overkill_rate: float = 0.05, # ):
+ self.system_name = system_name
+ self.min_detection_rate = min_detection_rate
+ self.max_overkill_rate = max_overkill_rate
+ 
+ self.inspections: List[WeldInspection] = []
+ 
+ def classify_defect_severity(
+ self,
+ defect_type: str,
+ defect_size_mm: float,
+ weld_class: str, # A, B, C ( )
+ ) -> DefectSeverity:
+ """ Classification ( )"""
+ 
+ # (Example)
+ thresholds = {
+ 'A': {'minor': 2.0, 'major': 4.0}, # Class A: 'B': {'minor': 3.0, 'major': 6.0},
+ 'C': {'minor': 5.0, 'major': 10.0},
+ }
+ 
+ thresh = thresholds.get(weld_class, thresholds['B'])
+ 
+ if defect_size_mm <= thresh['minor']:
+ return DefectSeverity.MINOR
+ elif defect_size_mm <= thresh['major']:
+ return DefectSeverity.MAJOR
+ else:
+ return DefectSeverity.CRITICAL
+ 
+ def process_inspection(
+ self,
+ inspection: WeldInspection,
+ ) -> Dict:
+ """ """
+ 
+ # AI based 
+ if inspection.ai_confidence >= 0.95:
+ # : AI based Classification
+ if not inspection.ai_defects_detected:
+ routing = "auto_pass" # else:
+ max_severity = max(
+ (self.classify_defect_severity(
+ d['type'], d['size_mm'], d.get('weld_class', 'B')
+ ) for d in inspection.ai_defects_detected),
+ default=DefectSeverity.NONE
+ )
+ if max_severity == DefectSeverity.CRITICAL:
+ routing = "immediate_review" # else:
+ routing = "standard_review" # days else:
+ # : routing = "low_confidence_review"
+ 
+ self.inspections.append(inspection)
+ 
+ return {
+ 'inspection_id': inspection.inspection_id,
+ 'ai_confidence': inspection.ai_confidence,
+ 'defects_count': len(inspection.ai_defects_detected),
+ 'routing': routing,
+ 'requires_human_review': routing != "auto_pass",
+ }
+ 
+ def record_inspector_decision(
+ self,
+ inspection_id: str,
+ inspector_id: str,
+ result: InspectionResult,
+ override_ai: bool = False,
+ override_reason: str = "",
+ additional_defects: List[Dict] = None,
+ ) -> None:
+ """Skilled Worker Verification """
+ 
+ inspection = next(
+ (i for i in self.inspections if i.inspection_id == inspection_id),
+ None
+ )
+ if not inspection:
+ raise ValueError(f"Inspection not found: {inspection_id}")
+ 
+ inspection.inspector_id = inspector_id
+ inspection.inspector_result = {
+ 'result': result.value,
+ 'override_ai': override_ai,
+ 'override_reason': override_reason,
+ 'additional_defects': additional_defects or [],
+ 'timestamp': datetime.now().isoformat(),
+ }
+ inspection.inspector_override = override_ai
+ inspection.override_reason = override_reason
+ inspection.final_result = result
+ 
+ def calculate_performance(self) -> Dict:
+ """AI Performance Calculation"""
+ 
+ # Skilled Worker Verification verified = [i for i in self.inspections if i.inspector_result]
+ 
+ if not verified:
+ return {'error': 'No verified inspections'}
+ 
+ # AI vs Comparison
+ ai_detected_defect = np.array([
+ len(i.ai_defects_detected) > 0 for i in verified
+ ])
+ inspector_confirmed_defect = np.array([
+ i.final_result in [InspectionResult.FAIL, InspectionResult.CONDITIONAL_PASS]
+ for i in verified
+ ])
+ 
+ tp = ((ai_detected_defect == True) & (inspector_confirmed_defect == True)).sum()
+ fn = ((ai_detected_defect == False) & (inspector_confirmed_defect == True)).sum() # Escape
+ fp = ((ai_detected_defect == True) & (inspector_confirmed_defect == False)).sum() # Overkill
+ tn = ((ai_detected_defect == False) & (inspector_confirmed_defect == False)).sum()
+ 
+ detection_rate = tp / (tp + fn) if (tp + fn) > 0 else 1.0
+ overkill_rate = fp / (fp + tn) if (fp + tn) > 0 else 0.0
+ escape_rate = fn / (tp + fn) if (tp + fn) > 0 else 0.0
+ 
+ # Override Analysis
+ override_count = sum(1 for i in verified if i.inspector_override)
+ override_rate = override_count / len(verified) if verified else 0
+ 
+ return {
+ 'n_inspections': len(verified),
+ 'detection_rate': detection_rate,
+ 'escape_rate': escape_rate,
+ 'overkill_rate': overkill_rate,
+ 'override_rate': override_rate,
+ 'meets_detection_threshold': detection_rate >= self.min_detection_rate,
+ 'meets_overkill_threshold': overkill_rate <= self.max_overkill_rate,
+ 'confusion_matrix': {'tp': tp, 'fn': fn, 'fp': fp, 'tn': tn},
+ }
+ 
+ def generate_quality_report(self, period: str) -> str:
+ """ Report Generation"""
+ 
+ perf = self.calculate_performance()
+ 
+ report = f"""
+# {self.system_name} AI Performance Report
+
+Period: {period} 
+ : {perf.get('n_inspections', 0):,} 
+
+---
+
+## 1. Performance Metric
+
+| Metric | | | |
+|------|-----|------|------|
+| | {perf.get('detection_rate', 0):.2%} | >={self.min_detection_rate:.0%} | {'[PASS]' if perf.get('meets_detection_threshold', False) else '[FAIL]'} |
+| Escape Rate | {perf.get('escape_rate', 0):.2%} | Minimum | - |
+| Overkill Rate | {perf.get('overkill_rate', 0):.2%} | <={self.max_overkill_rate:.0%} | {'[PASS]' if perf.get('meets_overkill_threshold', False) else '[WARN]'} |
+| Override | {perf.get('override_rate', 0):.2%} | | - |
+
+---
+
+## 2. | | AI | AI |
+|--|-------------|---------------|
+|   | {perf.get('confusion_matrix', {}).get('tp', 0)} | {perf.get('confusion_matrix', {}).get('fn', 0)} (Escape) |
+|   | {perf.get('confusion_matrix', {}).get('fp', 0)} (Overkill) | {perf.get('confusion_matrix', {}).get('tn', 0)} |
+
+---
+
+## 3. Impact Analysis
+
+"""
+ 
+ escape_count = perf.get('confusion_matrix', {}).get('fn', 0)
+ if escape_count > 0:
+ report += f"""
+[WARN] Escape: {escape_count} 
+
+AI .
+ Analysis .
+
+"""
+ else:
+ report += "[PASS] Escape 0 : AI 1 .\n\n"
+ 
+ report += f"""
+---
+
+## 4. """
+ 
+ if not perf.get('meets_detection_threshold', True):
+ report += "- [FAIL] : Model Learning \n"
+ 
+ if perf.get('overkill_rate', 0) > self.max_overkill_rate:
+ report += "- [WARN] Overkill : ( , )\n"
+ 
+ if perf.get('override_rate', 0) > 0.15:
+ report += f"- [WARN] Override {perf['override_rate']:.1%}: AI- days Analysis \n"
+ 
+ report += """
+
+---
+
+ : Management 
+ : QA 
+Approval: 
+
+* Report .*
+* 15 5years .*
+"""
+ 
+ return report
+\end{lstlisting}
+
+
+\subsection{성능 및 교훈}
+\label{sec:7.4.3}
+
+\paragraph{주요 성능}
+
+\begin{itemize}
+ \item 용접 검사 시간 60\% 단축 (검사원 1인당 처리량 2.5배 증가)
+ \item Escape Rate 0.1\% 이하 유지 (업계 평균 0.5\% 대비 우수)
+ \item 재작업률 15\% 감소 (조기 결함 발견으로 인한 비용 절감)
+ \item AI 관련 품질 클레임 0건 (도입 후 3년간)
+\end{itemize}
+
+\paragraph{핵심 교훈}
+
+\begin{enumerate}
+ \item \textbf{안전 마진 확보}: 
+ 검출율을 최우선으로 하고, Overkill은 어느 정도 감수하는 전략이 
+ 품질 사고 예방에 효과적이었다.
+ 
+ \item \textbf{숙련공 협업 필수}: 
+ AI를 숙련공 대체가 아닌 Support Tool로 포지셔닝함으로써 
+ 현장 수용도를 높이고 지속적인 피드백을 확보하였다.
+ 
+ \item \textbf{품질 기록 통합된}: 
+ AI 검사 결과를 기존 품질 관리 시스템에 통합하여 
+ 추적성(Traceability)을 확보하고 선급 검사 Response이 용이해졌다.
+ 
+ \item \textbf{지속적 학습 체계}: 
+ 숙련공 Override 사례를 학습 데이터로 활용하여 
+ 모델 성능을 지속적으로 개선하는 피드백 루프를 구축하였다.
+\end{enumerate}
+
+
+%----------------------------------------------------------
+\subsection*{제7장 요약}
+
+본 장에서는 한국의 금융, 의료, 공공, 제조 분야에서의 
+AI 거버넌스 구축 사례를 분석하였다. 주요 시사점을 요약하면 다음과 같다.
+
+\begin{enumerate}
+ \item \textbf{기존 체계 활용}: 
+ 모든 사례에서 기존 리스크 관리, 품질 관리, 규제 준수 체계를 
+ AI 거버넌스의 based으로 활용하여 효과적인 정착이 가능했다.
+ 
+ \item \textbf{인간-AI 협업 설계}: 
+ AI를 대체가 아닌 Support Tool로 포지셔닝하고, 
+ 최종 결정권은 인간에게 유지함으로써 
+ 내부 수용도와 법적 안정성을 확보하였다.
+ 
+ \item \textbf{설명과 투명성}: 
+ 모든 분야에서 ``왜''에 대한 답변이 핵심이었다. 
+ 고객, 환자, 시민, 숙련공 모두 AI 결정 근거를 알고 싶어 했다.
+ 
+ \item \textbf{지속적 모니터링}: 
+ 배포 후 지속적인 성능, 공정성, 안전성 모니터링(\ref{sec:4.3.4})이 
+ 문제의 조기 발견과 신뢰 유지에 필수적이었다.
+ 
+ \item \textbf{산업 특수성 반영}: 
+ 보편적인 거버넌스 원칙을 산업 특성에 맞게 적용하는 것이 중요했다. 
+ 금융의 공정성, 의료의 안전성, 공공의 형평성, 제조의 품질이 
+ 각각 핵심 가치였다.
+\end{enumerate}
+
+이러한 사례들은 이론적 프레임워크가 실제 현장에서 
+어떻게 적용될 수 있는지를 보여주며, 
+유사한 상황에 있는 조직들에게 실질적인 참고가 될 것이다. 
+마지막 제8장에서는 AI 기술의 비약적인 발전과 규제 환경의 변화 속에서 
+AI 거버넌스가 나아가야 할 미래 방향을 제시하며 본 책을 마무리한다.

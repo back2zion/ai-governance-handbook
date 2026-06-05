@@ -1,0 +1,195 @@
+\documentclass[a4paper,11pt,openany]{book}
+
+% Korean Support
+\usepackage{kotex}
+
+% Korean localization of document labels
+\renewcommand{\contentsname}{목차}
+\renewcommand{\listfigurename}{그림 목차}
+\renewcommand{\listtablename}{표 목차}
+\renewcommand{\chaptername}{제}
+\makeatletter
+\renewcommand{\@chapapp}{제}
+% Prevent \MakeUppercase in running headers (breaks \cite keys in section titles)
+\renewcommand{\chaptermark}[1]{\markboth{\@chapapp\ \thechapter.\ #1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+\makeatother
+\renewcommand{\partname}{제}
+\renewcommand{\tablename}{표}
+\renewcommand{\figurename}{그림}
+\renewcommand{\bibname}{참고문헌}
+\renewcommand{\appendixname}{부록}
+
+% Graphics and Formatting
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{a4paper, margin=25mm}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdftitle={AI 거버넌스: 전략에서 실행까지},
+  pdfauthor={곽두일},
+  pdfsubject={AI Governance},
+  pdfkeywords={AI, Governance, Ethics, Risk Management},
+  unicode=true
+}
+\usepackage{xcolor}
+\usepackage{listings}
+\renewcommand{\lstlistingname}{코드}
+\usepackage{amsmath,amssymb}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\usepackage{tcolorbox}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{shapes,shapes.geometric,arrows,arrows.meta,positioning,fit,decorations.pathreplacing,calc}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% Listings Styling for margin-friendly code
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstset{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    frame=single,
+    rulecolor=\color{black},
+    columns=flexible,
+    inputencoding=utf8,
+    extendedchars=true
+}
+
+% YAML language definition for listings
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,y,n},
+  sensitive=false,
+  comment=[l]{\#},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]',
+  morestring=[b]"
+}
+
+% Bibliography
+\usepackage[backend=biber,style=authoryear]{biblatex}
+\addbibresource{references.bib}
+
+% Custom Environment for Practical Tools
+\newtcolorbox{practicaltool}[1]{
+  colback=blue!5!white,
+  colframe=blue!75!black,
+  title=\textbf{실무 도구: #1}
+}
+
+% Book Metadata
+\title{\textbf{AI 거버넌스 실무 지침서}\\ \large 이론과 실무의 가교 (Bridge between Theory and Practice)}
+\author{곽두일}
+\date{2026년 5월}
+
+% Reduce blank pages
+\let\cleardoublepage\clearpage
+
+\begin{document}
+
+% 표지 이미지 (별도 페이지, 번호 없음)
+\thispagestyle{empty}
+\begin{center}
+    \vspace*{-2.5cm}
+    \includegraphics[width=1.1\textwidth]{figures/cover.png}
+\end{center}
+\clearpage
+
+% 제목 페이지
+\begin{titlepage}
+    \centering
+    \vspace*{3cm}
+    {\Huge \textbf{AI 거버넌스 실무 지침서} \par}
+    \vspace{0.8cm}
+    {\Large 이론과 실무의 가교 (Bridge between Theory and Practice) \par}
+    \vfill
+    {\large 곽두일 지음 \par}
+    \vspace{0.5cm}
+    {\large 2026년 5월 \par}
+\end{titlepage}
+
+\thispagestyle{empty}
+\vspace*{\fill}
+\begin{center}
+\textbf{AI 거버넌스: 전략에서 실행까지}\\[1em]
+\textcopyright{} 2026 곽두일. All rights reserved.\\[0.5em]
+초판 1쇄 발행 2026년\\[2em]
+\small
+이 책의 내용을 무단 복제하는 것은 저작권법에 의해 금지되어 있습니다.
+\end{center}
+\vspace*{\fill}
+\clearpage
+
+\frontmatter
+\include{chapters/preface}
+\tableofcontents
+
+\mainmatter
+\part{제1부: 기반 구축 --- AI 거버넌스의 이론적 토대}
+\include{chapters/01_concept}
+\include{chapters/02_global_frameworks}
+\include{chapters/03_ethics_operationalization}
+
+\part{제2부: 전략 설계 --- 조직 맞춤형 거버넌스 프레임워크}
+\include{chapters/04_organization}
+\include{chapters/05_policy}
+\include{chapters/06_governance_tools}
+\include{chapters/07_case_studies}
+
+\part{제3부: 운영 체계 --- 생명주기 전반의 거버넌스 실행}
+\include{chapters/08_usecase_discovery}
+\include{chapters/09_data_governance}
+\include{chapters/10_model_development}
+\include{chapters/11_audit_certification}
+\include{chapters/12_operation_lifecycle}
+\include{chapters/12b_generative_ai}
+
+\part{제4부: 기술 구현 --- 거버넌스를 위한 엔지니어링}
+\include{chapters/13_architecture}
+\include{chapters/14_tools_platform}
+\include{chapters/15_security_privacy}
+
+\part{제5부: 고도화 --- 산업별 적용과 미래 전망}
+\include{chapters/16_healthcare}
+\include{chapters/17_finance}
+\include{chapters/18_public}
+\include{chapters/19_industrial}
+\include{chapters/20_future}
+
+\appendix
+\include{chapters/appendix_a}
+\include{chapters/appendix_b}
+\include{chapters/appendix_c}
+\include{chapters/appendix_d}
+\include{chapters/appendix_e}
+
+
+\begingroup
+\emergencystretch=3em
+\backmatter
+\printbibliography
+\endgroup
+
+\end{document}

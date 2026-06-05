@@ -1,0 +1,1380 @@
+%----------------------------------------------------------
+% 제9장. 데이터 거버넌스와 AI 거버넌스의 통합
+%----------------------------------------------------------
+
+\chapter{데이터 거버넌스와 AI 거버넌스의 통합}
+\label{ch:data_ai_governance}
+
+AI 시스템의 품질은 데이터의 품질에서 결정된다\cite{sambasivan2021everyone}. ``Garbage In, Garbage Out''이라는 오래된 격언은 AI 시대에 더욱 절실하게 적용된다. 편향된 데이터는 편향된 모델을, 불완전한 데이터는 불안정한 예측을 낳는다. \cite{gartner2021datafabric}는 현대적인 데이터 관리의 핵심인 데이터 패브릭(Data Fabric) 아키텍처가 AI 거버넌스의 기술적 기반이 되어야 함을 강조한다.
+
+제1장에서 논의한 바와 같이, 데이터 거버넌스는 AI 거버넌스의 필요조건이다. 그러나 두 거버넌스 체계가 각각 독립적으로 운영되면 정책 충돌, 책임 공백, 프로세스 중복\cite{schneider2022governance}이 발생한다. 예컨대 데이터 거버넌스 팀이 승인한 데이터가 AI 모델의 학습에 부적합한 경우(편향 포함, 대표성 부족 등), 또는 AI 거버넌스 팀이 요구하는 데이터 계보\cite{wilkinson2016fair} 추적이 기존 데이터 거버넌스 인프라로 지원되지 않는 경우가 빈번하다.
+
+본 장에서는 데이터 거버넌스와 AI 거버넌스의 통합적 접근 방식을 다룬다. 먼저 AI 학습에 필요한 데이터의 특수 요구사항을 정의하고, 데이터 패브릭 관점에서 통합 리니지를 구축하는 방법을 제시한다. 이어서 데이터 접근 제어\cite{abadi2016deep}와 프라이버시 보호 전략, 외부 데이터 및 사전 학습 모델\cite{bommasani2021opportunities}의 거버넌스, 그리고 CDO\cite{ladley2019data}와 CAIO 간의 조직적 협업 체계를 다룬다. 특히 피처 스토어(Feature Store)를 통한 거버넌스 강화와, ``잊힐 권리''에 대응하는 머신 언러닝\cite{bourtoule2021unlearning}(Machine Unlearning)의 법적$\cdot$기술적 요구사항을 심도 있게 제시한다.
+
+%----------------------------------------------------------
+\section{AI를 위한 데이터 요구사항}
+\label{sec:9.1}
+
+\subsection{통합 거버넌스 아키텍처: 데이터 패브릭 관점}
+\label{sec:9.1.1}
+
+데이터 거버넌스와 AI 거버넌스는 별개가 아니라 데이터 패브릭이라는 거대한 메타데이터\cite{holland2018dataset} 기반 위에서 유기적으로 연결되어야 한다. 데이터 패브릭 아키텍처는 분산된 데이터 환경에서 통합적 데이터 접근, 메타데이터 기반 자동화, 지능형 데이터 관리를 지향하며, 이 과정에서 자연스럽게 AI 모델의 데이터 의존성, 계보, 품질 영향 분석이 가능해진다.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+ layer/.style={rectangle, draw, rounded corners, minimum width=11cm, minimum height=1cm, align=center, font=\small},
+ fabric/.style={rectangle, draw, dashed, fill=gray!5, minimum width=12cm, minimum height=6.5cm},
+]
+
+% Background Data Fabric
+\node[fabric] (bg) at (0, 1.7) {};
+\node[anchor=north west, font=\scriptsize\bfseries] at (-6, 4.9) {DATA FABRIC ARCHITECTURE};
+
+% Layers
+\node[layer, fill=blue!10, draw=blue!60, thick] (dg) at (0, 4) {\textbf{데이터 거버넌스}\\메타데이터 관리, 데이터 품질\cite{redman2008data}, 접근 제어};
+\node[layer, fill=cyan!10, draw=cyan!60, thick] (fs) at (0, 2.7) {\textbf{피처 스토어 (Feature Store)}\\피처 재사용, 버전 관리, 계보 추적 \cite{delarua2024hopsworks}};
+\node[layer, fill=orange!10, draw=orange!60, thick] (ad) at (0, 1.4) {\textbf{AI 데이터 관리}\\학습/검증셋 분할, 레이블링 품질};
+\node[layer, fill=red!10, draw=red!60, thick] (ag) at (0, 0.1) {\textbf{AI 거버넌스}\\모델 검증, 공정성 평가, 운영 모니터링};
+
+% Connections
+\draw[<->, thick] (dg) -- (fs);
+\draw[<->, thick] (fs) -- (ad);
+\draw[<->, thick] (ad) -- (ag);
+
+\end{tikzpicture}
+\caption{데이터 패브릭 기반 통합 거버넌스 계층 구조}
+\label{fig:data_fabric_governance}
+\end{figure}
+
+이 아키텍처에서 각 계층은 다음과 같은 역할을 수행한다:
+
+\begin{itemize}
+ \item \textbf{데이터 거버넌스 계층}: 조직의 전체 데이터 자산에 대한 메타데이터 관리, 품질 규칙 정의, 접근 제어 정책을 관장한다. 이 계층은 AI 학습에 사용되는 데이터뿐 아니라 모든 데이터를 포괄한다.
+ \item \textbf{피처 스토어 계층}: 데이터 거버넌스와 AI 거버넌스의 핵심 접점이다. 원천 데이터에서 추출$\cdot$변환된 피처를 중앙에서 관리하며, 피처의 버전 관리, 재사용, 계보 추적을 담당한다.
+ \item \textbf{AI 데이터 관리 계층}: 학습$\cdot$검증$\cdot$테스트 데이터셋의 분할, 레이블링 품질 관리, 데이터 증강 전략 등 AI 모델 개발에 특화된 데이터 관리를 수행한다.
+ \item \textbf{AI 거버넌스 계층}: 모델의 검증, 공정성 평가, 운영 모니터링, 감사 등 AI 시스템 전반의 거버넌스를 담당한다. 상위 계층에서 제공하는 데이터 품질과 계보 정보를 활용한다.
+\end{itemize}
+
+특히 \textbf{피처 스토어(Feature Store)}는 데이터 패브릭 아키텍처의 핵심 허브로 작용한다. 단순한 저장소를 넘어, ``어떤 피처가 어떤 모델에 의해, 어떤 목적으로 재사용되었는지''를 추적함으로써 데이터 중복성을 제거하고 모델 간의 일관성을 보장한다. \cite{delarua2024hopsworks}는 피처 스토어가 ML 시스템의 기술 부채를 줄이는 핵심 인프라임을 강조한다.
+
+\begin{table}[htbp]
+\centering
+\caption{전통적 데이터 거버넌스와 AI 데이터 거버넌스의 비교}
+\label{tab:data_gov_comparison}
+\begin{tabularx}{\textwidth}{p{3cm}XX}
+\toprule
+\textbf{관심 영역} & \textbf{전통적 데이터 거버넌스} & \textbf{AI 데이터 거버넌스 (확장)} \\
+\midrule
+품질 기준 & 정확성, 완전성, 일관성, 적시성 & + 대표성, 레이블 정확성, 편향 수준, 분포 적합성 \\
+\midrule
+계보 범위 & 원천 $\rightarrow$ ETL $\rightarrow$ DW/DM & + 피처 추출 $\rightarrow$ 학습 $\rightarrow$ 모델 $\rightarrow$ 예측 결과 \\
+\midrule
+버전 관리 & 스키마 버전, 데이터 스냅샷 & + 학습셋 버전, 피처 버전, 데이터 증강 이력 \\
+\midrule
+접근 제어 & RBAC 기반 테이블/컬럼 수준 & + 민감 속성 기반 AI 학습 제한, 모델별 데이터 권한 \\
+\midrule
+삭제 정책 & 보존 기간 만료 후 삭제 & + 머신 언러닝: 모델 파라미터에서의 영향 제거 \\
+\midrule
+문서화 & 데이터 사전, 메타데이터 & + 데이터시트(Datasheets), 데이터 카드\cite{breck2019data} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\subsection{데이터 품질에서 AI 품질로의 전이}
+\label{sec:9.1.2}
+
+데이터의 품질 지표는 모델의 상위 지표인 공정성과 강건성에 직접적인 영향을 미친다. 전통적 품질 지표(완전성, 유효성 등) 외에 AI 학습을 위해서는 다음 요소가 추가로 요구된다. \cite{gebru2021datasheets}는 데이터셋의 특성을 문서화하는 것이 품질 관리의 시작점이라고 강조한다.
+
+\begin{itemize}
+ \item \textbf{라벨링 정확성 (Label Accuracy)}: 지도 학습의 정답지(Label)가 일관되고 정확한가\cite{bender2018data}? 라벨러(Annotator) 간의 합의도(Inter-annotator agreement)를 측정해야 한다. Cohen's Kappa 또는 Fleiss' Kappa 등의 지표를 활용하여 최소 0.7 이상의 합의도를 권장한다.
+ \item \textbf{다양성 및 대표성 (Diversity \& Representation)}: 현실 세계의 다양한 케이스를 충분히 커버하는가? 학습 데이터의 분포가 실제 운영 데이터\cite{ntoutsi2020bias}(추론 데이터)의 분포와 유사해야 한다. 특히 민감 속성(성별, 연령, 지역 등)별 데이터 비율이 현실 인구 구성을 반영하는지 검증해야 한다.
+ \item \textbf{최신성 (Freshness)}: 모델이 학습할 데이터가 현재의 현실을 반영하는가? 시간의 흐름에 따라 데이터의 패턴이 변하는 컨셉 드리프트(Concept Drift)를 방지하기 위해 최신 데이터 파이프라인이 필수적이다.
+ \item \textbf{충분성 (Sufficiency)}: 각 클래스$\cdot$범주에 대해 통계적으로 유의미한 학습이 가능한 충분한 양의 데이터가 확보되어 있는가? 소수 클래스의 부족은 모델의 편향을 유발한다.
+ \item \textbf{무결성 (Integrity)}: 데이터 수집$\cdot$전처리 과정에서 의도치 않은 변형\cite{zook2017ten}이나 정보 손실이 발생하지 않았는가? 특히 인코딩 변환, 결측치 처리, 이상치 제거 과정을 추적해야 한다.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{데이터 품질 이슈와 AI 리스크 전이 매핑}
+\label{tab:quality_risk_mapping}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{3cm}p{2.5cm}X}
+\toprule
+\textbf{데이터 품질 이슈} & \textbf{전이되는 AI 리스크} & \textbf{리스크 수준} & \textbf{거버넌스 대응} \\
+\midrule
+대표성 부족 & 편향된 예측, 공정성 위반 & 심각 & 민감 속성별 분포 검증, 층화 샘플링 \\
+\midrule
+레이블 오류 & 성능 저하, 신뢰도 하락 & 높음 & 다수 라벨러 교차 검증, 합의도 측정 \\
+\midrule
+결측값 과다 & 불안정한 예측, 편향 유발 & 중간 & 결측 패턴 분석, 대체 전략 문서화 \\
+\midrule
+데이터 노후화 & 컨셉 드리프트, 성능 저하 & 높음 & 데이터 신선도 모니터링, 자동 갱신 \\
+\midrule
+중복 데이터 & 과적합, 검증 오염 & 중간 & 중복 제거, 학습/테스트셋 분리 검증 \\
+\midrule
+프라이버시 위반 & 법적 제재, 평판 손상 & 심각 & 비식별화 검증, PII 탐지 자동화 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={데이터 품질-AI 품질 전이 분석기}, label={lst:quality_transfer}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
+from enum import Enum
+import numpy as np
+
+class RiskLevel(Enum):
+    CRITICAL = "Critical"
+    HIGH = "High"
+    MEDIUM = "Medium"
+    LOW = "Low"
+
+@dataclass
+class DataQualityMetrics:
+    """AI 학습 데이터 품질 지표"""
+    completeness: float = 0.0      # 완전성 (0-1)
+    label_accuracy: float = 0.0    # 레이블 정확도 (0-1)
+    representation_score: float = 0.0  # 대표성 점수 (0-1)
+    freshness_days: int = 0        # 데이터 신선도 (일)
+    duplicate_ratio: float = 0.0   # 중복 비율 (0-1)
+    pii_detected: bool = False     # PII 포함 여부
+
+class QualityTransferAnalyzer:
+    """데이터 품질 이슈의 AI 리스크 전이 분석기"""
+
+    QUALITY_AI_RISK_MAP = {
+        "completeness": {
+            "ai_risk": "모델 성능 저하",
+            "threshold": 0.95,
+            "risk_level": RiskLevel.HIGH
+        },
+        "label_accuracy": {
+            "ai_risk": "예측 신뢰도 하락",
+            "threshold": 0.90,
+            "risk_level": RiskLevel.HIGH
+        },
+        "representation_score": {
+            "ai_risk": "공정성 위반 (편향)",
+            "threshold": 0.80,
+            "risk_level": RiskLevel.CRITICAL
+        },
+        "freshness_days": {
+            "ai_risk": "컨셉 드리프트",
+            "threshold": 90,
+            "risk_level": RiskLevel.HIGH
+        },
+        "duplicate_ratio": {
+            "ai_risk": "과적합, 검증 오염",
+            "threshold": 0.05,
+            "risk_level": RiskLevel.MEDIUM
+        },
+    }
+
+    def analyze(self, metrics: DataQualityMetrics) -> Dict:
+        """품질 지표를 분석하여 AI 리스크를 식별"""
+        issues = []
+
+        if metrics.completeness < self.QUALITY_AI_RISK_MAP["completeness"]["threshold"]:
+            issues.append({
+                "issue": "완전성 부족",
+                "value": metrics.completeness,
+                "ai_risk": "모델 성능 저하",
+                "risk_level": RiskLevel.HIGH,
+                "recommendation": "결측 패턴 분석 및 대체 전략 수립"
+            })
+
+        if metrics.representation_score < self.QUALITY_AI_RISK_MAP["representation_score"]["threshold"]:
+            issues.append({
+                "issue": "대표성 부족",
+                "value": metrics.representation_score,
+                "ai_risk": "공정성 위반",
+                "risk_level": RiskLevel.CRITICAL,
+                "recommendation": "민감 속성별 분포 검증 및 재샘플링"
+            })
+
+        if metrics.pii_detected:
+            issues.append({
+                "issue": "개인식별정보 포함",
+                "value": True,
+                "ai_risk": "프라이버시 위반, 법적 제재",
+                "risk_level": RiskLevel.CRITICAL,
+                "recommendation": "비식별화 처리 후 재검증"
+            })
+
+        overall_risk = RiskLevel.LOW
+        if any(i["risk_level"] == RiskLevel.CRITICAL for i in issues):
+            overall_risk = RiskLevel.CRITICAL
+        elif any(i["risk_level"] == RiskLevel.HIGH for i in issues):
+            overall_risk = RiskLevel.HIGH
+
+        return {
+            "total_issues": len(issues),
+            "overall_risk": overall_risk,
+            "issues": issues,
+            "recommendation": "학습 진행 불가" if overall_risk == RiskLevel.CRITICAL
+                             else "조건부 학습 허용"
+        }
+\end{lstlisting}
+
+
+\subsection{데이터시트(Datasheets)와 데이터 카드}
+\label{sec:9.1.3}
+
+\cite{gebru2021datasheets}가 제안한 ``데이터시트(Datasheets for Datasets)''는 데이터셋의 특성, 수집 과정, 의도된 용도, 제한사항을 체계적으로 문서화하는 표준이다. AI 거버넌스 관점에서 데이터시트는 모델 카드(Model Card)와 함께 감사 가능성(auditability)을 확보하는 핵심 문서이다.
+
+\begin{table}[htbp]
+\centering
+\caption{데이터시트 필수 기재 항목}
+\label{tab:datasheet_template}
+\begin{tabularx}{\textwidth}{p{3cm}Xp{3cm}}
+\toprule
+\textbf{섹션} & \textbf{기재 내용} & \textbf{거버넌스 목적} \\
+\midrule
+동기(Motivation) & 데이터셋 생성 목적, 자금 출처, 생성 주체 & 데이터 활용 범위 제한 \\
+\midrule
+구성(Composition) & 인스턴스 수, 데이터 유형, 민감 정보 포함 여부 & 리스크 평가 기초 자료 \\
+\midrule
+수집 과정(Collection) & 수집 방법, 동의 절차, 시간 범위 & 법적 적합성 검증 \\
+\midrule
+전처리(Preprocessing) & 클리닝, 레이블링, 분할 방법 & 재현성 확보 \\
+\midrule
+용도(Uses) & 의도된 용도, 부적절한 용도 & 오남용 방지 \\
+\midrule
+배포(Distribution) & 라이선스, 접근 제한 & 지적재산권 관리 \\
+\midrule
+유지보수(Maintenance) & 업데이트 주기, 책임자 & 신선도 관리 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+데이터시트의 작성은 데이터 거버넌스 팀과 AI 개발팀이 공동으로 수행해야 하며, 모델 레지스트리에 모델 카드와 함께 연계$\cdot$보관되어야 한다. 이를 통해 ``이 모델은 어떤 데이터로 학습되었는가?''라는 질문에 즉각 답할 수 있는 감사 가능성을 확보한다.
+
+
+\subsection{AI 학습 데이터 편향의 유형과 탐지}
+\label{sec:9.1.4}
+
+AI 모델의 편향은 대부분 데이터에서 기인한다. 학습 데이터에 존재하는 편향의 유형을 체계적으로 분류하고, 각 유형별 탐지 방법을 정립하는 것이 AI 데이터 거버넌스의 핵심 과제이다.
+
+\begin{table}[htbp]
+\centering
+\caption{AI 학습 데이터 편향 유형 분류}
+\label{tab:data_bias_types}
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{3.5cm}}
+\toprule
+\textbf{편향 유형} & \textbf{설명} & \textbf{탐지 방법} \\
+\midrule
+표본 편향 (Selection Bias) & 특정 집단이 과대/과소 대표되는 편향 & 민감 속성별 분포 비교, 인구 통계 대조 \\
+\midrule
+측정 편향 (Measurement Bias) & 데이터 수집 도구나 방법의 체계적 오차 & 수집 방법론 감사, 교차 검증 \\
+\midrule
+역사적 편향 (Historical Bias) & 과거의 차별적 관행이 데이터에 반영 & 시계열 분석, 도메인 전문가 검토 \\
+\midrule
+집계 편향 (Aggregation Bias) & 이질적 하위 집단을 하나로 통합하여 발생 & 하위 집단별 성능 분석 \\
+\midrule
+배제 편향 (Exclusion Bias) & 특정 집단이나 특성이 데이터에서 누락 & 특성 완전성 분석, 누락 패턴 검토 \\
+\midrule
+레이블 편향 (Label Bias) & 레이블링 과정에서 주관적 판단이 개입 & 라벨러 간 합의도 측정, 교차 레이블링 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={학습 데이터 편향 탐지 프로토콜}, label={lst:bias_detection}]
+from typing import Dict, List
+import numpy as np
+from scipy import stats
+
+class DataBiasDetector:
+    """
+    학습 데이터 편향 탐지 프로토콜
+
+    [실무 도구 9-2] 데이터 편향 탐지 프로토콜의 코드 구현
+    민감 속성별 분포 검증, 레이블 편향 탐지, 대표성 평가를 수행
+    """
+
+    def __init__(self, sensitive_attributes: List[str]):
+        self.sensitive_attributes = sensitive_attributes
+        self.bias_report = {}
+
+    def check_representation_bias(
+        self,
+        dataset_distribution: Dict[str, float],
+        population_distribution: Dict[str, float],
+        threshold: float = 0.8
+    ) -> Dict:
+        """
+        표본 편향 탐지: 데이터셋 분포와 모집단 분포 비교
+
+        각 하위 집단의 대표성 비율(Representation Ratio)이
+        threshold 미만이면 편향으로 판정
+        """
+        results = {}
+        for group, pop_ratio in population_distribution.items():
+            data_ratio = dataset_distribution.get(group, 0.0)
+            if pop_ratio > 0:
+                representation_ratio = data_ratio / pop_ratio
+            else:
+                representation_ratio = float('inf')
+
+            results[group] = {
+                "dataset_ratio": data_ratio,
+                "population_ratio": pop_ratio,
+                "representation_ratio": representation_ratio,
+                "bias_detected": representation_ratio < threshold
+                                 or representation_ratio > (1 / threshold),
+                "severity": "HIGH" if representation_ratio < 0.5 else
+                           "MEDIUM" if representation_ratio < threshold else "LOW"
+            }
+
+        return results
+
+    def check_label_bias(
+        self,
+        labels: np.ndarray,
+        sensitive_attr: np.ndarray,
+        positive_label: int = 1
+    ) -> Dict:
+        """
+        레이블 편향 탐지: 민감 속성별 긍정 레이블 비율 비교
+
+        통계적 유의성 검정(카이제곱 검정)을 통해 편향 판정
+        """
+        groups = np.unique(sensitive_attr)
+        positive_rates = {}
+
+        for group in groups:
+            mask = sensitive_attr == group
+            group_labels = labels[mask]
+            positive_rate = np.mean(group_labels == positive_label)
+            positive_rates[str(group)] = {
+                "count": int(mask.sum()),
+                "positive_rate": float(positive_rate)
+            }
+
+        # 카이제곱 검정으로 집단 간 차이 유의성 확인
+        contingency = []
+        for group in groups:
+            mask = sensitive_attr == group
+            pos = np.sum(labels[mask] == positive_label)
+            neg = np.sum(labels[mask] != positive_label)
+            contingency.append([pos, neg])
+
+        chi2, p_value, dof, expected = stats.chi2_contingency(contingency)
+
+        return {
+            "positive_rates_by_group": positive_rates,
+            "chi2_statistic": float(chi2),
+            "p_value": float(p_value),
+            "bias_detected": p_value < 0.05,
+            "recommendation": "레이블링 프로세스 검토 필요"
+                             if p_value < 0.05 else "유의미한 편향 미탐지"
+        }
+
+    def generate_bias_report(self, results: Dict) -> str:
+        """편향 탐지 결과 보고서 생성"""
+        report = "=" * 60 + "\n"
+        report += "학습 데이터 편향 탐지 보고서\n"
+        report += "=" * 60 + "\n\n"
+
+        for check_name, result in results.items():
+            report += f"[{check_name}]\n"
+            bias_found = result.get("bias_detected", False)
+            report += f"  편향 탐지: {'예' if bias_found else '아니오'}\n"
+            if bias_found:
+                report += f"  권고사항: {result.get('recommendation', 'N/A')}\n"
+            report += "\n"
+
+        return report
+\end{lstlisting}
+
+
+\subsection{피처 스토어를 통한 데이터 거버넌스 강화}
+\label{sec:9.1.5}
+
+피처 스토어(Feature Store)는 ML 모델이 소비하는 피처(Feature)의 중앙 관리 플랫폼으로, 데이터 거버넌스와 AI 거버넌스를 연결하는 핵심 허브이다. 피처 스토어의 거버넌스 가치는 다음과 같다.
+
+\begin{enumerate}
+ \item \textbf{피처 재사용성}: 동일한 피처를 여러 모델이 공유함으로써, 피처 계산 로직의 일관성을 보장하고 중복 개발을 방지한다.
+ \item \textbf{피처 계보 추적}: ``이 피처는 어떤 원천 데이터에서, 어떤 변환 로직을 거쳐 생성되었는가?''에 대한 완전한 추적이 가능하다.
+ \item \textbf{피처 품질 모니터링}: 피처의 분포 변화(드리프트)를 실시간으로 감지하여 모델 성능 저하를 사전에 경고한다.
+ \item \textbf{접근 제어}: 민감한 피처(예: 소득 수준, 건강 상태)에 대한 모델별$\cdot$팀별 접근 권한을 세밀하게 관리한다.
+ \item \textbf{시점 정확성(Point-in-Time Correctness)}: 학습 시점에 사용할 수 있었던 데이터만을 학습에 사용하여 데이터 누출(Data Leakage)을 방지한다.
+\end{enumerate}
+
+\begin{lstlisting}[language=Python, caption={피처 스토어 거버넌스 관리 시스템}, label={lst:feature_store_gov}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from datetime import datetime
+from enum import Enum
+
+class FeatureStatus(Enum):
+    DRAFT = "Draft"
+    REVIEW = "Review"
+    APPROVED = "Approved"
+    DEPRECATED = "Deprecated"
+    RETIRED = "Retired"
+
+class SensitivityLevel(Enum):
+    PUBLIC = "Public"
+    INTERNAL = "Internal"
+    CONFIDENTIAL = "Confidential"
+    RESTRICTED = "Restricted"
+
+@dataclass
+class FeatureDefinition:
+    """피처 정의 및 메타데이터"""
+    feature_id: str
+    name: str
+    description: str
+    data_type: str
+    source_tables: List[str] = field(default_factory=list)
+    transformation_logic: str = ""
+    status: FeatureStatus = FeatureStatus.DRAFT
+    sensitivity: SensitivityLevel = SensitivityLevel.INTERNAL
+    owner: str = ""
+    version: str = "1.0"
+    created_at: datetime = field(default_factory=datetime.now)
+    used_by_models: List[str] = field(default_factory=list)
+    contains_pii: bool = False
+    is_sensitive_attribute: bool = False
+
+class FeatureStoreGovernance:
+    """피처 스토어 거버넌스 관리 시스템"""
+
+    def __init__(self):
+        self.features: Dict[str, FeatureDefinition] = {}
+        self.access_policies: Dict[str, List[str]] = {}
+        self.audit_log: List[Dict] = []
+
+    def register_feature(self, feature: FeatureDefinition) -> str:
+        """피처 등록 및 초기 검증"""
+        # PII 포함 피처는 자동으로 RESTRICTED로 분류
+        if feature.contains_pii:
+            feature.sensitivity = SensitivityLevel.RESTRICTED
+
+        # 민감 속성 피처는 승인 워크플로 필수
+        if feature.is_sensitive_attribute:
+            feature.status = FeatureStatus.REVIEW
+
+        self.features[feature.feature_id] = feature
+        self._log("REGISTER", feature.feature_id, f"피처 등록: {feature.name}")
+        return feature.feature_id
+
+    def check_access(self, feature_id: str, model_id: str, user_role: str) -> bool:
+        """피처 접근 권한 검증"""
+        feature = self.features.get(feature_id)
+        if not feature:
+            return False
+
+        # RESTRICTED 피처는 승인된 모델만 접근 가능
+        if feature.sensitivity == SensitivityLevel.RESTRICTED:
+            allowed = self.access_policies.get(feature_id, [])
+            if model_id not in allowed:
+                self._log("ACCESS_DENIED", feature_id,
+                         f"모델 {model_id}의 RESTRICTED 피처 접근 거부")
+                return False
+
+        self._log("ACCESS_GRANTED", feature_id, f"모델 {model_id} 접근 허용")
+        return True
+
+    def get_feature_lineage(self, feature_id: str) -> Dict:
+        """피처 계보 추적: 원천 데이터부터 사용 모델까지"""
+        feature = self.features.get(feature_id)
+        if not feature:
+            return {}
+
+        return {
+            "feature_id": feature.feature_id,
+            "source_tables": feature.source_tables,
+            "transformation": feature.transformation_logic,
+            "consuming_models": feature.used_by_models,
+            "version": feature.version,
+            "sensitivity": feature.sensitivity.value
+        }
+
+    def deprecate_feature(self, feature_id: str, reason: str) -> List[str]:
+        """피처 폐기 시 영향받는 모델 식별"""
+        feature = self.features.get(feature_id)
+        if not feature:
+            return []
+
+        affected_models = feature.used_by_models.copy()
+        feature.status = FeatureStatus.DEPRECATED
+        self._log("DEPRECATE", feature_id,
+                 f"피처 폐기: {reason}, 영향 모델: {affected_models}")
+        return affected_models
+
+    def _log(self, action: str, feature_id: str, detail: str):
+        self.audit_log.append({
+            "timestamp": datetime.now().isoformat(),
+            "action": action,
+            "feature_id": feature_id,
+            "detail": detail
+        })
+\end{lstlisting}
+
+
+%----------------------------------------------------------
+\section{데이터 계보(Lineage)와 출처 관리}
+\label{sec:9.2}
+
+\subsection{전통적 리니지에서 AI 통합 리니지로}
+\label{sec:9.2.1}
+
+전통적인 데이터 리니지는 ``원천 시스템에서 데이터 웨어하우스''까지를 다루었으나, AI 거버넌스에서는 이를 ``모델의 의사결정''까지 확장해야 한다. 이를 \textbf{통합 리니지(Integrated Lineage)}라 한다.
+
+통합 리니지는 다음과 같은 확장된 추적 범위를 갖는다:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+ node distance=0.5cm,
+ stage/.style={rectangle, draw, rounded corners, minimum width=2cm, minimum height=0.8cm, align=center, font=\scriptsize},
+ arrow/.style={->, thick},
+]
+
+\node[stage, fill=blue!10] (s1) at (0, 0) {원천\\데이터};
+\node[stage, fill=blue!20] (s2) at (2.5, 0) {ETL\\처리};
+\node[stage, fill=green!10] (s3) at (5, 0) {데이터\\웨어하우스};
+\node[stage, fill=green!20] (s4) at (7.5, 0) {피처\\추출};
+\node[stage, fill=orange!10] (s5) at (10, 0) {모델\\학습};
+\node[stage, fill=red!10] (s6) at (12.5, 0) {예측\\결과};
+
+\draw[arrow] (s1) -- (s2);
+\draw[arrow] (s2) -- (s3);
+\draw[arrow] (s3) -- (s4);
+\draw[arrow] (s4) -- (s5);
+\draw[arrow] (s5) -- (s6);
+
+% 전통적 리니지 범위
+\draw[dashed, blue, thick] (-0.8, -0.8) rectangle (6.3, 0.8);
+\node[font=\tiny, blue] at (2.7, -1.1) {전통적 데이터 리니지};
+
+% AI 통합 리니지 범위
+\draw[dashed, red, thick] (-1, -1.2) rectangle (13.5, 1.2);
+\node[font=\tiny, red] at (6.2, 1.5) {AI 통합 리니지};
+
+\end{tikzpicture}
+\caption{전통적 리니지와 AI 통합 리니지의 범위 비교}
+\label{fig:lineage_scope}
+\end{figure}
+
+통합 리니지를 통해 다음의 핵심 거버넌스 활동이 가능해진다:
+
+\begin{itemize}
+ \item \textbf{영향 분석(Impact Analysis)}: 특정 데이터 테이블의 스키마 변경 시, 이에 의존하는 모든 피처와 ML 모델의 재학습 필요성을 즉각 식별한다.
+ \item \textbf{원인 분석(Root Cause Analysis)}: 모델의 오작동 발생 시, 해당 시점에 사용된 ``학습 데이터의 버전''과 ``원천 데이터의 상태''를 역추적한다.
+ \item \textbf{규제 대응(Regulatory Response)}: ``이 모델의 결정에 사용된 데이터의 출처는 무엇인가?''라는 규제 기관의 질문에 즉각 답변할 수 있다.
+ \item \textbf{삭제 요청 대응}: GDPR의 ``잊힐 권리'' 요청 시, 해당 개인의 데이터가 학습에 사용된 모델을 식별하고 적절한 조치(재학습 또는 머신 언러닝)를 수행할 수 있다.
+\end{itemize}
+
+\subsection{리니지 그래프 모델링}
+\label{sec:9.2.2}
+
+통합 리니지를 효과적으로 관리하기 위해서는 데이터 자산, 피처, 모델, 예측 결과 간의 관계를 그래프(Graph) 구조로 모델링해야 한다. 각 노드는 데이터 자산(테이블, 피처, 모델 등)을 나타내고, 엣지는 의존 관계(``A에서 B를 생성'')를 나타낸다.
+
+\begin{lstlisting}[language=Python, caption={통합 리니지 관리 시스템}, label={lst:integrated_lineage}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Set, Optional
+from datetime import datetime
+from enum import Enum
+
+class AssetType(Enum):
+    TABLE = "Table"
+    FEATURE = "Feature"
+    DATASET = "Dataset"
+    MODEL = "Model"
+    PREDICTION = "Prediction"
+    PIPELINE = "Pipeline"
+
+class RelationType(Enum):
+    DERIVED_FROM = "derived_from"
+    TRAINED_ON = "trained_on"
+    PRODUCES = "produces"
+    DEPENDS_ON = "depends_on"
+    VERSION_OF = "version_of"
+
+@dataclass
+class LineageNode:
+    """리니지 그래프의 노드 (데이터 자산)"""
+    asset_id: str
+    asset_type: AssetType
+    name: str
+    version: str = "1.0"
+    metadata: Dict = field(default_factory=dict)
+
+@dataclass
+class LineageEdge:
+    """리니지 그래프의 엣지 (의존 관계)"""
+    source_id: str
+    target_id: str
+    relation: RelationType
+    created_at: datetime = field(default_factory=datetime.now)
+
+class IntegratedLineageManager:
+    """데이터 패브릭 기반 통합 리니지 관리 시스템"""
+
+    def __init__(self):
+        self.nodes: Dict[str, LineageNode] = {}
+        self.edges: List[LineageEdge] = []
+        self.adjacency: Dict[str, List[str]] = {}  # 순방향
+        self.reverse_adj: Dict[str, List[str]] = {}  # 역방향
+
+    def register_asset(self, node: LineageNode):
+        """데이터 자산 등록"""
+        self.nodes[node.asset_id] = node
+        if node.asset_id not in self.adjacency:
+            self.adjacency[node.asset_id] = []
+        if node.asset_id not in self.reverse_adj:
+            self.reverse_adj[node.asset_id] = []
+
+    def add_dependency(self, source_id: str, target_id: str,
+                       relation: RelationType):
+        """의존 관계 추가 (source -> target)"""
+        edge = LineageEdge(source_id, target_id, relation)
+        self.edges.append(edge)
+        self.adjacency.setdefault(source_id, []).append(target_id)
+        self.reverse_adj.setdefault(target_id, []).append(source_id)
+
+    def impact_analysis(self, source_id: str) -> List[Dict]:
+        """
+        영향 분석: 특정 데이터 자산 변경 시 영향받는 모든 다운스트림 자산 식별
+        BFS 알고리즘으로 그래프 탐색
+        """
+        visited = set()
+        queue = [source_id]
+        impacted = []
+
+        while queue:
+            current = queue.pop(0)
+            if current in visited:
+                continue
+            visited.add(current)
+
+            for downstream in self.adjacency.get(current, []):
+                if downstream not in visited:
+                    queue.append(downstream)
+                    node = self.nodes.get(downstream)
+                    if node:
+                        impacted.append({
+                            "asset_id": node.asset_id,
+                            "asset_type": node.asset_type.value,
+                            "name": node.name,
+                            "distance": len(visited)
+                        })
+
+        return impacted
+
+    def root_cause_analysis(self, model_id: str) -> List[Dict]:
+        """
+        원인 분석: 모델의 모든 업스트림 데이터 자산을 역추적
+        """
+        visited = set()
+        queue = [model_id]
+        ancestors = []
+
+        while queue:
+            current = queue.pop(0)
+            if current in visited:
+                continue
+            visited.add(current)
+
+            for upstream in self.reverse_adj.get(current, []):
+                if upstream not in visited:
+                    queue.append(upstream)
+                    node = self.nodes.get(upstream)
+                    if node:
+                        ancestors.append({
+                            "asset_id": node.asset_id,
+                            "asset_type": node.asset_type.value,
+                            "name": node.name
+                        })
+
+        return ancestors
+
+    def find_affected_models(self, data_subject_id: str) -> List[str]:
+        """
+        GDPR 삭제 요청 대응: 특정 데이터 주체의 데이터가
+        학습에 사용된 모델 식별
+        """
+        affected_models = []
+        for node_id, node in self.nodes.items():
+            if node.asset_type == AssetType.MODEL:
+                ancestors = self.root_cause_analysis(node_id)
+                for ancestor in ancestors:
+                    if data_subject_id in ancestor.get("metadata", {}).get(
+                        "data_subjects", []):
+                        affected_models.append(node_id)
+                        break
+        return affected_models
+\end{lstlisting}
+
+
+\subsection{메타데이터 기반 자동화}
+\label{sec:9.2.3}
+
+데이터 패브릭의 핵심 가치 중 하나는 메타데이터를 활용한 자동화이다. 통합 리니지가 구축되면 다음과 같은 자동화가 가능해진다:
+
+\begin{itemize}
+ \item \textbf{자동 영향 알림}: 원천 데이터의 스키마 변경이 감지되면, 영향받는 피처와 모델의 담당자에게 자동으로 알림을 발송한다.
+ \item \textbf{자동 재학습 트리거}: 원천 데이터의 대규모 업데이트가 감지되면, 의존하는 모델의 재학습 파이프라인을 자동으로 트리거한다.
+ \item \textbf{자동 문서화}: 리니지 정보를 기반으로 모델 카드의 ``학습 데이터'' 섹션을 자동 생성$\cdot$갱신한다.
+ \item \textbf{자동 데이터 폐기 알림}: 원천 데이터의 보존 기한 만료가 임박하면, 이를 학습한 모델에 ``자동 폐기 알림''을 보내는 체계를 운영한다. 이는 제12장에서 설명하는 모델 폐기 프로세스와 연계된다.
+\end{itemize}
+
+
+%----------------------------------------------------------
+\section{데이터 접근 제어와 프라이버시}
+\label{sec:9.3}
+
+\subsection{AI 파이프라인에서의 데이터 접근 제어}
+\label{sec:9.3.1}
+
+AI 시스템의 데이터 접근 제어는 전통적인 데이터베이스 접근 제어보다 복잡하다. 학습$\cdot$검증$\cdot$테스트 단계별로 필요한 데이터가 다르고, 피처 엔지니어링 과정에서 원본 데이터와 변환된 데이터에 대한 접근 권한이 분리되어야 하며, 모델 서빙 단계에서는 실시간 추론을 위한 최소한의 피처만 접근 가능해야 한다.
+
+\begin{table}[htbp]
+\centering
+\caption{AI 파이프라인 단계별 데이터 접근 제어}
+\label{tab:pipeline_access_control}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{3cm}XX}
+\toprule
+\textbf{파이프라인 단계} & \textbf{접근 필요 데이터} & \textbf{접근 권한} & \textbf{거버넌스 통제} \\
+\midrule
+데이터 수집 & 원천 시스템 & 읽기 전용, 승인된 테이블만 & 데이터 사용 계약 확인 \\
+\midrule
+피처 엔지니어링 & 정제된 데이터, 피처 스토어 & 읽기(원본) + 쓰기(피처) & 민감 피처 생성 승인 \\
+\midrule
+모델 학습 & 학습$\cdot$검증 데이터셋 & 읽기 전용, 버전 고정 & 데이터셋 버전 잠금 \\
+\midrule
+모델 검증 & 테스트 데이터셋 & 읽기 전용, 학습셋과 분리 & 데이터 누출 방지 \\
+\midrule
+모델 서빙 & 실시간 피처 & 최소 권한, 특정 피처만 & PII 접근 차단 \\
+\midrule
+모니터링 & 예측 로그, 피처 분포 & 집계된 통계만 & 개별 예측 접근 제한 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\subsection{민감 데이터의 AI 학습 제한}
+\label{sec:9.3.2}
+
+모든 데이터가 AI 학습에 사용될 수 있는 것은 아니다. 개인정보보호법, EU AI Act 등의 규제는 특정 데이터의 AI 학습 활용에 명시적 제한을 두고 있다.
+
+\begin{itemize}
+ \item \textbf{금지 속성(Prohibited Attributes)}: 인종, 민족, 정치적 성향, 종교, 성적 지향 등은 AI 의사결정에 직접 사용할 수 없다.
+ \item \textbf{프록시 변수 통제}: 금지 속성과 높은 상관관계를 가진 변수(우편번호 $\rightarrow$ 인종, 이름 $\rightarrow$ 성별 등)의 사용도 주의가 필요하다.
+ \item \textbf{동의 기반 사용}: 데이터 수집 시 ``AI 학습 활용''에 대한 명시적 동의를 얻었는지 확인해야 한다.
+ \item \textbf{가명처리 데이터}: 개인정보보호법상 가명처리된 데이터는 통계작성, 과학적 연구 등의 목적으로 본인 동의 없이 활용 가능하나, 적절한 안전조치가 필요하다.
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption={민감 데이터 AI 학습 적격성 검증기}, label={lst:sensitive_data_check}]
+from dataclasses import dataclass
+from typing import Dict, List, Tuple
+
+@dataclass
+class DataColumn:
+    """데이터 컬럼 메타데이터"""
+    name: str
+    data_type: str
+    is_pii: bool = False
+    is_prohibited: bool = False
+    is_proxy: bool = False
+    proxy_for: str = ""
+    consent_for_ai: bool = True
+    pseudonymized: bool = False
+
+class SensitiveDataValidator:
+    """민감 데이터 AI 학습 적격성 검증기"""
+
+    def validate_columns(self, columns: List[DataColumn]) -> Dict:
+        """컬럼별 AI 학습 적격성 검증"""
+        results = {
+            "approved": [],
+            "rejected": [],
+            "conditional": [],
+            "warnings": []
+        }
+
+        for col in columns:
+            if col.is_prohibited:
+                results["rejected"].append({
+                    "column": col.name,
+                    "reason": f"금지 속성 (AI 의사결정 직접 사용 불가)",
+                    "action": "학습 데이터에서 제외"
+                })
+            elif col.is_pii and not col.pseudonymized:
+                results["rejected"].append({
+                    "column": col.name,
+                    "reason": "비식별화 미처리 PII",
+                    "action": "가명처리 후 재검증"
+                })
+            elif col.is_proxy:
+                results["conditional"].append({
+                    "column": col.name,
+                    "reason": f"프록시 변수 ({col.proxy_for}의 대리)",
+                    "action": "공정성 영향 평가 후 결정"
+                })
+            elif not col.consent_for_ai:
+                results["rejected"].append({
+                    "column": col.name,
+                    "reason": "AI 학습 동의 미확보",
+                    "action": "동의 확보 또는 학습 제외"
+                })
+            else:
+                results["approved"].append({
+                    "column": col.name,
+                    "status": "학습 적격"
+                })
+
+        return results
+\end{lstlisting}
+
+
+\subsection{머신 언러닝(Machine Unlearning)과 잊힐 권리}
+\label{sec:9.3.3}
+
+GDPR 등 현대적 규범에서의 ``잊힐 권리(Right to be Forgotten)''는 AI 시대에 새로운 도전을 제기한다. 데이터를 데이터베이스에서 삭제하는 것만으로는 부족하며, 해당 데이터가 이미 학습된 모델의 파라미터 내에 잔존하는 정보를 지워야 한다. \cite{cao2015towards}는 이를 위해 전체 재학습 없이 특정 데이터의 영향을 제거하는 머신 언러닝 기술의 거버넌스적 필요성을 제안한다.
+
+머신 언러닝의 주요 접근법은 다음과 같다:
+
+\begin{table}[htbp]
+\centering
+\caption{머신 언러닝 기법 비교}
+\label{tab:unlearning_methods}
+\begin{tabularx}{\textwidth}{p{2.5cm}XXp{2.5cm}}
+\toprule
+\textbf{기법} & \textbf{원리} & \textbf{장단점} & \textbf{적합 시나리오} \\
+\midrule
+전체 재학습 (Exact Unlearning) & 삭제 대상 데이터를 제외하고 전체 재학습 & 완전한 삭제 보장; 높은 비용 & 모델 수가 적고 학습 비용이 낮은 경우 \\
+\midrule
+SISA (Sharded Training) & 데이터를 분할(Shard)하여 독립 학습 후 앙상블; 삭제 시 해당 Shard만 재학습 & 비용 절감; 초기 설계 필요 & 대규모 데이터셋, 빈번한 삭제 요청 \\
+\midrule
+그래디언트 기반 근사 & 삭제 데이터의 영향을 그래디언트 역전파로 근사 제거 & 빠른 처리; 불완전한 삭제 & 긴급 대응, 임시 조치 \\
+\midrule
+인증된 언러닝 (Certified) & 수학적으로 삭제 완료를 증명 & 법적 근거 확보; 구현 복잡 & 고위험 AI, 규제 산업 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={머신 언러닝 거버넌스 관리 시스템}, label={lst:unlearning_manager}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from datetime import datetime
+from enum import Enum
+
+class UnlearningMethod(Enum):
+    EXACT_RETRAIN = "Exact Retraining"
+    SISA = "SISA (Sharded Training)"
+    GRADIENT_APPROX = "Gradient-based Approximation"
+    CERTIFIED = "Certified Unlearning"
+
+class UnlearningStatus(Enum):
+    REQUESTED = "Requested"
+    IN_PROGRESS = "In Progress"
+    COMPLETED = "Completed"
+    VERIFIED = "Verified"
+    FAILED = "Failed"
+
+@dataclass
+class UnlearningRequest:
+    """머신 언러닝 요청"""
+    request_id: str
+    data_subject_id: str
+    legal_basis: str  # GDPR Art.17, 개인정보보호법 등
+    affected_models: List[str] = field(default_factory=list)
+    requested_at: datetime = field(default_factory=datetime.now)
+    deadline: Optional[datetime] = None  # 법적 기한 (보통 30일)
+    status: UnlearningStatus = UnlearningStatus.REQUESTED
+    method: Optional[UnlearningMethod] = None
+    verification_result: Optional[Dict] = None
+
+class MachineUnlearningManager:
+    """머신 언러닝 거버넌스 관리 시스템"""
+
+    def __init__(self, lineage_manager):
+        self.lineage_manager = lineage_manager
+        self.requests: Dict[str, UnlearningRequest] = {}
+
+    def submit_request(self, data_subject_id: str, legal_basis: str) -> str:
+        """삭제 요청 접수 및 영향 분석"""
+        # 리니지를 통해 영향받는 모델 식별
+        affected_models = self.lineage_manager.find_affected_models(
+            data_subject_id)
+
+        request = UnlearningRequest(
+            request_id=f"UNL-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+            data_subject_id=data_subject_id,
+            legal_basis=legal_basis,
+            affected_models=affected_models,
+        )
+
+        self.requests[request.request_id] = request
+        return request.request_id
+
+    def select_method(self, request_id: str) -> UnlearningMethod:
+        """최적의 언러닝 기법 선택"""
+        request = self.requests[request_id]
+
+        # 고위험 모델이 포함된 경우 인증된 언러닝 필수
+        for model_id in request.affected_models:
+            # 모델 리스크 등급 확인 로직
+            pass
+
+        # 영향 모델 수와 비용을 고려하여 기법 선택
+        if len(request.affected_models) <= 3:
+            return UnlearningMethod.EXACT_RETRAIN
+        else:
+            return UnlearningMethod.SISA
+
+    def verify_unlearning(self, request_id: str) -> Dict:
+        """언러닝 완료 검증"""
+        request = self.requests[request_id]
+
+        verification = {
+            "request_id": request_id,
+            "verified_at": datetime.now().isoformat(),
+            "models_verified": [],
+            "overall_result": "PASS"
+        }
+
+        for model_id in request.affected_models:
+            # 멤버십 추론 공격(MIA)을 통한 검증
+            # 삭제 대상 데이터가 모델에 잔존하는지 확인
+            mia_result = self._membership_inference_test(
+                model_id, request.data_subject_id)
+
+            verification["models_verified"].append({
+                "model_id": model_id,
+                "mia_result": "NOT_MEMBER" if not mia_result else "MEMBER",
+                "passed": not mia_result
+            })
+
+            if mia_result:
+                verification["overall_result"] = "FAIL"
+
+        request.verification_result = verification
+        request.status = (UnlearningStatus.VERIFIED
+                         if verification["overall_result"] == "PASS"
+                         else UnlearningStatus.FAILED)
+
+        return verification
+
+    def _membership_inference_test(self, model_id: str,
+                                    data_id: str) -> bool:
+        """멤버십 추론 테스트 (MIA): 삭제 대상 데이터의 잔존 여부 확인"""
+        # 실제 구현에서는 Shadow Model 기반 MIA를 수행
+        return False  # False = 잔존하지 않음 (검증 통과)
+\end{lstlisting}
+
+
+%----------------------------------------------------------
+\section{외부 데이터 및 사전 학습 모델의 거버넌스}
+\label{sec:9.4}
+
+\subsection{외부 데이터 소싱의 거버넌스}
+\label{sec:9.4.1}
+
+조직 외부에서 조달하는 데이터(공개 데이터셋, 데이터 마켓플레이스, 파트너 데이터 등)는 내부 데이터와 다른 거버넌스 요구사항을 갖는다. 외부 데이터의 품질, 라이선스, 편향 수준을 조직이 직접 통제할 수 없으므로, 사전 검증 프로세스가 더욱 중요하다.
+
+\begin{table}[htbp]
+\centering
+\caption{외부 데이터 소싱 거버넌스 체크리스트}
+\label{tab:external_data_checklist}
+\begin{tabularx}{\textwidth}{|p{0.5cm}|X|p{2cm}|p{3cm}|}
+\hline
+\textbf{No.} & \textbf{점검 항목} & \textbf{결과} & \textbf{근거} \\
+\hline
+\multicolumn{4}{|c|}{\textbf{1. 법적 적합성}} \\
+\hline
+1.1 & 데이터 수집 과정에서 적법한 동의가 확보되었는가? & \checkmark / \texttimes & 개인정보보호법 \\
+\hline
+1.2 & 라이선스가 의도된 용도(상업적 AI 학습)를 허용하는가? & \checkmark / \texttimes & 저작권법 \\
+\hline
+1.3 & 국경 간 데이터 이전 규제를 준수하는가? & \checkmark / \texttimes & GDPR Art.44-49 \\
+\hline
+\multicolumn{4}{|c|}{\textbf{2. 품질 검증}} \\
+\hline
+2.1 & 데이터의 정확성과 완전성이 검증되었는가? & \checkmark / \texttimes & 데이터 품질 표준 \\
+\hline
+2.2 & 편향 수준이 평가되었는가? & \checkmark / \texttimes & AI 기본법 시행령 \\
+\hline
+2.3 & 데이터시트(Datasheets)가 제공되는가? & \checkmark / \texttimes & 모범 관행 \\
+\hline
+\multicolumn{4}{|c|}{\textbf{3. 보안}} \\
+\hline
+3.1 & 데이터 전송 과정의 암호화가 보장되는가? & \checkmark / \texttimes & 정보보안 표준 \\
+\hline
+3.2 & 데이터에 악의적 조작(데이터 중독)이 없음이 확인되었는가? & \checkmark / \texttimes & 15장 연계 \\
+\hline
+\multicolumn{4}{|c|}{\textbf{4. 공급자 관리}} \\
+\hline
+4.1 & 데이터 공급자의 신뢰도와 평판이 확인되었는가? & \checkmark / \texttimes & 공급망 관리 \\
+\hline
+4.2 & SLA(품질, 갱신 주기, 중단 시 대응)가 합의되었는가? & \checkmark / \texttimes & 계약 관리 \\
+\hline
+\end{tabularx}
+\end{table}
+
+
+\subsection{사전 학습 모델(Pre-trained Model)의 거버넌스}
+\label{sec:9.4.2}
+
+최근 LLM(Large Language Model) 등 파운데이션 모델(Foundation Model)의 도입이 급증하고 있다. 사전 학습 모델을 도입할 때는 라이선스뿐만 아니라 \textbf{데이터 주권(Data Sovereignty)} 문제를 면밀히 검토해야 한다. 모델 공급자가 사용자의 입력 데이터를 재학습에 활용하는지 여부를 정책적으로 제어해야 한다.
+
+\begin{table}[htbp]
+\centering
+\caption{사전 학습 모델 도입 시 거버넌스 평가 항목}
+\label{tab:pretrained_model_governance}
+\begin{tabularx}{\textwidth}{p{3cm}XX}
+\toprule
+\textbf{평가 영역} & \textbf{점검 항목} & \textbf{리스크 시나리오} \\
+\midrule
+라이선스 & 상업적 사용 허용 여부, 파생물 배포 조건 & 라이선스 위반으로 법적 분쟁 \\
+\midrule
+학습 데이터 & 학습 데이터의 출처, 편향 수준, 유해 콘텐츠 포함 여부 & 편향된 출력, 평판 리스크 \\
+\midrule
+데이터 주권 & 사용자 입력 데이터의 재학습 활용 여부 & 영업 비밀 유출 \\
+\midrule
+보안 & 모델 내 백도어, 공급망 공격 가능성 & 보안 침해 \\
+\midrule
+성능 & 도메인 적합성, 한국어 지원 수준 & 기대 미달 성능 \\
+\midrule
+지속 가능성 & 공급자 안정성, 지원 종료 시 대안 & 벤더 종속 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={사전 학습 모델 거버넌스 평가 시스템}, label={lst:pretrained_governance}]
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+from enum import Enum
+
+class ComplianceStatus(Enum):
+    COMPLIANT = "Compliant"
+    NON_COMPLIANT = "Non-Compliant"
+    CONDITIONAL = "Conditional"
+    UNDER_REVIEW = "Under Review"
+
+@dataclass
+class PretrainedModelProfile:
+    """사전 학습 모델 프로파일"""
+    model_name: str
+    provider: str
+    license_type: str
+    allows_commercial: bool = False
+    training_data_disclosed: bool = False
+    input_data_retention: bool = False  # 입력 데이터 보존 여부
+    input_used_for_training: bool = False  # 입력 데이터 재학습 활용
+    supports_korean: bool = False
+    has_safety_evaluation: bool = False
+    deployment_options: List[str] = None  # ["api", "on-premise", "cloud"]
+
+class PretrainedModelGovernance:
+    """사전 학습 모델 거버넌스 평가 시스템"""
+
+    def evaluate_compliance(
+        self,
+        profile: PretrainedModelProfile,
+        intended_use: str,
+        data_sensitivity: str
+    ) -> Dict:
+        """종합 거버넌스 평가"""
+        checks = []
+
+        # 1. 라이선스 적합성
+        if not profile.allows_commercial and intended_use == "commercial":
+            checks.append({
+                "check": "라이선스",
+                "status": ComplianceStatus.NON_COMPLIANT,
+                "detail": "상업적 사용 라이선스 미허용"
+            })
+        else:
+            checks.append({
+                "check": "라이선스",
+                "status": ComplianceStatus.COMPLIANT,
+                "detail": "라이선스 조건 충족"
+            })
+
+        # 2. 데이터 주권
+        if profile.input_used_for_training and data_sensitivity in ["confidential", "restricted"]:
+            checks.append({
+                "check": "데이터 주권",
+                "status": ComplianceStatus.NON_COMPLIANT,
+                "detail": "민감 데이터가 모델 재학습에 활용될 위험"
+            })
+        elif profile.input_data_retention:
+            checks.append({
+                "check": "데이터 주권",
+                "status": ComplianceStatus.CONDITIONAL,
+                "detail": "입력 데이터 보존 정책 검토 필요"
+            })
+        else:
+            checks.append({
+                "check": "데이터 주권",
+                "status": ComplianceStatus.COMPLIANT,
+                "detail": "데이터 주권 리스크 없음"
+            })
+
+        # 3. 투명성
+        if not profile.training_data_disclosed:
+            checks.append({
+                "check": "투명성",
+                "status": ComplianceStatus.CONDITIONAL,
+                "detail": "학습 데이터 미공개 - 편향 평가 제한적"
+            })
+
+        # 종합 판정
+        non_compliant = any(c["status"] == ComplianceStatus.NON_COMPLIANT
+                           for c in checks)
+
+        return {
+            "model": profile.model_name,
+            "overall": ComplianceStatus.NON_COMPLIANT if non_compliant
+                      else ComplianceStatus.CONDITIONAL,
+            "checks": checks,
+            "recommendation": "도입 불가" if non_compliant
+                             else "조건부 승인 - 추가 검토 필요"
+        }
+\end{lstlisting}
+
+\subsection{오픈소스 데이터셋과 모델의 라이선스 관리}
+\label{sec:9.4.3}
+
+오픈소스 데이터셋과 모델을 활용할 때는 라이선스 조건을 정확히 파악해야 한다. 특히 ``오픈소스''라는 명칭이 ``자유로운 상업적 사용''을 의미하지 않는 경우가 많다.
+
+\begin{table}[htbp]
+\centering
+\caption{주요 오픈소스 라이선스와 AI 학습 활용 시 유의사항}
+\label{tab:license_comparison}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{2cm}p{2cm}X}
+\toprule
+\textbf{라이선스} & \textbf{상업적 사용} & \textbf{파생물 배포} & \textbf{AI 학습 관련 유의사항} \\
+\midrule
+Apache 2.0 & 허용 & 허용 & 특허 조항 포함; 가장 유연함 \\
+\midrule
+MIT & 허용 & 허용 & 책임 면책 조항; 출처 표시 필요 \\
+\midrule
+CC BY 4.0 & 허용 & 허용 & 출처 표시 필수; 변경 사항 명시 \\
+\midrule
+CC BY-NC & 불허 & 조건부 & 비상업적 사용만; 연구 목적 한정 \\
+\midrule
+RAIL (Responsible AI) & 조건부 & 조건부 & 사용 제한 조건 명시; 유해 사용 금지 \\
+\midrule
+독점적 API & 약관 확인 & 보통 불허 & 입력/출력 데이터 소유권 확인 필수 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+%----------------------------------------------------------
+\section{통합 거버넌스 조직: CDO와 CAIO의 협업}
+\label{sec:9.5}
+
+\subsection{역할 분담의 원칙}
+\label{sec:9.5.1}
+
+데이터 품질을 관리하는 CDO(Chief Data Officer)와 모델의 윤리를 책임지는 CAIO(Chief AI Officer) 간의 역할 중복을 방지하기 위해 \textbf{통합 거버넌스 협의체} 운영이 필수적이다. 두 조직의 역할은 다음과 같이 분담한다:
+
+\begin{table}[htbp]
+\centering
+\caption{CDO와 CAIO의 역할 분담}
+\label{tab:cdo_caio_roles}
+\begin{tabularx}{\textwidth}{p{3cm}XX}
+\toprule
+\textbf{영역} & \textbf{CDO 조직} & \textbf{CAIO 조직} \\
+\midrule
+데이터 품질 & 전통적 품질 지표 관리 (정확성, 완전성, 일관성) & AI 특화 품질 요구사항 정의 (대표성, 레이블 정확성) \\
+\midrule
+데이터 접근 제어 & 데이터 접근 정책 수립 및 집행 & AI 학습 데이터 접근 요청 및 승인 \\
+\midrule
+피처 스토어 & 피처 스토어 인프라 소유, 피처 품질 관리 & 피처 유효성 검증, 피처 사용 승인 \\
+\midrule
+메타데이터 & 데이터 카탈로그, 데이터 사전 관리 & 모델-데이터 리니지 관리 \\
+\midrule
+프라이버시 & 비식별화, 가명처리 & 머신 언러닝, 차등 프라이버시 적용 \\
+\midrule
+규제 대응 & 데이터 관련 규제 대응 & AI 관련 규제 대응 \\
+\midrule
+벤더 관리 & 데이터 공급자 관리 & 모델 공급자(LLM 등) 관리 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\subsection{통합 거버넌스 협의체 운영}
+\label{sec:9.5.2}
+
+CDO와 CAIO 조직 간의 효과적인 협업을 위해 다음과 같은 운영 체계를 권장한다:
+
+\begin{enumerate}
+ \item \textbf{정기 협의회}: 월 1회 이상 CDO, CAIO, 법무/컴플라이언스 책임자가 참여하는 통합 거버넌스 협의회를 운영한다. 주요 의제는 데이터-AI 정책 정합성 검토, 공동 이슈 해결, 규제 변화 대응이다.
+ \item \textbf{공동 프로세스}: 새로운 AI 프로젝트 착수 시, CDO 조직이 데이터 가용성과 품질을 평가하고, CAIO 조직이 AI 리스크를 평가하는 공동 검토 프로세스를 운영한다.
+ \item \textbf{통합 KPI}: 데이터 거버넌스와 AI 거버넌스를 연결하는 통합 KPI를 정의한다. 예를 들어 ``데이터 품질 이슈로 인한 모델 재학습 횟수'', ``데이터 리니지 커버리지(리니지가 추적되는 모델의 비율)'' 등이다.
+ \item \textbf{공유 인프라}: 데이터 카탈로그, 피처 스토어, 모델 레지스트리를 통합된 플랫폼에서 운영하여 조직 간 정보 공유와 협업을 촉진한다.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+ node distance=0.8cm,
+ org/.style={rectangle, draw, rounded corners, minimum width=3cm, minimum height=1cm, align=center, font=\small},
+ council/.style={ellipse, draw, thick, minimum width=4cm, minimum height=1.5cm, align=center, font=\small\bfseries, fill=yellow!20},
+]
+
+% 조직
+\node[org, fill=blue!20] (cdo) at (-4, 2) {\textbf{CDO 조직}\\데이터 거버넌스};
+\node[org, fill=green!20] (caio) at (4, 2) {\textbf{CAIO 조직}\\AI 거버넌스};
+\node[org, fill=purple!20] (legal) at (0, 4) {\textbf{법무/컴플라이언스}\\규제 대응};
+
+% 통합 협의체
+\node[council] (council) at (0, 1) {통합 거버넌스\\협의체};
+
+% 공유 인프라
+\node[org, fill=gray!20] (infra) at (0, -1.5) {\textbf{공유 인프라}\\카탈로그 + 피처 스토어 + 모델 레지스트리};
+
+% 연결
+\draw[<->, thick] (cdo) -- (council);
+\draw[<->, thick] (caio) -- (council);
+\draw[<->, thick] (legal) -- (council);
+\draw[->, thick] (council) -- (infra);
+
+\end{tikzpicture}
+\caption{CDO-CAIO 통합 거버넌스 체계}
+\label{fig:integrated_governance_org}
+\end{figure}
+
+
+\subsection{데이터 스튜어드의 AI 거버넌스 역할 확장}
+\label{sec:9.5.3}
+
+전통적 데이터 스튜어드(Data Steward)의 역할은 데이터 품질 관리, 메타데이터 관리, 데이터 접근 요청 처리 등이었다. AI 거버넌스의 도입으로 데이터 스튜어드의 역할이 다음과 같이 확장된다:
+
+\begin{itemize}
+ \item \textbf{AI 학습 데이터 적격성 검증}: 새로운 AI 프로젝트에서 학습에 사용할 데이터가 품질, 편향, 법적 요건을 충족하는지 검증한다.
+ \item \textbf{피처 품질 모니터링}: 피처 스토어에 등록된 피처의 품질과 분포 변화를 모니터링하고, 이상 징후 발생 시 AI 거버넌스 팀에 알린다.
+ \item \textbf{삭제 요청 대응}: GDPR 등의 삭제 요청 접수 시, 해당 데이터가 AI 학습에 사용되었는지 확인하고 머신 언러닝 절차를 개시하는 트리거 역할을 수행한다.
+ \item \textbf{데이터 리니지 유지}: 데이터 원천에서 피처, 모델까지의 통합 리니지가 정확하게 유지되도록 관리한다.
+\end{itemize}
+
+
+%----------------------------------------------------------
+\section{실무 도구}
+\label{sec:9.6}
+
+\begin{practicaltool}{학습 데이터 품질 평가 체크리스트}
+\textbf{[실무 도구 9-1]} 다음 체크리스트를 활용하여 AI 모델 학습 전 데이터 품질을 체계적으로 평가한다.
+
+\textbf{A. 기본 품질 (전통적 데이터 품질 지표)}
+\begin{enumerate}
+ \item A1. 데이터의 완전성(Completeness)이 95\% 이상인가? \hfill $\square$ 예 $\square$ 아니오
+ \item A2. 핵심 컬럼의 결측률이 5\% 이하인가? \hfill $\square$ 예 $\square$ 아니오
+ \item A3. 데이터 타입이 스키마 정의와 일치하는가? \hfill $\square$ 예 $\square$ 아니오
+ \item A4. 중복 레코드 비율이 1\% 이하인가? \hfill $\square$ 예 $\square$ 아니오
+ \item A5. 이상치(Outlier) 분석이 수행되었는가? \hfill $\square$ 예 $\square$ 아니오
+\end{enumerate}
+
+\textbf{B. AI 특화 품질}
+\begin{enumerate}
+ \item B1. 학습$\cdot$검증$\cdot$테스트 데이터가 적절히 분할되었는가? \hfill $\square$ 예 $\square$ 아니오
+ \item B2. 시간 기반 데이터의 경우 미래 데이터 누출이 방지되었는가? \hfill $\square$ 예 $\square$ 아니오
+ \item B3. 레이블링 품질(합의도 0.7 이상)이 확보되었는가? \hfill $\square$ 예 $\square$ 아니오
+ \item B4. 클래스 불균형 수준이 확인되고 대응 전략이 수립되었는가? \hfill $\square$ 예 $\square$ 아니오
+ \item B5. 데이터의 신선도가 모델 용도에 적합한가? \hfill $\square$ 예 $\square$ 아니오
+\end{enumerate}
+
+\textbf{C. 대표성 및 편향}
+\begin{enumerate}
+ \item C1. 민감 속성(성별, 연령, 지역 등)별 분포가 확인되었는가? \hfill $\square$ 예 $\square$ 아니오
+ \item C2. 데이터 분포가 모집단(또는 운영 환경)을 대표하는가? \hfill $\square$ 예 $\square$ 아니오
+ \item C3. 역사적 편향의 존재 여부가 검토되었는가? \hfill $\square$ 예 $\square$ 아니오
+ \item C4. 프록시 변수가 식별되고 관리되고 있는가? \hfill $\square$ 예 $\square$ 아니오
+\end{enumerate}
+
+\textbf{D. 법적 적합성}
+\begin{enumerate}
+ \item D1. 데이터 수집에 대한 법적 근거(동의, 정당한 이익 등)가 확인되었는가? \hfill $\square$ 예 $\square$ 아니오
+ \item D2. AI 학습 목적의 데이터 활용이 동의 범위에 포함되는가? \hfill $\square$ 예 $\square$ 아니오
+ \item D3. 개인식별정보(PII)가 적절히 비식별화되었는가? \hfill $\square$ 예 $\square$ 아니오
+ \item D4. 외부 데이터의 라이선스가 의도된 용도를 허용하는가? \hfill $\square$ 예 $\square$ 아니오
+\end{enumerate}
+
+\textbf{E. 문서화}
+\begin{enumerate}
+ \item E1. 데이터시트(Datasheets for Datasets)가 작성되었는가? \hfill $\square$ 예 $\square$ 아니오
+ \item E2. 데이터 수집$\cdot$전처리$\cdot$변환 과정이 문서화되었는가? \hfill $\square$ 예 $\square$ 아니오
+ \item E3. 데이터 리니지(원천~피처~모델)가 추적 가능한가? \hfill $\square$ 예 $\square$ 아니오
+\end{enumerate}
+
+\textbf{판정 기준}:
+\begin{itemize}
+ \item A$\cdot$B 영역: 모든 항목 ``예'' $\rightarrow$ 학습 진행 가능
+ \item C 영역: 1개 이상 ``아니오'' $\rightarrow$ 공정성 영향 평가 수행 후 결정
+ \item D 영역: 1개 이상 ``아니오'' $\rightarrow$ 학습 진행 불가 (법적 리스크)
+ \item E 영역: 1개 이상 ``아니오'' $\rightarrow$ 문서화 완료 후 학습 진행
+\end{itemize}
+\end{practicaltool}
+
+
+\begin{practicaltool}{데이터 편향 탐지 프로토콜}
+\textbf{[실무 도구 9-2]} 다음 프로토콜을 활용하여 AI 학습 데이터의 편향을 체계적으로 탐지한다.
+
+\textbf{1단계: 민감 속성 정의}
+\begin{itemize}
+ \item 도메인 전문가와 협의하여 민감 속성(Protected Attributes)을 정의한다.
+ \item 한국 법규 기준: 성별, 연령, 장애 여부, 출신 지역, 학력, 고용 형태 등
+ \item 프록시 변수(민감 속성과 높은 상관관계를 가진 변수) 식별
+\end{itemize}
+
+\textbf{2단계: 분포 분석}
+\begin{itemize}
+ \item 각 민감 속성별 데이터 분포를 시각화하고 모집단과 비교
+ \item 대표성 비율(Representation Ratio) 계산: 데이터셋 비율 / 모집단 비율
+ \item 기준: 0.8 $\leq$ RR $\leq$ 1.25이면 적절, 범위 밖이면 편향 의심
+\end{itemize}
+
+\textbf{3단계: 레이블 편향 분석}
+\begin{itemize}
+ \item 민감 속성별 긍정 레이블(Positive Label) 비율 비교
+ \item 카이제곱 검정으로 통계적 유의성 확인 ($p < 0.05$이면 편향)
+ \item 역사적 편향 여부를 도메인 전문가와 함께 검토
+\end{itemize}
+
+\textbf{4단계: 교차 분석}
+\begin{itemize}
+ \item 민감 속성 간 교차 조합(예: 성별 $\times$ 연령대)별 분석
+ \item 교차 편향(Intersectional Bias)이 단일 속성 분석에서 드러나지 않을 수 있음
+\end{itemize}
+
+\textbf{5단계: 대응 전략 수립}
+\begin{itemize}
+ \item 과소 대표 집단: 추가 데이터 수집, 오버샘플링(SMOTE 등), 가중치 조정
+ \item 레이블 편향: 라벨링 가이드라인 재정비, 교차 라벨링 도입
+ \item 역사적 편향: 편향 수정 알고리즘 적용, 도메인 전문가 검토
+ \item 해결 불가 시: 모델 카드에 한계 명시, 인간 감독 강화
+\end{itemize}
+
+\textbf{6단계: 문서화 및 보고}
+\begin{itemize}
+ \item 편향 탐지 결과를 보고서로 작성하여 AI 거버넌스 위원회에 제출
+ \item 모델 카드의 ``학습 데이터'' 섹션에 편향 분석 결과 기재
+ \item 잔존 편향이 있는 경우, 모니터링 계획 수립
+\end{itemize}
+\end{practicaltool}
+
+
+%----------------------------------------------------------
+\subsection*{제9장 요약}
+
+본 장에서는 데이터 거버넌스와 AI 거버넌스의 통합을 위한 포괄적 프레임워크를 제시하였다. 핵심 내용을 요약하면 다음과 같다.
+
+\begin{enumerate}
+ \item \textbf{데이터 패브릭 기반 통합 아키텍처}: 데이터 거버넌스와 AI 거버넌스를 데이터 패브릭이라는 메타데이터 기반 위에서 유기적으로 연결하고, 피처 스토어를 핵심 허브로 활용한다.
+ \item \textbf{AI 특화 데이터 품질}: 전통적 데이터 품질 지표를 넘어, 대표성, 레이블 정확성, 편향 수준 등 AI 학습에 특화된 품질 요구사항을 정의하고 관리한다.
+ \item \textbf{통합 리니지}: 원천 데이터에서 모델의 예측 결과까지를 아우르는 통합 리니지를 구축하여, 영향 분석, 원인 분석, 규제 대응을 가능하게 한다.
+ \item \textbf{프라이버시 대응}: 머신 언러닝을 통해 ``잊힐 권리''에 기술적으로 대응하고, 민감 데이터의 AI 학습 적격성을 체계적으로 검증한다.
+ \item \textbf{외부 데이터 거버넌스}: 사전 학습 모델과 외부 데이터의 도입에 대한 체계적인 거버넌스 평가 프로세스를 수립한다.
+ \item \textbf{CDO-CAIO 협업}: 통합 거버넌스 협의체를 통해 두 조직의 역할 분담과 협업 체계를 명확히 한다.
+\end{enumerate}
+
+데이터는 AI의 원재료이다. 원재료의 품질과 관리 수준이 최종 제품의 품질을 결정하듯, 데이터 거버넌스의 성숙도가 AI 거버넌스의 실효성을 좌우한다. 다음 장에서는 이러한 데이터 기반 위에서 수행되는 모델 개발 단계의 거버넌스를 상세히 다룬다.

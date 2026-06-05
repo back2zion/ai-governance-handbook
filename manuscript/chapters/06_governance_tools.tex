@@ -1,0 +1,1943 @@
+%----------------------------------------------------------
+% 제6장. AI 거버넌스 도구 및 기술
+%----------------------------------------------------------
+
+\chapter{AI 거버넌스 도구 및 기술}
+\label{ch:governance_tools}
+
+AI 거버넌스의 효과적인 실행을 위해서는 적절한 Tool와 기술 인프라가 필수적이다. 
+수작업으로 Fairness을 평가하고, 수동으로 모델 카드\cite{mitchell2019model}를 작성하며, 
+스프레드시트로 AI 시스템을 관리하는 것은 소수의 모델에서는 가능하지만, 
+조직의 AI 활용이 확대됨에 따라 지속 가능하지 않다.
+
+본 장에서는 AI 거버넌스를 기술적으로 Support하는 도구 생태계를 소개하고, 
+이를 조직의 MLOps\cite{kreuzberger2023machine} Pipeline에 통합하는 방법을 다룬다. 
+오픈소스 Tool와 상용 Platform을 균형 있게 다루며, 
+각 Tool의 장단점과 적용 시 고려사항을 분석한다.
+
+
+%----------------------------------------------------------
+\section{AI 거버넌스 기술 스택 개요}
+\label{sec:6.1}
+
+\subsection{거버넌스 기술 스택 아키텍처}
+\label{sec:6.1.1}
+
+AI 거버넌스 기술 스택은 데이터 수집부터 모델 Retire까지 
+전체 AI 생명주기를 Support해야 한다.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  scale=0.85, transform shape,
+  layer/.style={rectangle, draw, rounded corners, minimum width=14cm, minimum height=1.2cm, align=center, font=\small},
+  sublayer/.style={rectangle, draw, minimum width=4cm, minimum height=0.8cm, align=center, font=\scriptsize},
+]
+
+% Layer들
+\node[layer, fill=blue!10] (l1) at (0, 6) {\textbf{거버넌스 대시보드 및 보고}\\경영진 대시보드, 규제 Report, 감사 Tracking};
+
+\node[layer, fill=green!10] (l2) at (0, 4.5) {\textbf{정책 및 Workflow 관리}\\승인 Gate, RACI 관리, 문서 템플릿, 체크리스트};
+
+\node[layer, fill=yellow!10] (l3) at (0, 3) {\textbf{평가 및 테스트 도구}\\공정성 평가\cite{bellamy2019ai}, 설명가능한 AI\cite{ribeiro2016why}(설명가능한 AI(XAI)), 견고성 테스트, Privacy 검증};
+
+\node[layer, fill=orange!10] (l4) at (0, 1.5) {\textbf{모니터링\cite{klaise2021monitoring} 및 관측성\cite{shankar2022operationalizing}}\\성능 모니터링, 드리프트\cite{paleyes2022challenges} 감지, 알림, Logging};
+
+\node[layer, fill=red!10] (l5) at (0, 0) {\textbf{MLOps based 인프라}\\Model 레지스트리, 피처 스토어, 실험 추적, CI/CD\cite{sato2019continuous}};
+
+% 수직 통합 요소
+\node[rectangle, draw, fill=purple!10, minimum width=1.5cm, minimum height=6cm, align=center, font=\scriptsize, rotate=90]
+ at (8, 3) {AI 시스템 레지스트리};
+
+\node[rectangle, draw, fill=gray!10, minimum width=1.5cm, minimum height=6cm, align=center, font=\scriptsize, rotate=90]
+ at (-8, 3) {감사 로그 및 버전 관리};
+
+\end{tikzpicture}
+}
+\caption{AI 거버넌스 기술 스택 아키텍처}
+\label{fig:tech_stack_architecture}
+\end{figure}
+
+
+\subsection{도구 카테고리별 개요}
+\label{sec:6.1.2}
+
+\begin{table}[htbp]
+\centering
+\caption{AI 거버넌스 도구 카테고리 및 대표 도구}
+\label{tab:tool_categories}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{4cm}X}
+\toprule
+\textbf{카테고리} & \textbf{오픈소스 도구} & \textbf{상용 플랫폼} \\
+\midrule
+공정성 평가 & 
+Fairlearn\cite{mehrabi2021survey}, AIF360\cite{saleiro2018aequitas}, Aequitas, Themis-ML & 
+Google What-If 도구, AWS SageMaker Clarify, Azure Fairlearn \\
+\midrule
+설명가능성\cite{arrieta2020explainable} (설명가능한 AI(설명가능한 AI(XAI))) & 
+SHAP\cite{lundberg2017unified}, LIME, Captum\cite{sokol2020explainability}, InterpretML, Alibi & 
+Google Explainable AI, AWS SageMaker Debugger \\
+\midrule
+모델 레지스트리 & 
+MLflow\cite{zaharia2018accelerating}, DVC, ModelDB & 
+AWS SageMaker Model 레지스트리, Azure ML, Weights \& Biases \\
+\midrule
+모니터링 & 
+Evidently\cite{sculley2015hidden} AI, NannyML, Alibi Detect, WhyLabs & 
+Arize AI, Fiddler AI, Arthur AI, Aporia \\
+\midrule
+Privacy & 
+Opacus, diffprivlib, PySyft, TensorFlow Privacy & 
+Google Privacy Sandbox, AWS Clean Rooms \\
+\midrule
+문서화\cite{arnold2019factsheets} & 
+Model Card\cite{gebru2021datasheets} Toolkit, FactSheets360 & 
+Credo AI, Holistic AI \\
+\midrule
+통합된 플랫폼 & 
+- & 
+IBM AI 거버넌스, Credo AI, Holistic AI, Monitaur \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\subsection{도구 선정 기준}
+\label{sec:6.1.3}
+
+조직에 적합한 AI 거버넌스 Tool를 선정할 때 고려해야 할 기준을 제시한다.
+
+\begin{table}[htbp]
+\centering
+\caption{AI 거버넌스 도구 선정 기준}
+\label{tab:tool_selection_criteria}
+\begin{tabularx}{\textwidth}{p{3cm}X}
+\toprule
+\textbf{기준} & \textbf{평가 항목} \\
+\midrule
+기능 완전성 & 
+필요한 거버넌스 기능(공정성, 설명가능한 AI(설명가능한 AI(XAI)), 모니터링 등) Support 여부; 
+확장 가능성 \\
+\midrule
+기존 시스템 통합 & 
+현재 사용 중인 ML 프레임워크(sklearn, PyTorch, TensorFlow), 
+MLOps 도구(MLflow, Kubeflow), 
+클라우드 플랫폼(AWS, GCP, Azure)과의 호환성 \\
+\midrule
+확장성 & 
+대규모 데이터셋, 다수의 모델, 높은 트래픽 처리 능력 \\
+\midrule
+사용 용이성 & 
+학습 곡선, 문서화 품질, 커뮤니티 Support, UI/UX \\
+\midrule
+규제 준수 Support & 
+시행령, EU AI Act 등 규제 요구사항 템플릿 제공; 
+감사 추적 기능 \\
+\midrule
+비용 & 
+라이선스 비용, 인프라 비용, 운영 비용, TCO \\
+\midrule
+보안 및 Privacy & 
+데이터 보안, 접근 제어, 온프레미스 배포 옵션 \\
+\midrule
+벤더 안정성 & 
+오픈소스 커뮤니티 활성도; 상용 벤더의 재무 안정성, 로드맵 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%----------------------------------------------------------
+\section{공정성 평가 및 편향 완화 도구}
+\label{sec:6.2}
+
+\subsection{Fairlearn 심화 활용}
+\label{sec:6.2.1}
+
+Fairlearn은 Microsoft가 개발한 오픈소스 공정성 평가 및 완화 라이브러리로, 
+본 책에서 주요 Tool로 활용하고 있다. 
+2025년 업데이트된 0.14.0 버전의 주요 기능을 상세히 다룬다.
+
+\begin{lstlisting}[language=Python, caption={Fairlearn 0.14.0 Advanced Usage}, label={lst:fairlearn_advanced}]
+"""
+Fairlearn 0.14.0 Advanced Usage Guide
+
+- Multi-dimensional fairness analysis using MetricFrame
+- Intersectionality analysis for multiple sensitive attributes
+- Defining custom metrics
+- Comparing bias mitigation algorithms
+"""
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import (
+ accuracy_score, precision_score, recall_score, 
+ f1_score, roc_auc_score
+)
+
+from fairlearn.metrics import (
+ MetricFrame,
+ demographic_parity_difference,
+ demographic_parity_ratio,
+ equalized_odds_difference,
+ selection_rate,
+ true_positive_rate,
+ false_positive_rate,
+ count,
+)
+from fairlearn.reductions import (
+ ExponentiatedGradient,
+ GridSearch,
+ DemographicParity,
+ EqualizedOdds,
+ TruePositiveRateParity,
+ ErrorRateParity,
+)
+from fairlearn.postprocessing import ThresholdOptimizer
+
+
+class AdvancedFairnessAnalyzer:
+ """
+ Advanced fairness analyzer based on Fairlearn 0.14.0
+ 
+ Supports multiple sensitive attributes, intersectional analysis, and custom metrics
+ """
+ 
+ def __init__(self):
+ # Base metric set
+ self.base_metrics = {
+ 'accuracy': accuracy_score,
+ 'precision': precision_score,
+ 'recall': recall_score,
+ 'f1': f1_score,
+ 'selection_rate': selection_rate,
+ 'tpr': true_positive_rate,
+ 'fpr': false_positive_rate,
+ 'count': count,
+ }
+ 
+ def create_intersectional_groups(
+ self,
+ sensitive_features: pd.DataFrame,
+ columns: list,
+ ) -> pd.Series:
+ """
+ Create intersectional groups
+ 
+ Example: gender x age_group -> 'female_young', 'male_senior', etc.
+ """
+ return sensitive_features[columns].apply(
+ lambda row: '_'.join(str(v) for v in row), axis=1
+ )
+ 
+ def comprehensive_fairness_analysis(
+ self,
+ y_true: np.ndarray,
+ y_pred: np.ndarray,
+ sensitive_features: pd.DataFrame,
+ intersectional_columns: list = None,
+ ) -> dict:
+ """
+ Comprehensive fairness analysis
+ 
+ Performs analysis for individual sensitive attributes + intersectional groups
+ """
+ 
+ results = {
+ 'individual_attributes': {},
+ 'intersectional': {},
+ 'summary': {},
+ }
+ 
+ # 1. Individual sensitive attribute analysis
+ for col in sensitive_features.columns:
+ mf = MetricFrame(
+ metrics=self.base_metrics,
+ y_true=y_true,
+ y_pred=y_pred,
+ sensitive_features=sensitive_features[col],
+ )
+ 
+ results['individual_attributes'][col] = {
+ 'by_group': mf.by_group.to_dict(),
+ 'overall': mf.overall.to_dict(),
+ 'difference': mf.difference().to_dict(),
+ 'ratio': mf.ratio().to_dict(),
+ 'group_min': mf.group_min().to_dict(),
+ 'group_max': mf.group_max().to_dict(),
+ }
+ 
+ # 2. Intersectional analysis (if specified)
+ if intersectional_columns and len(intersectional_columns) >= 2:
+ intersectional_groups = self.create_intersectional_groups(
+ sensitive_features, intersectional_columns
+ )
+ 
+ mf_inter = MetricFrame(
+ metrics=self.base_metrics,
+ y_true=y_true,
+ y_pred=y_pred,
+ sensitive_features=intersectional_groups,
+ )
+ 
+ results['intersectional'] = {
+ 'columns': intersectional_columns,
+ 'by_group': mf_inter.by_group.to_dict(),
+ 'difference': mf_inter.difference().to_dict(),
+ 'worst_group': mf_inter.group_min().to_dict(),
+ }
+ 
+ # 3. Summary metrics
+ results['summary'] = {
+ 'dp_difference': demographic_parity_difference(
+ y_true, y_pred,
+ sensitive_features=sensitive_features[sensitive_features.columns[0]]
+ ),
+ 'dp_ratio': demographic_parity_ratio(
+ y_true, y_pred,
+ sensitive_features=sensitive_features[sensitive_features.columns[0]]
+ ),
+ 'eo_difference': equalized_odds_difference(
+ y_true, y_pred,
+ sensitive_features=sensitive_features[sensitive_features.columns[0]]
+ ),
+ }
+ 
+ return results
+ 
+ def compare_mitigation_algorithms(
+ self,
+ X_train: np.ndarray,
+ y_train: np.ndarray,
+ sensitive_train: np.ndarray,
+ X_test: np.ndarray,
+ y_test: np.ndarray,
+ sensitive_test: np.ndarray,
+ base_estimator,
+ constraints: list = None,
+ ) -> pd.DataFrame:
+ """
+ Bias mitigation algorithm comparison
+ 
+ Compare multiple constraints and algorithms to find 
+ the optimal fairness-accuracy trade-off
+ """
+ 
+ if constraints is None:
+ constraints = [
+ ('Demographic Parity', DemographicParity()),
+ ('Equalized Odds', EqualizedOdds()),
+ ('TPR Parity', TruePositiveRateParity()),
+ ('Error Rate Parity', ErrorRateParity()),
+ ]
+ 
+ results = []
+ 
+ # 1. Baseline (No Mitigation)
+ base_model = base_estimator.__class__(base_estimator.get_params())
+ base_model.fit(X_train, y_train)
+ y_pred_base = base_model.predict(X_test)
+ 
+ results.append({
+ 'method': 'Baseline (No Mitigation)',
+ 'accuracy': accuracy_score(y_test, y_pred_base),
+ 'dp_ratio': demographic_parity_ratio(
+ y_test, y_pred_base, sensitive_features=sensitive_test
+ ),
+ 'dp_diff': demographic_parity_difference(
+ y_test, y_pred_base, sensitive_features=sensitive_test
+ ),
+ 'eo_diff': equalized_odds_difference(
+ y_test, y_pred_base, sensitive_features=sensitive_test
+ ),
+ })
+ 
+ # 2. Apply ExponentiatedGradient for each constraint
+ for name, constraint in constraints:
+ try:
+ mitigator = ExponentiatedGradient(
+ estimator=base_estimator.__class__(base_estimator.get_params()),
+ constraints=constraint,
+ eps=0.01,
+ )
+ mitigator.fit(X_train, y_train, sensitive_features=sensitive_train)
+ y_pred = mitigator.predict(X_test)
+ 
+ results.append({
+ 'method': f'ExpGrad + {name}',
+ 'accuracy': accuracy_score(y_test, y_pred),
+ 'dp_ratio': demographic_parity_ratio(
+ y_test, y_pred, sensitive_features=sensitive_test
+ ),
+ 'dp_diff': demographic_parity_difference(
+ y_test, y_pred, sensitive_features=sensitive_test
+ ),
+ 'eo_diff': equalized_odds_difference(
+ y_test, y_pred, sensitive_features=sensitive_test
+ ),
+ })
+ except Exception as e:
+ results.append({
+ 'method': f'ExpGrad + {name}',
+ 'accuracy': None,
+ 'dp_ratio': None,
+ 'dp_diff': None,
+ 'eo_diff': None,
+ 'error': str(e),
+ })
+ 
+ # 3. ThresholdOptimizer (Post-processing)
+ try:
+ threshold_opt = ThresholdOptimizer(
+ estimator=base_model,
+ constraints="demographic_parity",
+ objective="accuracy_score",
+ prefit=True,
+ )
+ threshold_opt.fit(X_train, y_train, sensitive_features=sensitive_train)
+ y_pred_thresh = threshold_opt.predict(X_test, sensitive_features=sensitive_test)
+ 
+ results.append({
+ 'method': 'ThresholdOptimizer (DP)',
+ 'accuracy': accuracy_score(y_test, y_pred_thresh),
+ 'dp_ratio': demographic_parity_ratio(
+ y_test, y_pred_thresh, sensitive_features=sensitive_test
+ ),
+ 'dp_diff': demographic_parity_difference(
+ y_test, y_pred_thresh, sensitive_features=sensitive_test
+ ),
+ 'eo_diff': equalized_odds_difference(
+ y_test, y_pred_thresh, sensitive_features=sensitive_test
+ ),
+ })
+ except Exception as e:
+ results.append({
+ 'method': 'ThresholdOptimizer (DP)',
+ 'error': str(e),
+ })
+ 
+ return pd.DataFrame(results)
+ 
+ def generate_fairness_report_latex(
+ self,
+ analysis_results: dict,
+ model_name: str,
+ ) -> str:
+ """Fairness Analysis LaTeX Report Generation"""
+ 
+ latex = r"""
+\begin{table}[htbp]
+\centering
+\caption{""" + model_name + r""" Fairness Analysis Results}
+\begin{tabularx}{\textwidth}{p{3cm}XXXXX}
+\toprule
+\textbf{Sensitive Attribute} & \textbf{DP Ratio} & \textbf{DP Diff} & \textbf{EO Diff} & \textbf{4/5 Rule} \\
+\midrule
+"""
+ 
+ for attr, result in analysis_results.get('individual_attributes', {}).items():
+ dp_ratio = result.get('ratio', {}).get('selection_rate', 0)
+ dp_diff = result.get('difference', {}).get('selection_rate', 0)
+ 
+ # EO diff is the maximum of TPR and FPR differences
+ tpr_diff = result.get('difference', {}).get('tpr', 0)
+ fpr_diff = result.get('difference', {}).get('fpr', 0)
+ eo_diff = max(abs(tpr_diff) if tpr_diff else 0, 
+ abs(fpr_diff) if fpr_diff else 0)
+ 
+ passes = '[PASS]' if dp_ratio and dp_ratio >= 0.8 else '[FAIL]'
+ 
+ latex += f"{attr} & {dp_ratio:.4f} & {dp_diff:.4f} & {eo_diff:.4f} & {passes} \\\\\n"
+ 
+ latex += r"""
+\bottomrule
+\end{tabularx}
+\end{table}
+"""
+ 
+ return latex
+\end{lstlisting}
+
+\subsection{AIF360 (AI 공정성 360)}
+\label{sec:6.2.2}
+
+IBM이 개발한 AIF360은 Fairlearn과 함께 가장 널리 사용되는 공정성 Tool이다. 
+Fairlearn이 sklearn 친화적이라면, AIF360은 자체 데이터셋 클래스와 
+더 다양한 메트릭을 제공한다.
+
+\begin{table}[htbp]
+\centering
+\caption{Fairlearn vs AIF360 Comparison}
+\label{tab:fairlearn_vs_aif360}
+\begin{tabularx}{\textwidth}{p{3cm}XX}
+\toprule
+\textbf{항목} & \textbf{Fairlearn 0.14.0} & \textbf{AIF360 0.6.1} \\
+\midrule
+개발사 & Microsoft & IBM \\
+\midrule
+인터페이스 & sklearn 호환, pandas 친화적 & 자체 Dataset 클래스 \\
+\midrule
+메트릭 수 & 약 15개 & 약 70개 \\
+\midrule
+완화 알고리즘 & ExponentiatedGradient, GridSearch, ThresholdOptimizer & Reweighing, Prejudice Remover, Calibrated EqOdds 등 20개+ \\
+\midrule
+시각화 & 기본 제공 & FairnessDashboard \\
+\midrule
+장점 & sklearn 통합 용이, 직관적 API & 풍부한 메트릭, 다양한 알고리즘 \\
+\midrule
+단점 & 상대적으로 적은 알고리즘 & 학습 곡선 높음, 무거움 \\
+\midrule
+권장 사용 & sklearn based 파이프라인, 빠른 적용 & 연구, 심층 분석, 다양한 완화 기법 비교 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+%----------------------------------------------------------
+\section{설명가능성(설명가능한 AI(설명가능한 AI(XAI))) 도구}
+\label{sec:6.3}
+
+\subsection{SHAP 심화 활용}
+\label{sec:6.3.1}
+
+SHAP(SHapley Additive exPlanations)은 가장 널리 사용되는 설명가능한 AI(설명가능한 AI(XAI)) 라이브러리이다. 
+0.46.0 버전의 주요 기능과 실무 활용법을 다룬다.
+
+\begin{lstlisting}[language=Python, caption={SHAP 0.46.0 Advanced Usage}, label={lst:shap_advanced}]
+"""
+SHAP 0.46.0 Advanced Usage Guide
+
+- Selecting optimal Explainer by model type
+- Large-scale data processing
+- Customizing visualizations
+- Governance report integration
+"""
+
+import numpy as np
+import pandas as pd
+import shap
+from typing import Optional, Dict, List, Union, Any
+import warnings
+
+class SHAPGovernanceExplainer:
+ """
+ SHAP-based governance explanation generator
+ 
+ Optimized for model types, handles large-scale data,
+ and supports governance report formats
+ """
+ 
+ # Model-Explainer 
+ EXPLAINER_MAP = {
+ 'tree': shap.TreeExplainer,
+ 'linear': shap.LinearExplainer,
+ 'deep': shap.DeepExplainer,
+ 'gradient': shap.GradientExplainer,
+ 'kernel': shap.KernelExplainer,
+ }
+ 
+ # sklearn based Model
+ TREE_MODELS = [
+ 'RandomForestClassifier', 'RandomForestRegressor',
+ 'GradientBoostingClassifier', 'GradientBoostingRegressor',
+ 'XGBClassifier', 'XGBRegressor',
+ 'LGBMClassifier', 'LGBMRegressor',
+ 'CatBoostClassifier', 'CatBoostRegressor',
+ 'DecisionTreeClassifier', 'DecisionTreeRegressor',
+ 'ExtraTreesClassifier', 'ExtraTreesRegressor',
+ ]
+ 
+ # Model
+ LINEAR_MODELS = [
+ 'LogisticRegression', 'LinearRegression',
+ 'Ridge', 'Lasso', 'ElasticNet',
+ 'SGDClassifier', 'SGDRegressor',
+ ]
+ 
+ def __init__(
+ self,
+ model: Any,
+ feature_names: Optional[List[str]] = None,
+ max_samples_for_kernel: int = 100,
+ ):
+ """
+ Parameters
+ ----------
+ model : Any
+ Model to explain
+ feature_names : list, optional
+ List of feature names
+ max_samples_for_kernel : int
+ Max background samples for KernelExplainer
+ """
+ self.model = model
+ self.feature_names = feature_names
+ self.max_samples_for_kernel = max_samples_for_kernel
+ self.explainer = None
+ self.explainer_type = None
+ self.background_data = None
+ 
+ def _detect_model_type(self) -> str:
+ """Auto-detect model type"""
+ 
+ model_class = type(self.model).__name__
+ 
+ if model_class in self.TREE_MODELS:
+ return 'tree'
+ elif model_class in self.LINEAR_MODELS:
+ return 'linear'
+ elif 'keras' in str(type(self.model)).lower():
+ return 'deep'
+ elif 'torch' in str(type(self.model)).lower():
+ return 'gradient'
+ else:
+ return 'kernel'
+ 
+ def fit(
+ self,
+ X_background: Union[np.ndarray, pd.DataFrame],
+ model_type: Optional[str] = None,
+ ) -> 'SHAPGovernanceExplainer':
+ """
+ Initialize Explainer
+ 
+ Parameters
+ ----------
+ X_background : array-like
+ Background data (used in KernelExplainer, DeepExplainer)
+ model_type : str, optional
+ One of 'tree', 'linear', 'deep', 'gradient', 'kernel'.
+ Auto-detected if None.
+ """
+ 
+ # Model self.explainer_type = model_type or self._detect_model_type()
+ 
+ # Data 
+ if isinstance(X_background, pd.DataFrame):
+ self.background_data = X_background.values
+ if self.feature_names is None:
+ self.feature_names = X_background.columns.tolist()
+ else:
+ self.background_data = X_background
+ 
+ # Explainer 
+ if self.explainer_type == 'tree':
+ # 0.46.0: check_additivity self.explainer = shap.TreeExplainer(
+ self.model,
+ feature_perturbation='interventional',
+ )
+ 
+ elif self.explainer_type == 'linear':
+ self.explainer = shap.LinearExplainer(
+ self.model,
+ self.background_data,
+ )
+ 
+ elif self.explainer_type in ['deep', 'gradient']:
+ # Model: Number of samples 
+ bg_sample = self.background_data
+ if len(bg_sample) > self.max_samples_for_kernel:
+ indices = np.random.choice(
+ len(bg_sample), 
+ self.max_samples_for_kernel, 
+ replace=False
+ )
+ bg_sample = bg_sample[indices]
+ 
+ if self.explainer_type == 'deep':
+ self.explainer = shap.DeepExplainer(self.model, bg_sample)
+ else:
+ self.explainer = shap.GradientExplainer(self.model, bg_sample)
+ 
+ else:
+ # KernelExplainer ( , )
+ bg_sample = self.background_data
+ if len(bg_sample) > self.max_samples_for_kernel:
+ bg_sample = shap.sample(bg_sample, self.max_samples_for_kernel)
+ 
+ # if hasattr(self.model, 'predict_proba'):
+ predict_fn = lambda x: self.model.predict_proba(x)[:, 1]
+ else:
+ predict_fn = self.model.predict
+ 
+ self.explainer = shap.KernelExplainer(predict_fn, bg_sample)
+ 
+ return self
+ 
+ def explain(
+ self,
+ X: Union[np.ndarray, pd.DataFrame],
+ check_additivity: bool = False,
+ ) -> shap.Explanation:
+ """
+ Calculate SHAP values
+ 
+ Parameters
+ ----------
+ X : array-like
+ Instance to explain
+ check_additivity : bool
+ Whether to perform additivity check (tree models)
+ """
+ 
+ if self.explainer is None:
+ raise ValueError("fit() .")
+ 
+ if isinstance(X, pd.DataFrame):
+ X = X.values
+ 
+ if self.explainer_type == 'tree':
+ shap_values = self.explainer.shap_values(
+ X, check_additivity=check_additivity
+ )
+ else:
+ shap_values = self.explainer.shap_values(X)
+ 
+ # Explanation Generation
+ if isinstance(shap_values, list):
+ # : 1 ( ) 
+ shap_values = shap_values[1] if len(shap_values) > 1 else shap_values[0]
+ 
+ return shap.Explanation(
+ values=shap_values,
+ base_values=self.explainer.expected_value if not isinstance(
+ self.explainer.expected_value, list
+ ) else self.explainer.expected_value[1],
+ data=X,
+ feature_names=self.feature_names,
+ )
+ 
+ def explain_single(
+ self,
+ instance: Union[np.ndarray, pd.Series],
+ top_k: int = 5,
+ ) -> Dict:
+ """
+ Explain a single instance
+ 
+ Returns
+ -------
+ dict
+ {
+ 'shap_values': {feature: value},
+ 'top_positive': [(feature, value), ...],
+ 'top_negative': [(feature, value), ...],
+ 'base_value': float,
+ 'prediction': float,
+ }
+ """
+ 
+ if isinstance(instance, pd.Series):
+ instance = instance.values
+ 
+ instance = instance.reshape(1, -1)
+ explanation = self.explain(instance)
+ 
+ shap_dict = {}
+ for i, feat in enumerate(self.feature_names or range(len(explanation.values[0]))):
+ shap_dict[feat] = explanation.values[0][i]
+ 
+ # Alignment
+ sorted_positive = sorted(
+ [(k, v) for k, v in shap_dict.items() if v > 0],
+ key=lambda x: x[1], reverse=True
+ )[:top_k]
+ 
+ sorted_negative = sorted(
+ [(k, v) for k, v in shap_dict.items() if v < 0],
+ key=lambda x: x[1]
+ )[:top_k]
+ 
+ return {
+ 'shap_values': shap_dict,
+ 'top_positive': sorted_positive,
+ 'top_negative': sorted_negative,
+ 'base_value': float(explanation.base_values),
+ 'prediction': float(explanation.base_values + explanation.values[0].sum()),
+ }
+ 
+ def global_importance(
+ self,
+ X: Union[np.ndarray, pd.DataFrame],
+ method: str = 'mean_abs',
+ ) -> pd.DataFrame:
+ """
+ Calculate global feature importance
+ 
+ Parameters
+ ----------
+ method : str
+ 'mean_abs': Mean absolute value
+ 'mean': Mean (with direction)
+ 'max_abs': Max absolute value
+ """
+ 
+ explanation = self.explain(X)
+ 
+ if method == 'mean_abs':
+ importance = np.abs(explanation.values).mean(axis=0)
+ elif method == 'mean':
+ importance = explanation.values.mean(axis=0)
+ elif method == 'max_abs':
+ importance = np.abs(explanation.values).max(axis=0)
+ else:
+ raise ValueError(f"Unknown method: {method}")
+ 
+ df = pd.DataFrame({
+ 'feature': self.feature_names or [f'feature_{i}' for i in range(len(importance))],
+ 'importance': importance,
+ })
+ 
+ return df.sort_values('importance', ascending=False).reset_index(drop=True)
+ 
+ def generate_governance_explanation(
+ self,
+ instance: np.ndarray,
+ audience: str = 'technical',
+ feature_descriptions: Optional[Dict[str, str]] = None,
+ ) -> str:
+ """
+ Generate explanation text for governance
+ 
+ Parameters
+ ----------
+ audience : str
+ 'end_user', 'business', 'technical', 'regulator'
+ """
+ 
+ result = self.explain_single(instance)
+ 
+ if audience == 'end_user':
+ # For end users (Simplified)
+ text = "## Key Decision Factors\n\n"
+ text += "The following factors influenced the decision:\n\n"
+ 
+ text += "### Impact\n"
+ for feat, val in result['top_positive'][:3]:
+ desc = feature_descriptions.get(feat, feat) if feature_descriptions else feat
+ text += f"- {desc}\n"
+ 
+ if result['top_negative']:
+ text += "\n### Impact\n"
+ for feat, val in result['top_negative'][:3]:
+ desc = feature_descriptions.get(feat, feat) if feature_descriptions else feat
+ text += f"- {desc}\n"
+ 
+ elif audience == 'technical':
+ # For technical teams (Detailed metrics)
+ text = "## SHAP Analysis Results\n\n"
+ text += f"- Base Value: {result['base_value']:.4f}\n"
+ text += f"- Prediction: {result['prediction']:.4f}\n\n"
+ 
+ text += "### SHAP Values (Top 10)\n\n"
+ text += "| Feature | SHAP Value | Direction |\n"
+ text += "|---------|------------|-----------|--\n"
+ 
+ sorted_all = sorted(
+ result['shap_values'].items(),
+ key=lambda x: abs(x[1]), reverse=True
+ )[:10]
+ 
+ for feat, val in sorted_all:
+ direction = "" if val > 0 else ""
+ text += f"| {feat} | {val:.4f} | {direction} |\n"
+ 
+ elif audience == 'regulator':
+ # For regulators (Compliance with Enforcement Decree)
+ text = "## AI Decision Explanation (Article 23)\n\n"
+ text += f"### Prediction Result\n"
+ text += f"- Base Value: {result['base_value']:.4f}\n"
+ text += f"- Final Prediction: {result['prediction']:.4f}\n\n"
+ 
+ text += "### Major Impact ( 5 )\n\n"
+ text += "| | | | Impact |\n"
+ text += "|------|------|--------|----------|\n"
+ 
+ sorted_all = sorted(
+ result['shap_values'].items(),
+ key=lambda x: abs(x[1]), reverse=True
+ )[:5]
+ 
+ for i, (feat, val) in enumerate(sorted_all, 1):
+ direction = " " if val > 0 else " "
+ text += f"| {i} | {feat} | {val:.4f} | {direction} |\n"
+ 
+ text += "\n*This explanation is based on SHAP (SHapley Additive exPlanations) methodology.*\n"
+ text += "*Retained for 5 years per Article 15.*\n"
+ 
+ else: # business
+ text = "## Business Insights\n\n"
+ text += "### Key factors influencing the decision\n\n"
+ 
+ for i, (feat, val) in enumerate(result['top_positive'][:3], 1):
+ desc = feature_descriptions.get(feat, feat) if feature_descriptions else feat
+ text += f"{i}. {desc} (+{val:.2f})\n"
+ 
+ return text
+\end{lstlisting}
+
+
+\subsection{딥러닝 모델을 위한 설명가능한 AI(설명가능한 AI(XAI)): Captum}
+\label{sec:6.3.2}
+
+PyTorch based 딥러닝 모델에는 Captum 라이브러리가 적합하다.
+
+\begin{lstlisting}[language=Python, caption={Captum 0.7.0Advanced Deep Learning with XAI}, label={lst:captum_xai}]
+"""
+Captum 0.7.0 Usage Guide
+
+- Integrated Gradients
+- Layer GradCAM (Vision)
+- Attention Visualization
+"""
+
+import torch
+import torch.nn as nn
+import numpy as np
+from typing import Optional, Tuple, List
+from captum.attr import (
+ IntegratedGradients,
+ LayerGradCam,
+ GuidedGradCam,
+ Saliency,
+ DeepLift,
+ NoiseTunnel,
+ visualization as viz,
+)
+
+class DeepLearningExplainer:
+ """
+ Captum-based deep learning model explainer
+ """
+ 
+ def __init__(
+ self,
+ model: nn.Module,
+ device: str = 'cpu',
+ ):
+ self.model = model.to(device)
+ self.model.eval()
+ self.device = device
+ 
+ def integrated_gradients(
+ self,
+ inputs: torch.Tensor,
+ target: int,
+ baseline: Optional[torch.Tensor] = None,
+ n_steps: int = 50,
+ ) -> torch.Tensor:
+ """
+ Calculate Integrated Gradients
+ 
+ Reference: Sundararajan et al., "Axiomatic Attribution for Deep Networks" (2017)
+ """
+ 
+ ig = IntegratedGradients(self.model)
+ 
+ inputs = inputs.to(self.device)
+ if baseline is None:
+ baseline = torch.zeros_like(inputs).to(self.device)
+ else:
+ baseline = baseline.to(self.device)
+ 
+ attributions = ig.attribute(
+ inputs,
+ baselines=baseline,
+ target=target,
+ n_steps=n_steps,
+ return_convergence_delta=False,
+ )
+ 
+ return attributions
+ 
+ def grad_cam(
+ self,
+ inputs: torch.Tensor,
+ target: int,
+ layer: nn.Module,
+ ) -> torch.Tensor:
+ """
+ Grad-CAM for CNN
+ 
+ Visualize activation maps for Vision models
+ """
+ 
+ grad_cam = LayerGradCam(self.model, layer)
+ 
+ inputs = inputs.to(self.device)
+ attributions = grad_cam.attribute(inputs, target=target)
+ 
+ return attributions
+ 
+ def explain_image_classification(
+ self,
+ image: torch.Tensor,
+ target_class: int,
+ conv_layer: nn.Module,
+ class_names: Optional[List[str]] = None,
+ ) -> dict:
+ """
+ Comprehensive explanation for image classification models
+ """
+ 
+ image = image.to(self.device)
+ 
+ # 
+ with torch.no_grad():
+ output = self.model(image)
+ probs = torch.softmax(output, dim=1)
+ predicted_class = probs.argmax(dim=1).item()
+ confidence = probs[0, predicted_class].item()
+ 
+ # Integrated Gradients
+ ig_attr = self.integrated_gradients(image, target_class)
+ 
+ # Grad-CAM
+ gradcam_attr = self.grad_cam(image, target_class, conv_layer)
+ 
+ return {
+ 'predicted_class': predicted_class,
+ 'predicted_label': class_names[predicted_class] if class_names else str(predicted_class),
+ 'confidence': confidence,
+ 'target_class': target_class,
+ 'integrated_gradients': ig_attr.cpu().numpy(),
+ 'grad_cam': gradcam_attr.cpu().numpy(),
+ }
+ 
+ def explain_tabular(
+ self,
+ inputs: torch.Tensor,
+ target: int,
+ feature_names: List[str],
+ method: str = 'integrated_gradients',
+ ) -> dict:
+ """
+ Data Model 
+ """
+ 
+ inputs = inputs.to(self.device)
+ 
+ if method == 'integrated_gradients':
+ ig = IntegratedGradients(self.model)
+ attributions = ig.attribute(inputs, target=target)
+ elif method == 'deeplift':
+ dl = DeepLift(self.model)
+ attributions = dl.attribute(inputs, target=target)
+ elif method == 'saliency':
+ sal = Saliency(self.model)
+ attributions = sal.attribute(inputs, target=target)
+ else:
+ raise ValueError(f"Unknown method: {method}")
+ 
+ attr_values = attributions.cpu().numpy().flatten()
+ 
+ # feature_importance = {
+ feat: float(val) 
+ for feat, val in zip(feature_names, attr_values)
+ }
+ 
+ # Alignment
+ sorted_importance = sorted(
+ feature_importance.items(),
+ key=lambda x: abs(x[1]),
+ reverse=True
+ )
+ 
+ return {
+ 'method': method,
+ 'feature_importance': feature_importance,
+ 'sorted_importance': sorted_importance,
+ 'top_positive': [(k, v) for k, v in sorted_importance if v > 0][:5],
+ 'top_negative': [(k, v) for k, v in sorted_importance if v < 0][:5],
+ }
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{Model 관리 및 MLOps 통합된}
+\label{sec:6.4}
+
+\subsection{MLflow와 거버넌스 통합된}
+\label{sec:6.4.1}
+
+MLflow는 가장 널리 사용되는 MLOps Platform으로, 
+AI 거버넌스 정보를 통합 관리하는 데 활용할 수 있다.
+
+\begin{lstlisting}[language=Python, caption={MLflow Governance Integration}, label={lst:mlflow_governance}]
+"""
+MLflow + AI Governance Integration
+
+- Fairness Metric Logging
+- Model Card Integration
+- Approval Status Management
+- Governance Tags
+"""
+
+import mlflow
+from mlflow.tracking import MlflowClient
+from mlflow.models import ModelSignature
+from typing import Dict, Optional, List, Any
+from datetime import datetime
+import json
+
+class MLflowGovernanceIntegration:
+ """
+ MLflow AI Governance Integrated
+ 
+ Tracking, Model Governance information Integration
+ """
+ 
+ # Governance Tags 
+ GOVERNANCE_PREFIX = "governance"
+ 
+ # Governance Tags
+ GOVERNANCE_TAGS = {
+ 'risk_level': f'{GOVERNANCE_PREFIX}.risk_level',
+ 'high_risk_sector': f'{GOVERNANCE_PREFIX}.high_risk_sector',
+ 'fairness_status': f'{GOVERNANCE_PREFIX}.fairness_status',
+ 'approval_status': f'{GOVERNANCE_PREFIX}.approval_status',
+ 'approved_by': f'{GOVERNANCE_PREFIX}.approved_by',
+ 'approval_date': f'{GOVERNANCE_PREFIX}.approval_date',
+ 'human_oversight_level': f'{GOVERNANCE_PREFIX}.human_oversight_level',
+ 'retention_until': f'{GOVERNANCE_PREFIX}.retention_until',
+ }
+ 
+ def __init__(
+ self,
+ tracking_uri: Optional[str] = None,
+ experiment_name: Optional[str] = None,
+ ):
+ if tracking_uri:
+ mlflow.set_tracking_uri(tracking_uri)
+ 
+ if experiment_name:
+ mlflow.set_experiment(experiment_name)
+ 
+ self.client = MlflowClient()
+ 
+ def log_fairness_metrics(
+ self,
+ fairness_results: Dict[str, float],
+ step: Optional[int] = None,
+ ) -> None:
+ """Fairness Metric Logging"""
+ 
+ for metric_name, value in fairness_results.items():
+ mlflow.log_metric(
+ f"fairness.{metric_name}",
+ value,
+ step=step
+ )
+ 
+ # 4/5 dp_ratio = fairness_results.get('dp_ratio', 0)
+ passes_4_5 = dp_ratio >= 0.8
+ mlflow.log_metric("fairness.passes_4_5_rule", int(passes_4_5))
+ 
+ def log_governance_tags(
+ self,
+ risk_level: str,
+ high_risk_sector: Optional[str] = None,
+ fairness_status: str = 'pending',
+ human_oversight_level: str = 'HOTL',
+ ) -> None:
+ """Governance Tags Logging"""
+ 
+ tags = {
+ self.GOVERNANCE_TAGS['risk_level']: risk_level,
+ self.GOVERNANCE_TAGS['fairness_status']: fairness_status,
+ self.GOVERNANCE_TAGS['human_oversight_level']: human_oversight_level,
+ }
+ 
+ if high_risk_sector:
+ tags[self.GOVERNANCE_TAGS['high_risk_sector']] = high_risk_sector
+ 
+ # 5years Calculation
+ retention_until = datetime.now().replace(year=datetime.now().year + 5)
+ tags[self.GOVERNANCE_TAGS['retention_until']] = retention_until.isoformat()
+ 
+ mlflow.set_tags(tags)
+ 
+ def log_model_card(
+ self,
+ model_card: Dict[str, Any],
+ artifact_path: str = "governance/model_card.json",
+ ) -> None:
+ """Model """
+ 
+ # JSON with open("/tmp/model_card.json", "w", encoding="utf-8") as f:
+ json.dump(model_card, f, ensure_ascii=False, indent=2, default=str)
+ 
+ mlflow.log_artifact("/tmp/model_card.json", artifact_path="governance")
+ 
+ def log_fairness_report(
+ self,
+ report_content: str,
+ report_format: str = "md",
+ ) -> None:
+ """Fairness Report """
+ 
+ filename = f"/tmp/fairness_report.{report_format}"
+ with open(filename, "w", encoding="utf-8") as f:
+ f.write(report_content)
+ 
+ mlflow.log_artifact(filename, artifact_path="governance")
+ 
+ def register_model_with_governance(
+ self,
+ model_uri: str,
+ name: str,
+ risk_level: str,
+ fairness_metrics: Dict[str, float],
+ approval_status: str = 'pending',
+ tags: Optional[Dict[str, str]] = None,
+ ) -> str:
+ """Governance information Model """
+ 
+ # Model 
+ result = mlflow.register_model(model_uri, name)
+ model_version = result.version
+ 
+ # Governance Tags Setup
+ governance_tags = {
+ self.GOVERNANCE_TAGS['risk_level']: risk_level,
+ self.GOVERNANCE_TAGS['approval_status']: approval_status,
+ self.GOVERNANCE_TAGS['fairness_status']: 'pass' if fairness_metrics.get('dp_ratio', 0) >= 0.8 else 'fail',
+ }
+ 
+ if tags:
+ governance_tags.update(tags)
+ 
+ # Model Version Tags Setup
+ for key, value in governance_tags.items():
+ self.client.set_model_version_tag(name, model_version, key, value)
+ 
+ # Fairness (description) Addition
+ description = f"""
+## Governance Information
+
+- Risk Level: {risk_level}
+- Approval Status: {approval_status}
+- DP Ratio: {fairness_metrics.get('dp_ratio', 'N/A')}
+- EO Diff: {fairness_metrics.get('eo_diff', 'N/A')}
+- 4/5 Rule: {'Pass' if fairness_metrics.get('dp_ratio', 0) >= 0.8 else 'Fail'}
+"""
+ 
+ self.client.update_model_version(
+ name=name,
+ version=model_version,
+ description=description
+ )
+ 
+ return model_version
+ 
+ def approve_model_version(
+ self,
+ name: str,
+ version: str,
+ approver: str,
+ conditions: Optional[List[str]] = None,
+ ) -> None:
+ """Model Version Approval"""
+ 
+ approval_date = datetime.now().isoformat()
+ 
+ self.client.set_model_version_tag(
+ name, version,
+ self.GOVERNANCE_TAGS['approval_status'], 'approved'
+ )
+ self.client.set_model_version_tag(
+ name, version,
+ self.GOVERNANCE_TAGS['approved_by'], approver
+ )
+ self.client.set_model_version_tag(
+ name, version,
+ self.GOVERNANCE_TAGS['approval_date'], approval_date
+ )
+ 
+ if conditions:
+ self.client.set_model_version_tag(
+ name, version,
+ f"{self.GOVERNANCE_PREFIX}.approval_conditions",
+ json.dumps(conditions)
+ )
+ 
+ # (Staging -> Production)
+ self.client.transition_model_version_stage(
+ name=name,
+ version=version,
+ stage="Production",
+ archive_existing_versions=True
+ )
+ 
+ def get_governance_status(
+ self,
+ name: str,
+ version: Optional[str] = None,
+ ) -> Dict:
+ """Model Governance Status """
+ 
+ if version is None:
+ # Version 
+ versions = self.client.search_model_versions(f"name='{name}'")
+ if not versions:
+ raise ValueError(f"Model {name} not found")
+ version = max(v.version for v in versions)
+ 
+ model_version = self.client.get_model_version(name, version)
+ 
+ governance_info = {}
+ for tag_name, tag_key in self.GOVERNANCE_TAGS.items():
+ if tag_key in model_version.tags:
+ governance_info[tag_name] = model_version.tags[tag_key]
+ 
+ return {
+ 'model_name': name,
+ 'version': version,
+ 'stage': model_version.current_stage,
+ 'governance': governance_info,
+ }
+\end{lstlisting}
+
+
+\subsection{CI/CD 파이프라인 통합된}
+\label{sec:6.4.2}
+
+AI 거버넌스 검사를 CI/CD Pipeline에 통합하여 
+자동화된 품질 Gate를 구현한다.
+
+\begin{lstlisting}[language=yaml, caption={GitHub Actions Governance Pipeline}, label={lst:github_actions}]
+# .github/workflows/ai-governance.yml
+
+name: AI Governance Checks
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'models/'
+      - 'src/'
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: '3.11'
+  FAIRNESS_THRESHOLD: 0.8
+  
+jobs:
+  fairness-check:
+    name: Fairness Evaluation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install fairlearn==0.10.1 shap==0.44.0
+      
+      - name: Run Fairness Tests
+        id: fairness
+        run: |
+          python -m pytest tests/test_fairness.py \
+          --fairness-threshold=${{ env.FAIRNESS_THRESHOLD }} \
+          --junitxml=fairness-results.xml
+        continue-on-error: true
+      
+      - name: Upload Fairness Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: fairness-report
+          path: reports/fairness_report.md
+          retention-days: 1825 # 5years 
+      
+      - name: Check Fairness Gate
+        if: steps.fairness.outcome == 'failure'
+        run: |
+          echo "::error::Fairness check failed. DP Ratio below threshold."
+          exit 1
+
+  explainability-check:
+    name: Explainability Validation
+    runs-on: ubuntu-latest
+    needs: fairness-check
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Generate Model Card
+        run: |
+          python scripts/generate_model_card.py \
+          --model-path models/latest \
+          --output reports/model_card.json
+      
+      - name: Validate Model Card Completeness
+        run: |
+          python scripts/validate_model_card.py \
+          --model-card reports/model_card.json \
+          --schema schemas/model_card_schema.json
+      
+      - name: Upload Model Card
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-card
+          path: reports/model_card.json
+          retention-days: 1825
+  
+  governance-approval:
+    name: Governance Gate
+    runs-on: ubuntu-latest
+    needs: [fairness-check, explainability-check]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Request Governance Approval
+        run: |
+          echo "Governance checks passed. Requesting approval..."
+          # Approval Workflow Slack 
+      
+      - name: Wait for Approval
+        # Approval (GitHub Environment Protection)
+        run: echo "Approved for production deployment"
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{모니터링 및 관측성 플랫폼}
+\label{sec:6.5}
+
+\subsection{Evidently AI를 활용한 모니터링}
+\label{sec:6.5.1}
+
+Evidently AI는 오픈소스 ML 모니터링 Tool로, 
+데이터 드리프트, 모델 성능, Fairness을 추적할 수 있다.
+
+\begin{lstlisting}[language=Python, caption={Evidently AI Monitoring Integration}, label={lst:evidently_monitoring}]
+"""
+Evidently AI Monitoring Setup
+
+- Data Drift Detection
+- Performance Monitoring
+- Fairness Tracking
+- Automated Report Generation
+"""
+
+import pandas as pd
+import numpy as np
+from datetime import datetime
+from typing import Optional, Dict, List
+
+from evidently import ColumnMapping
+from evidently.report import Report
+from evidently.metric_preset import (
+ DataDriftPreset,
+ DataQualityPreset,
+ ClassificationPreset,
+)
+from evidently.metrics import (
+ DataDriftTable,
+ DatasetDriftMetric,
+ ColumnDriftMetric,
+ ClassificationQualityMetric,
+ ClassificationClassBalance,
+)
+from evidently.test_suite import TestSuite
+from evidently.test_preset import (
+ DataDriftTestPreset,
+ DataQualityTestPreset,
+)
+from evidently.tests import (
+ TestColumnDrift,
+ TestShareOfDriftedColumns,
+ TestAccuracyScore,
+)
+
+class EvidentlyGovernanceMonitor:
+ """
+ Evidently AI based Governance Monitoring
+ """
+ 
+ def __init__(
+ self,
+ reference_data: pd.DataFrame,
+ column_mapping: Optional[ColumnMapping] = None,
+ ):
+ """
+ Parameters
+ ----------
+ reference_data : pd.DataFrame
+ Data (Learning Data Data)
+ column_mapping : ColumnMapping
+ (target, prediction, numerical, categorical )
+ """
+ self.reference_data = reference_data
+ self.column_mapping = column_mapping or ColumnMapping()
+ 
+ def create_drift_report(
+ self,
+ current_data: pd.DataFrame,
+ output_path: Optional[str] = None,
+ ) -> Report:
+ """Data Drift Report Generation"""
+ 
+ report = Report(metrics=[
+ DataDriftPreset(),
+ DatasetDriftMetric(),
+ ])
+ 
+ report.run(
+ reference_data=self.reference_data,
+ current_data=current_data,
+ column_mapping=self.column_mapping,
+ )
+ 
+ if output_path:
+ report.save_html(output_path)
+ 
+ return report
+ 
+ def create_performance_report(
+ self,
+ current_data: pd.DataFrame,
+ output_path: Optional[str] = None,
+ ) -> Report:
+ """Performance Monitoring Report Generation"""
+ 
+ report = Report(metrics=[
+ ClassificationPreset(),
+ ClassificationClassBalance(),
+ ])
+ 
+ report.run(
+ reference_data=self.reference_data,
+ current_data=current_data,
+ column_mapping=self.column_mapping,
+ )
+ 
+ if output_path:
+ report.save_html(output_path)
+ 
+ return report
+ 
+ def run_drift_tests(
+ self,
+ current_data: pd.DataFrame,
+ drift_threshold: float = 0.1,
+ ) -> Dict:
+ """Drift """
+ 
+ test_suite = TestSuite(tests=[
+ TestShareOfDriftedColumns(lt=drift_threshold),
+ DataDriftTestPreset(),
+ ])
+ 
+ test_suite.run(
+ reference_data=self.reference_data,
+ current_data=current_data,
+ column_mapping=self.column_mapping,
+ )
+ 
+ # results = {
+ 'passed': test_suite.as_dict()['summary']['all_passed'],
+ 'total_tests': test_suite.as_dict()['summary']['total_tests'],
+ 'failed_tests': test_suite.as_dict()['summary']['failed_tests'],
+ 'details': test_suite.as_dict()['tests'],
+ }
+ 
+ return results
+ 
+ def monitor_fairness_over_time(
+ self,
+ data_batches: List[pd.DataFrame],
+ sensitive_column: str,
+ prediction_column: str = 'prediction',
+ target_column: str = 'target',
+ ) -> pd.DataFrame:
+ """
+ Fairness Tracking
+ 
+ Data Fairness Calculation
+ """
+ 
+ results = []
+ 
+ for i, batch in enumerate(data_batches):
+ groups = batch[sensitive_column].unique()
+ 
+ # Calculation
+ selection_rates = {}
+ for group in groups:
+ mask = batch[sensitive_column] == group
+ selection_rates[group] = batch.loc[mask, prediction_column].mean()
+ 
+ # DP Ratio Calculation
+ if len(selection_rates) >= 2:
+ rates = list(selection_rates.values())
+ dp_ratio = min(rates) / max(rates) if max(rates) > 0 else 1.0
+ else:
+ dp_ratio = 1.0
+ 
+ results.append({
+ 'batch': i,
+ 'dp_ratio': dp_ratio,
+ {f'selection_rate_{g}': r for g, r in selection_rates.items()},
+ 'passes_4_5_rule': dp_ratio >= 0.8,
+ })
+ 
+ return pd.DataFrame(results)
+ 
+ def generate_governance_dashboard_data(
+ self,
+ current_data: pd.DataFrame,
+ ) -> Dict:
+ """Governance Data Generation"""
+ 
+ # Drift Analysis
+ drift_report = self.create_drift_report(current_data)
+ drift_results = drift_report.as_dict()
+ 
+ # Performance Analysis
+ perf_report = self.create_performance_report(current_data)
+ perf_results = perf_report.as_dict()
+ 
+ # Data 
+ dashboard_data = {
+ 'timestamp': datetime.now().isoformat(),
+ 'data_quality': {
+ 'total_rows': len(current_data),
+ 'missing_rate': current_data.isnull().mean().mean(),
+ },
+ 'drift': {
+ 'dataset_drift': drift_results.get('metrics', [{}])[0].get('result', {}),
+ 'drifted_columns': [], # Drift },
+ 'performance': {
+ 'metrics': perf_results.get('metrics', [{}])[0].get('result', {}),
+ },
+ 'alerts': [],
+ }
+ 
+ # Generation
+ if dashboard_data['drift'].get('dataset_drift', {}).get('drift_share', 0) > 0.2:
+ dashboard_data['alerts'].append({
+ 'severity': 'warning',
+ 'message': 'Data Drift 20% .',
+ })
+ 
+ return dashboard_data
+\end{lstlisting}
+
+
+%----------------------------------------------------------
+\section{문서화 자동화 도구}
+\label{sec:6.6}
+
+\subsection{Model Card Toolkit}
+\label{sec:6.6.1}
+
+Google의 모델 Card Toolkit을 활용하여 
+표준화된 모델 카드를 자동 생성할 수 있다.
+
+\begin{lstlisting}[language=Python, caption={Integrated Documentation Automation System}, label={lst:documentation_automation}]
+"""
+AI Governance Documentation Automation
+
+- Automated Model Card Generation
+- Fairness Report Automation
+- Compliance Document Package
+"""
+
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any
+from datetime import datetime
+import json
+import os
+
+@dataclass
+class GovernanceDocumentPackage:
+ """
+ AI Governance Document 15 EU AI Act Annex IV Compliance Document Generation
+ """
+ 
+ # System information
+ system_name: str
+ system_id: str
+ version: str
+ developer: str
+ 
+ # Classification
+ risk_level: str # 'high', 'medium', 'low'
+ high_risk_sector: Optional[str] = None
+ 
+ # Model information
+ model_type: str = ""
+ intended_use: List[str] = field(default_factory=list)
+ out_of_scope_use: List[str] = field(default_factory=list)
+ 
+ # Data information
+ training_data_source: str = ""
+ training_data_size: int = 0
+ training_data_period: str = ""
+ 
+ # Performance Fairness
+ performance_metrics: Dict[str, float] = field(default_factory=dict)
+ fairness_metrics: Dict[str, float] = field(default_factory=dict)
+ subgroup_performance: Dict[str, Dict[str, float]] = field(default_factory=dict)
+ 
+ # 
+ xai_method: str = ""
+ feature_importance: Dict[str, float] = field(default_factory=dict)
+ 
+ # human_oversight_level: str = ""
+ override_rate: float = 0.0
+ 
+ # identified_risks: List[Dict] = field(default_factory=list)
+ mitigation_measures: List[str] = field(default_factory=list)
+ 
+ # Data
+ creation_date: datetime = field(default_factory=datetime.now)
+ retention_years: int = 5
+ 
+ def generate_model_card(self) -> str:
+ """Model Generation ( )"""
+ 
+ card = f"""# Model : {self.system_name}
+
+## 1. Model 
+
+| Items | |
+|------|------|
+| System | {self.system_name} |
+| System ID | {self.system_id} |
+| Version | {self.version} |
+| | {self.developer} |
+| Model | {self.model_type} |
+| Level | {self.risk_level.upper()} |
+"""
+ 
+ if self.high_risk_sector:
+ card += f"| | {self.high_risk_sector} |\n"
+ 
+ card += f"""
+## 2. ### Case
+"""
+ for use in self.intended_use:
+ card += f"- {use}\n"
+ 
+ card += "\n### ( )\n"
+ for use in self.out_of_scope_use:
+ card += f"- {use}\n"
+ 
+ card += f"""
+
+## 3. Learning Data
+
+| Items | |
+|------|------|
+| Data | {self.training_data_source} |
+| Data | {self.training_data_size:,} |
+| Period | {self.training_data_period} |
+
+## 4. Performance
+
+| | |
+|--------|-----|
+"""
+ for metric, value in self.performance_metrics.items():
+ card += f"| {metric} | {value:.4f} |\n"
+ 
+ card += f"""
+
+## 5. Fairness Assessment
+
+| | | |
+|--------|-----|----------|
+"""
+ for metric, value in self.fairness_metrics.items():
+ passed = '[PASS]' if metric == 'dp_ratio' and value >= 0.8 else '[PASS]' if metric == 'eo_diff' and value <= 0.1 else '[WARN]'
+ card += f"| {metric} | {value:.4f} | {passed} |\n"
+ 
+ if self.subgroup_performance:
+ card += "\n### Performance\n\n"
+ card += "| | Accuracy | Precision | Recall |\n"
+ card += "|------|----------|-----------|--------|\n"
+ for group, metrics in self.subgroup_performance.items():
+ card += f"| {group} | {metrics.get('accuracy', 0):.4f} | {metrics.get('precision', 0):.4f} | {metrics.get('recall', 0):.4f} |\n"
+ 
+ card += f"""
+
+## 6. 
+
+-XAI : {self.xai_method}
+
+### Major ( 10 )
+
+| | | |
+|------|------|--------|
+"""
+ sorted_importance = sorted(
+ self.feature_importance.items(),
+ key=lambda x: abs(x[1]),
+ reverse=True
+ )[:10]
+ for i, (feat, imp) in enumerate(sorted_importance, 1):
+ card += f"| {i} | {feat} | {imp:.4f} |\n"
+ 
+ card += f"""
+
+## 7. | Items | |
+|------|------|
+| Level | {self.human_oversight_level} |
+| AI | {self.override_rate:.2%} |
+
+## 8. ### """
+ for risk in self.identified_risks:
+ card += f"-{risk.get('name', 'N/A')}** ( : {risk.get('severity', 'N/A')}): {risk.get('description', '')}\n"
+ 
+ card += "\n### \n"
+ for measure in self.mitigation_measures:
+ card += f"- {measure}\n"
+ 
+ card += f"""
+
+---
+
+## Document information
+
+| Items | |
+|------|------|
+| days | {self.creation_date.strftime('%Y-%m-%d')} |
+| | {self.creation_date.year + self.retention_years}years ({self.retention_years}years) |
+
+* Document AI 15 .*
+"""
+ 
+ return card
+ 
+ def generate_compliance_checklist(self) -> str:
+ """Regulation Compliance Checklist Generation"""
+ 
+ checklist = f"""# Regulation Compliance Checklist
+
+System: {self.system_name} ({self.system_id}) 
+Assessmentdays: {datetime.now().strftime('%Y-%m-%d')}
+
+---
+
+## AI Compliance
+
+| | | Compliance | |
+|------|----------|----------|------|
+| 10 | AI Classification | {'[PASS]' if self.risk_level == 'high' and self.high_risk_sector else '[PASS]' if self.risk_level != 'high' else ''} | Classification Document |
+| 12 | | {'[PASS]' if self.fairness_metrics.get('dp_ratio', 0) >= 0.8 else '[FAIL]'} | Fairness Assessment Report |
+| 13 | | | |
+| 14 | | {'[PASS]' if self.human_oversight_level in ['HITL', 'HOTL'] else '[WARN]'} | Document |
+| 15 | (5years) | [PASS] | Document |
+| 23 | | {'[PASS]' if self.xai_method else '[FAIL]'} | Model , XAI Report |
+
+---
+
+## EU AI Act Compliance ( )
+
+| | | Compliance |
+|------|----------|----------|
+| Art. 9 | Management System | {'[PASS]' if self.identified_risks else '[FAIL]'} |
+| Art. 10 | Data Governance | |
+| Art. 11 | Document | [PASS] |
+| Art. 13 | | [PASS] |
+| Art. 14 | | {'[PASS]' if self.human_oversight_level in ['HITL', 'HOTL'] else '[WARN]'} |
+
+---
+
+Check: ________________ 
+days: ________________ 
+ : ________________
+"""
+ 
+ return checklist
+ 
+ def export_package(self, output_dir: str) -> List[str]:
+ """ Document """
+ 
+ os.makedirs(output_dir, exist_ok=True)
+ 
+ files_created = []
+ 
+ # 1. Model 
+ model_card_path = os.path.join(output_dir, "model_card.md")
+ with open(model_card_path, "w", encoding="utf-8") as f:
+ f.write(self.generate_model_card())
+ files_created.append(model_card_path)
+ 
+ # 2. Compliance Checklist
+ checklist_path = os.path.join(output_dir, "compliance_checklist.md")
+ with open(checklist_path, "w", encoding="utf-8") as f:
+ f.write(self.generate_compliance_checklist())
+ files_created.append(checklist_path)
+ 
+ # 3. Data JSON
+ metadata = {
+ "system_name": self.system_name,
+ "system_id": self.system_id,
+ "version": self.version,
+ "risk_level": self.risk_level,
+ "high_risk_sector": self.high_risk_sector,
+ "fairness_metrics": self.fairness_metrics,
+ "performance_metrics": self.performance_metrics,
+ "human_oversight_level": self.human_oversight_level,
+ "creation_date": self.creation_date.isoformat(),
+ "retention_until": (self.creation_date.year + self.retention_years),
+ }
+ 
+ metadata_path = os.path.join(output_dir, "metadata.json")
+ with open(metadata_path, "w", encoding="utf-8") as f:
+ json.dump(metadata, f, ensure_ascii=False, indent=2)
+ files_created.append(metadata_path)
+ 
+ return files_created
+\end{lstlisting}
+
+
+%----------------------------------------------------------
+\subsection*{제6장 요약}
+
+본 장에서는 AI 거버넌스를 기술적으로 Support하는 도구 생태계를 다루었다. 
+핵심 내용을 요약하면 다음과 같다.
+
+\begin{enumerate}
+ \item \textbf{기술 스택 아키텍처}: 
+ 5개 계층(MLOps 인프라 -> 모니터링 -> 평가 도구 -> 정책 관리 -> 대시보드)으로 
+ 구성된 AI 거버넌스 기술 스택을 제시하였다.
+ 
+ \item \textbf{공정성 도구}: 
+ Fairlearn 0.14.0의 고급 기능(다중 속성 분석, 교차 분석, 완화 알고리즘 비교)과 
+ AIF360과의 비교를 다루었다.
+ 
+ \item \textbf{설명가능한 AI(설명가능한 AI(XAI)) 도구}: 
+ SHAP 0.46.0의 거버넌스 통합 활용법과 
+ CaptumAdvanced Deep Learning with 모델 설명 방법을 제시하였다.
+ 
+ \item \textbf{MLOps 통합된}: 
+ MLflow와 거버넌스 정보 Integration, GitHub Actions를 활용한 
+ CI/CD 파이프라인 내 거버넌스 Gate 구현을 다루었다.
+ 
+ \item \textbf{모니터링}: 
+ Evidently AI를 활용한 드리프트 감지, 성능 모니터링, 
+ 공정성 추적 방법을 제시하였다.
+ 
+ \item \textbf{문서화 자동화}: 
+ 시행령 제15조 및 EU AI Act Annex IV 준수를 위한 
+ 문서 패키지 자동 생성 Tool를 제시하였다.
+\end{enumerate}
+
+이러한 Tool들을 조직의 기존 ML 인프라에 통합함으로써, 수작업 부담을 줄이고 일관된 거버넌스 실행을 보장할 수 있다. 이어지는 제7장에서는 이러한 거버넌스 Tool와 프레임워크가 실제 한국 기업의 현장에서 어떻게 적용되고 있는지 구체적인 사례를 통해 살펴본다.

@@ -1,0 +1,4 @@
+# AI Governance Python Tools Requirements
+numpy>=1.24.0
+pandas>=2.0.0
+# Add more as specific tools are expanded

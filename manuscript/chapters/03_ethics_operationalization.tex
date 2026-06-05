@@ -1,0 +1,1394 @@
+\chapter{AI 윤리 원칙의 운용화(Operationalization)}
+
+AI 거버넌스는 더 이상 선택이 아닌 필수적인 조직 역량이다. 많은 기업과 국가가 '공정성', '투명성', '책임성'과 같은 훌륭한 AI 윤리 원칙을 선언했다. 그러나 미텔슈타트(Mittelstadt)가 지적했듯, "원칙만으로는 윤리적인 AI를 보장할 수 없다"\cite{mittelstadt2019principles}. Abstract적인 선언이 실제 엔지니어의 코드와 비즈니스 프로세스에 녹아들지 않으면, 윤리 원칙은 'Ethics 세탁(Ethics Washing\cite{rakova2021responsible})'의 Tool로 전락할 뿐이다.\cite{hagendorff2020ethics} 본 장에서는 Abstract적인 가치를 측정 가능한 지표와 구체적인 행동으로 변환하는 '윤리의 운용화(Operationalization)' 과정을 다룬다.\cite{morley2020from, zhu2022ai}
+
+\section{Abstract적 원칙에서 측정 가능한 지표로}
+
+윤리적 가치를 숫자로 측정하는 것은 불가능해 보이지만, 관리하기 위해서는 측정해야 한다.
+
+\subsection{공정성(공정성)의 지표화}
+Fairness은 문맥에 따라 다르게 정의되지만\cite{mehrabi2021survey, binns2018fairness}, 기술적으로는 다음과 같은 지표로 환산될 수 있다.
+\begin{itemize}
+ \item \textbf{인구통계학적 동등성(인구통계학적 공정성(DP))}: AI의 승인율(예: 대출 승인)이 인종이나 성별에 관계없이 동일해야 한다. ($P(\hat{Y}=1|A=a) = P(\hat{Y}=1|A=b)$)
+ \item \textbf{균등 기회(Equal Opportunity)}: 자격이 있는 사람(실제 상환 능력이 있는 사람)에 대한 승인율이 그룹 간에 동일해야 한다. (True Positive Rate의 일치)
+ \item \textbf{예측 동등성(Predictive Parity)}: AI가 승인한 사람들 중 실제로 자격을 갖춘 비율(Precision)이 그룹 간에 동일해야 한다.
+\end{itemize}
+이 지표들은 서로 수학적으로 양립 불가능한 경우가 많으므로(Impossibility Theorem), 조직은 어떤 공정성 정의를 우선할지 정책적으로 결정해야 한다.
+
+다음은 한국적 채용 맥락에서 빈번히 발생하는 '학력'과 '병역' 정보를 포함한 공정성 평가 예시이다. 이들은 각각 연령과 성별의 대리(Proxy) 변수로 작용할 수 있어 주의가 필요하다.
+
+\begin{lstlisting}[language=Python, caption={Korean Context Fairness Evaluator}, label={code:fairness-kor}]
+import pandas as pd
+from fairlearn.metrics import MetricFrame, selection_rate, false_positive_rate
+# Requirement: fairlearn==0.10.1
+
+def evaluate_korean_fairness(y_true, y_pred, sensitive_features):
+ """
+ Evaluate fairness considering Korean specific proxies.
+ Sensitive Features:
+ - Standard: Age, Gender
+ - Proxies: Military Service (Gender), Univ. Entrance Year (Age)
+ """
+ metrics = {
+ "selection_rate": selection_rate,
+ "false_positive_rate": false_positive_rate
+ }
+ 
+ # Analyze disparities across intersectional groups
+ mf = MetricFrame(
+ metrics=metrics,
+ y_true=y_true,
+ y_pred=y_pred,
+ sensitive_features=sensitive_features
+ )
+ 
+ # Check for 'Disparate Impact' (KR Labor Standards Act context)
+ print("Fairness Audit Report (2026 Standard):")
+ print(mf.by_group)
+ return mf
+\end{lstlisting}
+
+\subsection{설명가능성(설명가능성)의 지표화}
+\begin{itemize}
+ \item \textbf{충실도(Fidelity)}: 설명 Model(예: LIME\cite{ribeiro2016why})이 원본 Model(예: Deep Neural Network)의 행동을 얼마나 정확하게 모사하는가?
+ \item \textbf{안정성(Stability)}: 입력값이 미세하게 변했을 때 설명도 유사하게 유지되는가?
+ \item \textbf{간결성(Sparsity)}: 설명에 사용된 특징(Feature)의 수가 인간이 인지할 수 있을 만큼 적은가?
+\end{itemize}
+
+\subsection{책임성(책임성)의 조직적 구현}
+
+\subsubsection*{책임성의 개념과 구성 요소}
+책임성(책임성)은 AI 시스템의 결과에 대해 누가, 무엇에 대해, 어떻게 책임지는지를 명확히 하는 것이다.\cite{cobbe2021reviewable} 이는 단순히 "문제 발생 시 처벌 Target"을 정하는 것이 아니라, 의사결정 권한, 감독 의무, 시정 조치 책임을 체계적으로 배분하는 것을 의미한다.
+
+NIST AI RMF 2.0(2025)은 책임성을 네 가지 핵심 구성 요소로 정의한다:
+\begin{enumerate}
+ \item \textbf{귀속성(Attributability)}: 특정 결과나 결정을 특정 주체(개인, 팀, 조직)에게 귀속시킬 수 있는 능력.
+ \item \textbf{응답성(Answerability)}: 자신의 행동이나 결정에 대해 설명하고 정당화할 의무.
+ \item \textbf{집행가능성(Enforceability)}: 책임 위반에 대한 제재나 시정 조치가 실제로 이행될 수 있는 상태.
+ \item \textbf{보상성(Redressability)}: 피해가 발생한 경우 이를 시정하거나 보상할 수 있는 메커니즘.
+\end{enumerate}
+
+한국 AI 기본법은 제22조(안전성 확보)와 제25조(이용자 보호)에서 AI 사업자의 책임을 규정하며, 시행령 제14조는 고위험 AI에 대해 \textbf{인적 감독 체계}와 \textbf{이의 제기 처리 절차} 마련을 의무화한다.
+
+\subsubsection*{AI 시스템 생명주기별 책임 배분}
+AI 시스템의 개발부터 Retire까지 각 단계에서 책임 주체와 내용이 달라진다. RACI 매트릭스를 활용하여 체계적으로 정의할 수 있다.
+
+\begin{table}[h]
+\centering
+\caption{AI 생명주기별 RACI 매트릭스 (대기업 기준, NIST AI RMF 2.0 정렬)}
+\label{tab:raci-matrix}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{활동} & \textbf{DS팀} & \textbf{거버넌스팀} & \textbf{Biz 오너} & \textbf{법무/CP} & \textbf{경영진} \\ \hline
+사용 사례 정의 & C & C & A/R & C & I \\ \hline
+리스크 분류 (고위험 여부) & C & A/R & C & R & I \\ \hline
+데이터 수집/준비 & R & C & A & C & I \\ \hline
+모델 개발 & A/R & C & I & C & I \\ \hline
+공정성/편향 테스트 & R & A & I & C & I \\ \hline
+모델 검증 & R & A/R & C & C & I \\ \hline
+기술 문서(모델카드/Annex IV) 작성 & R & A & I & C & I \\ \hline
+배포 승인 & C & R & A & R & I \\ \hline
+운영 모니터링 & R & A & I & I & I \\ \hline
+인시던트 Response & R & A & C & R & I \\ \hline
+정기 감사 & C & A/R & I & R & I \\ \hline
+이의 제기 처리 & C & R & A & R & I \\ \hline
+Model Retire 결정 & C & R & A & C & I \\ \hline
+기록 보관 (5년) & C & A/R & I & R & I \\ \hline
+\end{tabular}%
+}
+\footnotesize{*R: Responsible(실행), A: Accountable(최종책임), C: Consulted(협의), I: Informed(통보)}
+\end{table}
+
+\subsubsection*{인간 감독(Human Oversight) 체계 설계}
+EU AI Act 제14조와 한국 AI 기본법 시행령 제14조는 고위험 AI 시스템에 대해 "자연인에 의한 효과적인 감독"을 요구한다. 특히 감독자가 AI 결정을 \textbf{무시, 수정, 또는 철회}할 수 있는 권한을 보장해야 한다.
+
+\begin{table}[h]
+\centering
+\caption{인간 감독 수준 프레임워크 (EU AI Act + 시행령 정렬)}
+\begin{tabular}{|p{0.04\textwidth}|p{0.22\textwidth}|p{0.30\textwidth}|p{0.18\textwidth}|p{0.12\textwidth}|}
+\hline
+\textbf{Level} & \textbf{명칭} & \textbf{설명} & \textbf{적합 상황} & \textbf{고위험 적용} \\ \hline
+1 & HITL (Human-in-the-Loop) & 모든 결정에 인간이 직접 개입, 최종 결정권 & 고위험, 비가역적 & \textbf{필수} \\ \hline
+2 & HOTL (Human-on-the-Loop) & 실시간 모니터링, 필요시 개입 & 중위험, 빠른 결정 & 권장 \\ \hline
+3 & HOVL (Human-over-the-Loop) & 정기적 검토, System Setup 관리 & 저위험, 대량 처리 & 허용 \\ \hline
+4 & HOUTL (Human-out-of-the-Loop) & 인간 개입 없이 완전 자동화 & 극저위험, 검증완료 & \textbf{금지} \\ \hline
+\end{tabular}
+\end{table}
+
+다음 코드는 인간 감독 기록을 관리하고 자동화 편향(자동화 Bias)을 감지하는 Python 모듈 예시이다.
+
+\begin{lstlisting}[language=Python, caption={Human Oversight Manager}, label={code:human-oversight}]
+class HumanDecisionRecord:
+ """Human oversight decision record (Complies with Article 15)"""
+ def __init__(self, record_id, timestamp, model_id, ai_recommendation, 
+ human_decision, human_rationale, reviewer_id):
+ self.record_id = record_id
+ self.timestamp = timestamp
+ self.model_id = model_id
+ self.ai_recommendation = ai_recommendation
+ self.human_decision = human_decision
+ self.human_rationale = human_rationale # Basis for decision (Required)
+ self.reviewer_id = reviewer_id
+ # Retention metadata (5 years)
+ self.retention_until = timestamp + timedelta(days=365*5)
+
+class HumanOversightManager:
+ def analyze_automation_bias(self, records, threshold=0.95):
+ """Detect Automation Bias (Uncritical acceptance of AI)"""
+ agreement_count = sum(1 for r in records if r.agreed_with_ai)
+ rate = agreement_count / len(records)
+ if rate > threshold:
+ print(f"WARNING: Agreement rate ({rate:.1%}) exceeds threshold. Bias suspected.")
+\end{lstlisting}
+
+\subsection{안전성(안전성)과 Security(보안)의 기술적 요구사항}
+
+\subsubsection*{안전성 보안의 구분}
+\textbf{안전성(안전성)}은 AI가 의도치 않게 해로운 결과를 초래하지 않도록(예: 오류, 예상치 못한 입력) 보장하는 것이며\cite{amodei2016concrete}, \textbf{Security(보안)}은 악의적 Attack자(예: 적대적 Attack\cite{goodfellow2014explaining}, 데이터 중독)로부터 AI를 보호하는 것이다\cite{papernot2016towards}. 한국 AI 기본법은 제22조에서 이를 포괄하여 "안전성 확보"를 규정한다.
+
+\subsubsection*{1. 견고성(강건성) 검증}
+AI 모델이 노이즈나 분포 이동(Distribution Shift)에도 일관된 출력을 유지해야 한다.
+
+\begin{table}[h]
+\centering
+\caption{견고성 평가 방법 (시행령 제13조 준수)}
+\begin{tabular}{|l|p{3.5cm}|p{3.5cm}|p{2cm}|}
+\hline
+\textbf{평가 유형} & \textbf{설명} & \textbf{측정 방법} & \textbf{권고 임계값} \\ \hline
+노이즈 견고성 & 입력 노이즈에 대한 성능 저하 & 가우시안 노이즈($\sigma=0.1$) 추가 & 성능저하 < 5\% \\ \hline
+분포 이동 견고성 & OOD 데이터에서의 성능 & 시간/지역별 분리 테스트셋 & 성능저하 < 10\% \\ \hline
+입력 변형 견고성 & 입력 형식 변화 내성 & 오타, 축약어, 형식 변경 & 성능저하 < 3\% \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={Safety Evaluator}, label={code:safety-eval}]
+def evaluate_noise_robustness(model, X, y, noise_level=0.1):
+ """Evaluate robustness against noise"""
+ clean_acc = accuracy_score(y, model.predict(X))
+ noise = np.random.normal(0, noise_level, X.shape)
+ noisy_acc = accuracy_score(y, model.predict(X + noise))
+ 
+ degradation = (clean_acc - noisy_acc) / clean_acc
+ print(f"Performance degradation: {degradation:.1%}")
+ return degradation < 0.05 # Recommendation: < 5% degradation
+\end{lstlisting}
+
+\subsubsection*{2. AI 보안 위협과 Response}
+적대적 Attack, 데이터 중독, 모델 탈취, 멤버십 추론, 프롬프트 인젝션 등의 위협에 Response해야 한다. 특히 LLM의 경우 프롬프트 인젝션 방지 가드레일이 필수적이다.
+
+\subsection{Privacy(Privacy) 보호 메커니즘}
+
+\subsubsection*{Learning 단계와 추론 단계의 Privacy}
+AI는 학습 단계에서 데이터를 '기억(Memorization)'했다가 추론 단계에서 이를 유출할 수 있다.\cite{dwork2014algorithmic, price2019privacy} 개인정보 보호법 제37조의2는 자동화된 결정에 대한 거부권을 보장한다.
+
+\subsubsection*{Privacy 보호 기술 (Pets)}
+\begin{table}[h]
+\centering
+\caption{Privacy 보호 기술 비교 (2026년 기준)}
+\begin{tabular}{|l|p{2.5cm}|c|c|c|}
+\hline
+\textbf{기술} & \textbf{원리} & \textbf{정확도 영향} & \textbf{계산 비용} & \textbf{성숙도} \\ \hline
+차분 Privacy(DP) & 노이즈 추가 & 중간 & 낮음 & 높음 \\ \hline
+Federated Learning(FL) & 분산 학습 & 낮음 & 중간 & 높음 \\ \hline
+동형 암호(HE) & 암호화 연산 & 없음 & 매우 높음 & 중간 \\ \hline
+합성 데이터 & 가짜 데이터 생성 & 다양 & 중간 & 높음 \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={Differential Privacy Application Example}, label={code:dp-example}]
+from diffprivlib.models import LogisticRegression
+
+def train_private_model(X, y, epsilon=1.0):
+ """Train Diff-Privacy Logistic Regression"""
+ # Smaller epsilon = Higher privacy, Lower accuracy
+ dp_model = LogisticRegression(epsilon=epsilon, data_norm=10)
+ dp_model.fit(X, y)
+ return dp_model
+\end{lstlisting}
+
+\section{Principle 간 충돌과 트레이드오프 관리}
+\label{sec:3.2}
+
+AI 윤리 원칙들은 개별적으로는 명확해 보이지만, 실제 구현 과정에서 서로 충돌하는 경우가 빈번하다. 
+Fairness을 높이면 정확도가 떨어지고, 투명성을 강화하면 영업비밀이 노출되며, 
+개인화를 추구하면 차별의 경계에 놓이게 된다. 
+이러한 트레이드오프는 기술적 최적화만으로 해결할 수 없으며,
+조직의 가치 결정과 이해관계자 간 합의가 필요하다.\cite{whittlestone2019role, selbst2019fairness}
+
+본 절에서는 실무에서 가장 빈번하게 직면하는 네 가지 트레이드오프 유형을 분석하고, 
+각 상황에서 의사결정을 Support하는 프레임워크를 제시한다.
+
+
+\subsection{공정성 vs 정확도}
+\label{sec:3.2.1}
+
+\paragraph{트레이드오프의 본질}
+
+Fairness과 정확도 간의 트레이드오프는 AI 윤리에서 가장 많이 연구된 주제이다. 
+Corbett-Davies \& Goel(2018)의 연구에 따르면, 
+특정 공정성 제약을 만족시키기 위해 모델을 조정하면 
+전체 예측 정확도가 감소하는 경향이 있다.
+
+이 트레이드오프가 발생하는 근본적인 이유는 두 가지이다. 
+첫째, \textbf{기저율 차이(Base Rate Difference)}이다. 
+집단 간 실제 긍정 비율(예: 대출 상환율, 재범율)이 다른 경우, 
+동일한 선발률을 강제하면 필연적으로 예측 오류가 증가한다. 
+둘째, \textbf{특성 분포 차이}이다. 
+예측에 유용한 특성의 분포가 집단 간에 다른 경우, 
+민감 속성을 제외하거나 그 영향을 제거하면 정보 손실이 발생한다.
+
+수학적으로, 인구통계학적 공정성(DP) 제약 하에서 최적 분류기는 다음과 같이 표현된다:
+
+\begin{equation}
+\hat{Y}^{*}_{DP} = \argmin_{\hat{Y}} \mathcal{L}(\hat{Y}, Y) 
+\quad \text{s.t.} \quad P(\hat{Y}=1|A=0) = P(\hat{Y}=1|A=1)
+\label{eq:dp_constraint}
+\end{equation}
+
+여기서 $\mathcal{L}$은 손실 함수, $A$는 민감 속성이다. 
+이 제약이 없는 최적 분류기 $\hat{Y}^{*}$와 비교할 때, 
+일반적으로 $\mathcal{L}(\hat{Y}^{*}_{DP}, Y) \geq \mathcal{L}(\hat{Y}^{*}, Y)$이다.
+
+
+\paragraph{트레이드오프의 정량화}
+
+공정성-정확도 트레이드오프를 정량화하기 위해 \textbf{파레토 프론티어(Pareto Frontier)} 분석with다. 
+파레토 프론티어는 한 목표를 개선하면 다른 목표가 반드시 악화되는 최적해들의 집합이다.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+ xlabel={인구통계학적 공정성(DP) Difference},
+ ylabel={AUC-ROC},
+ xmin=0, xmax=0.3,
+ ymin=0.7, ymax=0.9,
+ grid=both,
+ width=0.8\textwidth,
+ height=0.5\textwidth,
+]
+% 파레토 프론티어 (개념적 표현)
+\addplot[thick, blue, mark=*] coordinates {
+ (0.25, 0.88)
+ (0.20, 0.87)
+ (0.15, 0.85)
+ (0.10, 0.82)
+ (0.05, 0.78)
+ (0.02, 0.73)
+};
+\addlegendentry{파레토 프론티어}
+
+% 4/5 규칙 임계선
+\draw[dashed, red, thick] (axis cs:0.1,0.7) -- (axis cs:0.1,0.9);
+\node[red] at (axis cs:0.12,0.72) {\small 4/5 규칙};
+
+\end{axis}
+\end{tikzpicture}
+\caption{공정성-정확도 파레토 프론티어 예시. 
+DP Difference가 감소할수록(공정성 증가) AUC-ROC가 감소하는 트레이드오프를 보여준다.}
+\label{fig:pareto_frontier}
+\end{figure}
+
+
+\paragraph{한국 맥락에서의 고려사항}
+
+한국에서 공정성-정확도 트레이드오프를 다룰 때 고려해야 할 특수 상황이 있다.
+
+\textbf{첫째, 블라인드 채용 제도와의 정합성이다.} 
+2019년 채용절차공정화법 개정 이후 공공기관과 대기업에서 블라인드 채용이 확산되었다. 
+이 제도는 학력, 출신 학교, 사진 등을 채용 과정에서 배제하는데, 
+이는 Demographic Parity에 가까운 공정성 정의를 암묵적으로 채택한 것이다. 
+따라서 채용 AI 시스템은 블라인드 채용 정신에 부합하는 공정성 기준을 우선해야 한다.
+
+\textbf{둘째, 금융 분야의 신용평가 규제이다.} 
+금융위원회의 ``신용정보의 이용 및 보호에 관한 법률'' 시행령은 
+신용평가 시 성별, 출신 지역 등의 사용을 제한한다. 
+그러나 예측 정확도 저하로 인한 금융기관 손실과 이로 인한 전체 대출 금리 상승은 
+결국 모든 소비자에게 부담으로 돌아간다. 
+이 경우 ``누구의 정확도인가?''라는 질문이 중요해진다.
+
+\textbf{셋째, 고위험 AI 분야에서의 법적 요구사항이다.} 
+AI 기본법 시행령 제10조가 지정한 11개 고위험 분야에서는 
+공정성 기준이 더 엄격하게 적용되어야 한다. 
+특히 고용.채용, 대출.신용평가, 교육.입학 분야에서는 
+정확도 손실을 감수하더라도 Fairness을 우선하는 것이 법적 요구사항에 부합한다.
+
+
+\paragraph{의사결정 가이드라인}
+
+공정성-정확도 트레이드오프에서 의사결정을 위한 가이드라인을 제시한다.
+
+\begin{table}[htbp]
+\centering
+\caption{공정성-정확도 트레이드오프 의사결정 매트릭스}
+\label{tab:fairness_accuracy_matrix}
+\begin{tabular}{p{3cm}p{4cm}p{4cm}p{3cm}}
+\toprule
+\textbf{상황} & \textbf{공정성 우선 조건} & \textbf{정확도 우선 조건} & \textbf{권장 접근} \\
+\midrule
+고위험 AI 분야 (시행령 제10조) & 
+항상 & 
+해당 없음 & 
+DP Ratio $\geq$ 0.9 목표 \\
+\midrule
+역사적 차별 존재 영역 & 
+기저율 차이가 차별의 결과인 경우 & 
+기저율 차이가 본질적 차이인 경우 & 
+이해관계자 협의 후 결정 \\
+\midrule
+오류 비용 비대칭 & 
+FN 비용이 특정 집단에 집중되는 경우 & 
+FP/FN 비용이 집단 간 동등한 경우 & 
+Equal Opportunity 적용 \\
+\midrule
+법적 명시 규제 존재 & 
+항상 (예: 채용, 신용평가) & 
+해당 없음 & 
+법적 기준 준수 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\paragraph{기술적 완화 전략}
+
+공정성-정확도 트레이드오프를 완화하기 위한 기술적 접근법을 소개한다.
+
+\textbf{1. 공정성 제약 학습 (In-processing)}
+
+Fairlearn\cite{bellamy2019ai}의 \texttt{ExponentiatedGradient} 알고리즘은 
+공정성 제약을 만족하면서 정확도 손실을 최소화하는 모델을 학습한다.
+
+\begin{lstlisting}[language=Python, caption={Fairness Constrained Learning with Fairlearn}, label={lst:fairlearn_mitigation}]
+from fairlearn.reductions import (
+ ExponentiatedGradient, 
+ DemographicParity,
+ EqualizedOdds,
+)
+from sklearn.linear_model import LogisticRegression
+
+# Base Estimator
+base_estimator = LogisticRegression(solver='lbfgs', max_iter=1000)
+
+# Define Fairness Constraint
+constraint = DemographicParity(difference_bound=0.05)
+# Or: constraint = EqualizedOdds(difference_bound=0.05)
+
+# Train with Fairness Constraint
+mitigator = ExponentiatedGradient(
+ estimator=base_estimator,
+ constraints=constraint,
+ eps=0.01, # Constraint violation tolerance
+)
+
+mitigator.fit(X_train, y_train, sensitive_features=sensitive_train)
+
+# Prediction
+y_pred_fair = mitigator.predict(X_test)
+\end{lstlisting}
+
+\textbf{2. 후처리 임계값 조정 (Post-processing)}
+
+집단별로 다른 분류 임계값을 적용하여 Fairness을 달성하는 방법이다. 
+이 방법은 모델 재학습 없이 적용 가능하다는 장점이 있다.
+
+\begin{lstlisting}[language=Python, caption={Threshold Optimization by Group}, label={lst:threshold_optimization}]
+from fairlearn.postprocessing import ThresholdOptimizer
+
+# Create ThresholdOptimizer
+postprocess = ThresholdOptimizer(
+ estimator=trained_model,
+ constraints="demographic_parity",
+ objective="accuracy_score",
+ prefit=True,
+)
+
+# Fit ThresholdOptimizer
+postprocess.fit(X_train, y_train, sensitive_features=sensitive_train)
+
+# Predict with fairness
+y_pred_fair = postprocess.predict(X_test, sensitive_features=sensitive_test)
+\end{lstlisting}
+
+\textbf{3. 파레토 최적해 탐색}
+
+여러 공정성-정확도 조합을 탐색하여 의사결정자에게 선택지를 제공한다.
+
+\begin{lstlisting}[language=Python, caption={Pareto Frontier Exploration}, label={lst:pareto_search}]
+def explore_pareto_frontier(
+    model_class, X_train, y_train, sensitive_train,
+    X_test, y_test, sensitive_test,
+    epsilon_values=[0.01, 0.02, 0.05, 0.1, 0.2]
+):
+    """Explore fairness-accuracy tradeoff"""
+    results = []
+    for eps in epsilon_values:
+        # Train with Fairness Constraint
+        const = DemographicParity(difference_bound=eps)
+        mitigator = ExponentiatedGradient(
+            estimator=model_class(),
+            constraints=const, eps=eps
+        )
+        mitigator.fit(X_train, y_train, 
+                      sensitive_features=sensitive_train)
+        
+        # Prediction and Metrics
+        y_pred = mitigator.predict(X_test)
+        auc = roc_auc_score(y_test, mitigator.predict(X_test))
+        dp_diff = demographic_parity_difference(
+            y_test, y_pred, sensitive_features=sensitive_test
+        )
+        results.append({'eps': eps, 'auc': auc, 'dp': dp_diff})
+    return results
+\end{lstlisting}
+
+
+%----------------------------------------------------------
+\subsection{투명성 vs 영업비밀/Privacy}
+\label{sec:3.2.2}
+
+\paragraph{트레이드오프의 본질}
+
+AI 시스템의 투명성 요구와 기업의 영업비밀 보호, 
+그리고 개인정보 Privacy 보호 간에는 본질적인 긴장이 존재한다.
+
+\textbf{투명성 vs 영업비밀} 측면에서, 
+모델의 알고리즘, 특성 중요도, 학습 데이터 특성 등을 공개하면 
+경쟁사가 유사한 모델을 개발하거나 시스템의 취약점을 악용할 수 있다. 
+특히 금융, 보험, 신용평가 분야에서 예측 모델은 
+기업의 핵심 경쟁력이자 수년간의 R\&D 투자 결과물이다.
+
+\textbf{투명성 vs Privacy} 측면에서, 
+모델 설명을 상세하게 제공하면 학습 데이터에 포함된 
+개인정보가 간접적으로 유출될 수 있다. 
+특히 멤버십 추론 Attack(Membership Inference Attack)이나 
+모델 역전 Attack(Model Inversion Attack)을 통해 
+학습 데이터의 개인을 식별할 가능성이 있다.
+
+
+\paragraph{법적 요구사항의 충돌}
+
+한국 법률 체계에서 이 트레이드오프는 다음과 같은 법률 간 충돌로 나타난다.
+
+\begin{itemize}
+ \item \textbf{투명성 요구}: 
+ AI 기본법 제23조(투명성 및 설명 확보), 
+ 개인정보 보호법 제37조의2(자동화된 결정에 대한 설명 요구권)
+ 
+ \item \textbf{영업비밀 보호}: 
+ 부정경쟁방지 및 영업비밀보호에 관한 법률 제2조(영업비밀의 정의),
+ 특허법(알고리즘 특허)
+ 
+ \item \textbf{Privacy 보호}: 
+ 개인정보 보호법 제3조(개인정보 보호 원칙),
+ 신용정보법 제32조(개인신용정보의 제공.활용에 대한 동의)
+\end{itemize}
+
+EU AI Act는 이 충돌을 인식하고, 
+제78조에서 ``영업비밀 및 기밀 비즈니스 정보의 보호''를 명시하면서도 
+``이러한 보호가 투명성 의무의 효과적인 이행을 저해해서는 안 된다''고 규정한다.
+
+
+\paragraph{계층적 투명성 Model}
+
+이 트레이드오프를 관리하기 위해 \textbf{계층적 투명성(Tiered 투명성)} 모델을 Proposal한다. 
+이해관계자의 Role과 필요에 따라 Differential화된 수준의 정보를 제공하는 접근법이다.
+
+\begin{table}[htbp]
+\centering
+\caption{계층적 투명성 Model}
+\label{tab:tiered_transparency}
+\begin{tabular}{p{2.5cm}p{3cm}p{4cm}p{4cm}}
+\toprule
+\textbf{투명성 Level} & \textbf{Target} & \textbf{제공 정보} & \textbf{보호 조치} \\
+\midrule
+Level 1: 공개 & 
+일반 대중 & 
+시스템 존재 고지, 일반적 작동 원리, 이의 제기 절차 & 
+해당 없음 \\
+\midrule
+Level 2: 개인화 & 
+영향받는 개인 & 
+개별 결정 설명, 주요 영향 요인 (Top-5), 결정 변경 가능 조건 & 
+집계 정보만 제공, 모델 파라미터 비공개 \\
+\midrule
+Level 3: 규제 & 
+규제 기관, 감사인 & 
+모델 카드, 공정성 평가 결과, 검증 절차, 샘플 설명 & 
+NDA 체결, 접근 로그 기록 \\
+\midrule
+Level 4: 완전 & 
+내부 거버넌스 팀 & 
+전체 모델 아키텍처, 학습 데이터 통계, 소스 코드 & 
+접근 권한 관리, 감사 Tracking \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\paragraph{기술적 해결 방안}
+
+투명성 보호 간의 균형을 위한 기술적 접근법을 소개한다.
+
+\textbf{1. 차분 Privacy 적용 설명(DP Explanations)}
+
+설명 정보에 노이즈를 추가하여 개별 학습 데이터 추론을 방지한다.
+
+\begin{lstlisting}[language=Python, caption={SHAP with Differential Privacy}, label={lst:dp_shap}]
+def dp_shap_explanation(explainer, instance, epsilon=1.0, sensitivity=0.1):
+    """SHAP values with Differential Privacy noise"""
+    shap_values = explainer.shap_values(instance.reshape(1, -1))
+    if isinstance(shap_values, list):
+        shap_values = shap_values[1] # Binary Class 1
+    
+    shap_values = shap_values.flatten()
+    # Add Laplace noise for privacy
+    scale = sensitivity / epsilon
+    noise = np.random.laplace(0, scale, shap_values.shape)
+    return shap_values + noise
+\end{lstlisting}
+
+\textbf{2. 집계 based 설명(Aggregated Explanations)}
+
+개별 데이터 포인트가 아닌 집계된 통계만 제공하여 Privacy를 보호한다.
+
+\begin{lstlisting}[language=Python, caption={Aggregated Feature Importance}, label={lst:aggregated_explanation}]
+def generate_aggregated_explanation(shap_values, feature_names, min_size=100):
+    """Aggregate explanation for K-Anonymity"""
+    if len(shap_values) < min_size:
+        raise ValueError(f"Sample size < {min_size}")
+    
+    explanation = {}
+    for i, feat in enumerate(feature_names):
+        feat_shap = shap_values[:, i]
+        explanation[feat] = {
+            'abs_impact': float(np.abs(feat_shap).mean()),
+            'p50': float(np.percentile(feat_shap, 50))
+        }
+    return explanation
+\end{lstlisting}
+
+\textbf{3. 모델 증류(Model Distillation)를 통한 설명}
+
+원본 모델 대신 단순화된 대리 Model(Surrogate 모델)을 공개하여 
+핵심 알고리즘을 보호하면서 설명 가능성을 제공한다.
+
+\begin{lstlisting}[language=Python, caption={Generating Surrogate Model for Explanation}, label={lst:surrogate_model}]
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+
+def create_explainable_surrogate(
+ original_model,
+ X_train: np.ndarray,
+ max_depth: int = 5,
+ min_fidelity: float = 0.9,
+) -> tuple:
+ """
+ Create explainable surrogate for original model
+ 
+ Parameters
+ ----------
+ original_model : Any
+ Original black-box model
+ X_train : np.ndarray
+ Learning Data
+ max_depth : int
+ ( )
+ min_fidelity : float
+ Model Minimum days 
+ 
+ Returns
+ -------
+ tuple
+ ( Model, )
+ """
+ # Use original model predictions as labels
+ y_original = original_model.predict(X_train)
+ 
+ # Train interpretable surrogate model
+ surrogate = DecisionTreeClassifier(
+ max_depth=max_depth,
+ min_samples_leaf=50, # Prevent overfitting
+ random_state=42,
+ )
+ surrogate.fit(X_train, y_original)
+ 
+ # Calculate fidelity
+ y_surrogate = surrogate.predict(X_train)
+ fidelity = accuracy_score(y_original, y_surrogate)
+ 
+ if fidelity < min_fidelity:
+ raise ValueError(
+ f" Model ({fidelity:.2%}) "
+ f"Minimum ({min_fidelity:.0%}) . "
+ f"max_depth Model ."
+ )
+ 
+ return surrogate, fidelity
+\end{lstlisting}
+
+
+%----------------------------------------------------------
+\subsection{개인화 vs 차별 금지}
+\label{sec:3.2.3}
+
+\paragraph{트레이드오프의 본질}
+
+개인화(Personalization)와 차별 금지(Non-discrimination)는 
+표면적으로는 모두 ``개인을 적절히 대우한다''는 목표를 공유하지만, 
+실제로는 충돌할 수 있다.
+
+\textbf{개인화}는 개인의 특성, 선호, 행동 패턴에 based하여 
+맞춤형 서비스나 추천을 제공하는 것이다. 
+이는 사용자 경험을 향상시키고 서비스 효율성을 높인다.
+
+\textbf{차별 금지}는 민감 속성(성별, 연령, 인종 등)에 based하여 
+불리한 대우를 하지 않는 것이다.
+
+문제는 개인화에 사용되는 특성들이 민감 속성 상관관계를 가질 때 발생한다. 
+예를 들어, 지역 based 맞춤 서비스는 특정 지역 거주자에게 
+더 높은 가격이나 제한된 서비스를 제공할 수 있으며, 
+이는 해당 지역의 인구 구성에 따라 간접적 차별로 이어질 수 있다.
+
+
+\paragraph{개인화-차별 경계의 모호성}
+
+다음 사례들은 개인화와 차별의 경계가 얼마나 모호한지 보여준다.
+
+\begin{table}[htbp]
+\centering
+\caption{개인화 vs 차별: 경계 Case}
+\label{tab:personalization_discrimination}
+\begin{tabular}{p{3cm}p{4cm}p{3cm}p{4cm}}
+\toprule
+\textbf{Case} & \textbf{개인화 관점} & \textbf{차별 우려} & \textbf{한국 법적 Decision} \\
+\midrule
+보험료 Differential & 
+개인별 위험도에 따른 합리적 가격 책정 & 
+건강 상태, 유전 정보 based 차별 & 
+보험업법상 합리적 Differential은 허용, 유전정보 사용 금지 \\
+\midrule
+대출 금리 Differential & 
+신용 리스크에 따른 리스크 프리미엄 & 
+소득, 지역 based 간접 차별 & 
+신용정보법상 합리적 Differential 허용, 성별.지역 직접 사용 금지 \\
+\midrule
+채용 추천 알고리즘 & 
+적합한 후보자-직무 매칭 & 
+성별, 연령 고정관념 반영 & 
+남녀고용평등법 위반 가능성 \\
+\midrule
+콘텐츠 추천 & 
+사용자 선호 반영 & 
+필터 버블, 정보 격차 & 
+명시적 규제 없음, 사회적 논의 진행 중 \\
+\midrule
+가격 동적 책정 & 
+수요-공급 based 효율적 가격 & 
+특정 집단에 높은 가격 & 
+공정거래법 부당한 차별 금지 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\paragraph{프록시 차별 탐지 및 방지}
+
+개인화 시스템에서 프록시 차별을 탐지하고 방지하는 것이 핵심이다.
+
+\begin{lstlisting}[language=Python, caption={Proxy Discrimination Detection and Feature Removal}, label={lst:proxy_detection}]
+import numpy as np
+import pandas as pd
+from typing import List, Tuple
+
+class ProxyDiscriminationDetector:
+ """
+ Detect and mitigate proxy discrimination
+ 
+ Identify features correlated with sensitive attributes
+ and exclude or adjust them from personalization systems
+ """
+ 
+ def __init__(
+ self,
+ sensitive_attrs: List[str],
+ correlation_threshold: float = 0.3,
+ ):
+ """
+ Parameters
+ ----------
+ sensitive_attrs : list
+ List of sensitive attributes
+ correlation_threshold : float
+ Correlation threshold for proxy detection
+ """
+ self.sensitive_attrs = sensitive_attrs
+ self.correlation_threshold = correlation_threshold
+ self.proxy_map = {}
+ 
+ def fit(
+ self,
+ X: pd.DataFrame,
+ sensitive_df: pd.DataFrame,
+ ) -> 'ProxyDiscriminationDetector':
+ """
+ Learn proxy relationships
+ 
+ Parameters
+ ----------
+ X : pd.DataFrame
+ Feature data
+ sensitive_df : pd.DataFrame
+ Sensitive attribute data
+ """
+ self.proxy_map = {}
+ 
+ # Encode sensitive attributes
+ sensitive_numeric = sensitive_df.copy()
+ for col in sensitive_numeric.columns:
+ if sensitive_numeric[col].dtype == 'object':
+ sensitive_numeric[col] = pd.factorize(sensitive_numeric[col])[0]
+ 
+ # Encode features
+ X_numeric = X.copy()
+ for col in X_numeric.columns:
+ if X_numeric[col].dtype == 'object':
+ X_numeric[col] = pd.factorize(X_numeric[col])[0]
+ 
+ # Analyze correlations
+ for sens_attr in self.sensitive_attrs:
+ if sens_attr not in sensitive_numeric.columns:
+ continue
+ 
+ proxies = []
+ sens_values = sensitive_numeric[sens_attr]
+ 
+ for feat in X_numeric.columns:
+ try:
+ corr = sens_values.corr(X_numeric[feat])
+ if pd.notna(corr) and abs(corr) >= self.correlation_threshold:
+ proxies.append({
+ 'feature': feat,
+ 'correlation': corr,
+ 'strength': 'strong' if abs(corr) >= 0.5 else 'moderate',
+ })
+ except Exception:
+ continue
+ 
+ if proxies:
+ self.proxy_map[sens_attr] = sorted(
+ proxies,
+ key=lambda x: abs(x['correlation']),
+ reverse=True
+ )
+ 
+ return self
+ 
+ def get_safe_features(
+ self,
+ all_features: List[str],
+ remove_strong_only: bool = False,
+ ) -> Tuple[List[str], List[str]]:
+ """
+ Return list of safe features (non-proxies)
+ 
+ Parameters
+ ----------
+ all_features : list
+ List of all features
+ remove_strong_only : bool
+ Whether to remove only strong proxies
+ 
+ Returns
+ -------
+ tuple
+ ( , )
+ """
+ proxy_features = set()
+ 
+ for sens_attr, proxies in self.proxy_map.items():
+ for proxy in proxies:
+ if remove_strong_only and proxy['strength'] != 'strong':
+ continue
+ proxy_features.add(proxy['feature'])
+ 
+ safe_features = [f for f in all_features if f not in proxy_features]
+ removed_features = list(proxy_features)
+ 
+ return safe_features, removed_features
+ 
+ def generate_report(self) -> str:
+ """Generate proxy discrimination report"""
+ report = "# Proxy Discrimination Analysis Report\n\n"
+ 
+ if not self.proxy_map:
+ report += "No proxy relationships detected.\n"
+ return report
+ 
+ for sens_attr, proxies in self.proxy_map.items():
+ report += f"## Sensitive Attribute: {sens_attr}\n\n"
+ report += "| Feature | Correlation | Strength | Recommendation |\n"
+ report += "|---------|-------------|----------|----------------|\n"
+ 
+ for proxy in proxies:
+ action = "Remove" if proxy['strength'] == 'strong' else "Monitor"
+ report += (
+ f"| {proxy['feature']} | "
+ f"{proxy['correlation']:.3f} | "
+ f"{proxy['strength']} | "
+ f"{action} |\n"
+ )
+ 
+ report += "\n"
+ 
+ return report
+\end{lstlisting}
+
+
+\paragraph{공정한 개인화 프레임워크}
+
+개인화와 Fairness을 동시에 달성하기 위한 프레임워크를 제시한다.
+
+\begin{enumerate}
+ \item \textbf{프록시 감사(Proxy 감사)}: 
+ 개인화에 사용되는 모든 특성에 대해 민감 속성의 상관관계 분석
+ 
+ \item \textbf{영향 평가(Impact 평가)}: 
+ 개인화 결과가 민감 속성 집단 간에 어떻게 분포하는지 분석
+ 
+ \item \textbf{제약 적용(Constraint Application)}: 
+ 집단 간 결과 격차가 임계값을 초과하면 개인화 강도 조절
+ 
+ \item \textbf{지속 모니터링(Continuous 모니터링)}: 
+ 실시간으로 공정성 메트릭을 추적하고 이상 감지 시 알림
+\end{enumerate}
+
+
+%----------------------------------------------------------
+\subsection{의사결정 프레임워크: 원칙 우선순위 결정 방법론}
+\label{sec:3.2.4}
+
+앞서 살펴본 트레이드오프들은 기술적 최적화만으로 해결할 수 없다. 
+조직은 자신의 가치관, 사업 맥락, 법적 요구사항을 종합적으로 고려하여
+원칙 간 우선순위를 결정해야 한다.\cite{friedman2019value, floridi2022unified} 
+본 절에서는 이러한 의사결정을 체계적으로 Support하는 프레임워크를 제시한다.
+
+
+\paragraph{Principle 우선순위 결정 4단계 프로세스}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+ node distance=2.5cm,
+ box/.style={rectangle, draw, rounded corners, minimum width=3cm, minimum height=1cm, align=center},
+ arrow/.style={->, thick},
+]
+
+\node[box] (step1) {1. 맥락 분석\\Context Analysis};
+\node[box, right of=step1] (step2) {2. 이해관계자 식별\\Stakeholder Mapping};
+\node[box, right of=step2] (step3) {3. 가치 Alignment\\Value Alignment};
+\node[box, right of=step3] (step4) {4. 결정 및 문서화\\Decision \& Documentation};
+
+\draw[arrow] (step1) -- (step2);
+\draw[arrow] (step2) -- (step3);
+\draw[arrow] (step3) -- (step4);
+
+\end{tikzpicture}
+\caption{Principle 우선순위 결정 4단계 프로세스}
+\label{fig:priority_process}
+\end{figure}
+
+\textbf{1단계: 맥락 분석(Context Analysis)}
+
+AI 시스템이 배포될 맥락을 분석하여 어떤 원칙이 특히 중요한지 파악한다.
+
+\begin{itemize}
+ \item \textbf{리스크 Level}: 시행령 제10조 고위험 분야 해당 여부
+ \item \textbf{영향 Scope}: 영향받는 개인의 수와 영향의 심각성
+ \item \textbf{가역성}: 결정 번복 가능성
+ \item \textbf{대안 존재}: AI 외 대안적 의사결정 방법 존재 여부
+ \item \textbf{법적 요구사항}: 적용되는 법률 및 규제
+\end{itemize}
+
+\textbf{2단계: 이해관계자 식별(Stakeholder Mapping)}
+
+AI 시스템과 관련된 모든 이해관계자를 식별하고, 
+각자의 이익과 우려사항을 파악한다.
+
+\begin{table}[htbp]
+\centering
+\caption{이해관계자 분석 템플릿}
+\label{tab:stakeholder_analysis}
+\begin{tabular}{p{2.5cm}p{3cm}p{3cm}p{2.5cm}p{2.5cm}}
+\toprule
+\textbf{이해관계자} & \textbf{이익} & \textbf{우려사항} & \textbf{영향력} & \textbf{우선 Principle} \\
+\midrule
+최종 사용자 & 
+편의성, 공정한 대우 & 
+차별, Privacy 침해 & 
+낮음 & 
+공정성, Privacy \\
+\midrule
+비즈니스 오너 & 
+수익, 효율성 & 
+규제 위반, 평판 리스크 & 
+높음 & 
+정확도, 투명성 \\
+\midrule
+규제 기관 & 
+법 준수, 공익 보호 & 
+위반 사례, 피해 발생 & 
+높음 & 
+공정성, 책임성 \\
+\midrule
+개발팀 & 
+기술 우수성, 효율성 & 
+과도한 제약, 복잡성 & 
+중간 & 
+정확도, 안전성 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{3단계: 가치 Alignment(Value 정렬)}
+
+조직의 미션, 비전, 핵심 가치와 AI 윤리 원칙을 정렬한다.
+
+\begin{lstlisting}[language=Python, caption={Principle Priority Scoring}, label={lst:priority_scoring}]
+from typing import Dict, List
+from dataclasses import dataclass
+
+@dataclass
+class PrincipleWeight:
+ """Weights for each principle"""
+ fairness: float = 0.0
+ transparency: float = 0.0
+ accountability: float = 0.0
+ safety: float = 0.0
+ privacy: float = 0.0
+ accuracy: float = 0.0
+ 
+ def normalize(self) -> 'PrincipleWeight':
+ """Normalize weights (sum to 1)"""
+ total = (
+ self.fairness + self.transparency + self.accountability +
+ self.safety + self.privacy + self.accuracy
+ )
+ if total == 0:
+ return self
+ return PrincipleWeight(
+ fairness=self.fairness / total,
+ transparency=self.transparency / total,
+ accountability=self.accountability / total,
+ safety=self.safety / total,
+ privacy=self.privacy / total,
+ accuracy=self.accuracy / total,
+ )
+
+
+def calculate_principle_priority(
+ context: Dict[str, any],
+ stakeholder_weights: Dict[str, float],
+ stakeholder_priorities: Dict[str, PrincipleWeight],
+) -> PrincipleWeight:
+ """
+ Calculate priority based on context and stakeholders
+ 
+ Parameters
+ ----------
+ context : dict
+ Context analysis result {'high_risk': bool, 'impact_severity': float, ...}
+ stakeholder_weights : dict
+ Stakeholder weights {'user': 0.3, 'business': 0.3, 'regulator': 0.4}
+ stakeholder_priorities : dict
+ Stakeholder principle priorities
+ 
+ Returns
+ -------
+ PrincipleWeight
+ Combined principle priority
+ """
+ # Initialize base weights
+ combined = PrincipleWeight()
+ 
+ # Aggregate stakeholder weights
+ for stakeholder, weight in stakeholder_weights.items():
+ if stakeholder not in stakeholder_priorities:
+ continue
+ 
+ sp = stakeholder_priorities[stakeholder]
+ combined.fairness += weight * sp.fairness
+ combined.transparency += weight * sp.transparency
+ combined.accountability += weight * sp.accountability
+ combined.safety += weight * sp.safety
+ combined.privacy += weight * sp.privacy
+ combined.accuracy += weight * sp.accuracy
+ 
+ # Adjust based on context
+ if context.get('high_risk', False):
+ # High-risk: Boost Fairness, Accountability, Safety
+ combined.fairness *= 1.5
+ combined.accountability *= 1.3
+ combined.safety *= 1.3
+ 
+ if context.get('privacy_sensitive', False):
+ # Privacy sensitive: Boost Privacy
+ combined.privacy *= 1.5
+ 
+ if context.get('high_impact', False):
+ # High impact: Boost Transparency, Accountability
+ combined.transparency *= 1.3
+ combined.accountability *= 1.3
+ 
+ return combined.normalize()
+
+
+# Example
+def example_priority_calculation():
+ """Example: Recruiting AI System priority calculation"""
+ 
+ # Context Analysis
+ context = {
+ 'high_risk': True, # High-risk area: Employment/Recruiting
+ 'privacy_sensitive': True, # Processing personal data
+ 'high_impact': True, # Impact on employment
+ }
+ 
+ # Stakeholder Weights
+ stakeholder_weights = {
+ 'job_applicants': 0.35,
+ 'hr_team': 0.25,
+ 'regulator': 0.25,
+ 'company_leadership': 0.15,
+ }
+ 
+ # Stakeholder Priorities
+ stakeholder_priorities = {
+ 'job_applicants': PrincipleWeight(
+ fairness=0.35, transparency=0.25, privacy=0.20,
+ accountability=0.10, safety=0.05, accuracy=0.05
+ ),
+ 'hr_team': PrincipleWeight(
+ accuracy=0.30, fairness=0.25, transparency=0.15,
+ accountability=0.15, safety=0.10, privacy=0.05
+ ),
+ 'regulator': PrincipleWeight(
+ fairness=0.30, accountability=0.25, transparency=0.20,
+ privacy=0.15, safety=0.05, accuracy=0.05
+ ),
+ 'company_leadership': PrincipleWeight(
+ accuracy=0.25, fairness=0.20, accountability=0.20,
+ transparency=0.15, safety=0.10, privacy=0.10
+ ),
+ }
+ 
+ priority = calculate_principle_priority(
+ context, stakeholder_weights, stakeholder_priorities
+ )
+ 
+ return priority
+\end{lstlisting}
+
+\textbf{4단계: 결정 및 문서화(Decision \& Documentation)}
+
+최종 우선순위를 결정하고, 그 근거를 문서화한다. 
+시행령 제15조에 따라 이 문서는 \textbf{5년간 보관}해야 한다.
+
+
+\paragraph{충돌 해결 의사결정 트리}
+
+원칙 간 충돌 상황에서 빠른 의사결정을 Support하는 의사결정 트리를 제시한다.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+ grow=down,
+ level 1/.style={sibling distance=6cm, level distance=2cm},
+ level 2/.style={sibling distance=3cm, level distance=2cm},
+ level 3/.style={sibling distance=2cm, level distance=2cm},
+ decision/.style={rectangle, draw, fill=yellow!15, inner sep=4pt, font=\small, align=center},
+ outcome/.style={rectangle, draw, rounded corners, fill=green!10, font=\small, align=center},
+ edge from parent/.style={draw, -latex},
+]
+
+\node[decision] {법적 요구사항\\명시 여부?}
+ child {
+ node[decision] {안전 위험\\존재?}
+ child {
+ node[outcome] {안전성\\최우선}
+ edge from parent node[left, font=\scriptsize] {예}
+ }
+ child {
+ node[decision] {고위험\\AI 분야?}
+ child {
+ node[outcome] {공정성\\우선}
+ edge from parent node[left, font=\scriptsize] {예}
+ }
+ child {
+ node[outcome] {이해관계자\\협의}
+ edge from parent node[right, font=\scriptsize] {아니오}
+ }
+ edge from parent node[right, font=\scriptsize] {아니오}
+ }
+ edge from parent node[left, font=\scriptsize] {아니오}
+ }
+ child {
+ node[outcome] {법적 기준\\컴플라이언스}
+ edge from parent node[right, font=\scriptsize] {예}
+ };
+
+\end{tikzpicture}
+\caption{Principle 충돌 해결 의사결정 트리}
+\label{fig:decision_tree}
+\end{figure}
+
+
+\paragraph{실무 도구: 원칙 충돌 해결 워크시트}
+
+다음은 원칙 충돌 상황에서 활용할 수 있는 워크시트이다.
+
+\begin{table}[htbp]
+\centering
+\caption{[실무 도구 3-2] 원칙 충돌 해결 워크시트}
+\label{tab:conflict_worksheet}
+\begin{tabular}{|p{4cm}|p{10cm}|}
+\hline
+\textbf{항목} & \textbf{작성 내용} \\
+\hline
+\textbf{1. 충돌 상황 기술} & 
+\begin{minipage}[t]{\linewidth}
+\vspace{2pt}
+어떤 원칙들이 충돌하는가? \\
+예: 공정성(DP Ratio 0.75) vs 정확도(AUC 0.85 -> 0.78)
+\vspace{2pt}
+\end{minipage} \\
+\hline
+\textbf{2. 맥락 정보} & 
+\begin{minipage}[t]{\linewidth}
+\vspace{2pt}
+- 적용 분야: \_\_\_\_\_\_\_\_ \\
+- 고위험 AI 해당 여부: $\square$ 해당 / $\square$ 비해당 \\
+- 영향받는 이용자 수: \_\_\_\_\_\_\_\_ \\
+- 결정 가역성: $\square$ 높음 / $\square$ 중간 / $\square$ 낮음
+\vspace{2pt}
+\end{minipage} \\
+\hline
+\textbf{3. 법적 요구사항} & 
+\begin{minipage}[t]{\linewidth}
+\vspace{2pt}
+- 적용 법률: \_\_\_\_\_\_\_\_ \\
+- 관련 조항: \_\_\_\_\_\_\_\_ \\
+- 법적 기준 존재 여부: $\square$ 예 / $\square$ 아니오
+\vspace{2pt}
+\end{minipage} \\
+\hline
+\textbf{4. 이해관계자 의견} & 
+\begin{minipage}[t]{\linewidth}
+\vspace{2pt}
+- 최종 사용자: \_\_\_\_\_\_\_\_ \\
+- 비즈니스 오너: \_\_\_\_\_\_\_\_ \\
+- 법무/준수: \_\_\_\_\_\_\_\_ \\
+- AI 거버넌스 담당: \_\_\_\_\_\_\_\_
+\vspace{2pt}
+\end{minipage} \\
+\hline
+\textbf{5. 대안 검토} & 
+\begin{minipage}[t]{\linewidth}
+\vspace{2pt}
+- 대안 A: \_\_\_\_\_\_\_\_ (장점/단점) \\
+- 대안 B: \_\_\_\_\_\_\_\_ (장점/단점) \\
+- 대안 C: \_\_\_\_\_\_\_\_ (장점/단점)
+\vspace{2pt}
+\end{minipage} \\
+\hline
+\textbf{6. 최종 결정} & 
+\begin{minipage}[t]{\linewidth}
+\vspace{2pt}
+- 선택한 대안: \_\_\_\_\_\_\_\_ \\
+- 우선한 원칙: \_\_\_\_\_\_\_\_ \\
+- 희생한 원칙: \_\_\_\_\_\_\_\_ \\
+- 결정 근거: \_\_\_\_\_\_\_\_
+\vspace{2pt}
+\end{minipage} \\
+\hline
+\textbf{7. 완화 조치} & 
+\begin{minipage}[t]{\linewidth}
+\vspace{2pt}
+희생된 원칙의 영향을 최소화하기 위한 조치: \\
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+\vspace{2pt}
+\end{minipage} \\
+\hline
+\textbf{8. 승인} & 
+\begin{minipage}[t]{\linewidth}
+\vspace{2pt}
+- 결정자: \_\_\_\_\_\_\_\_ (직위) \\
+- 일자: \_\_\_\_\_\_\_\_ \\
+- 서명: \_\_\_\_\_\_\_\_
+\vspace{2pt}
+\end{minipage} \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\paragraph{트레이드오프 관리의 핵심 Principle}
+
+본 절의 내용을 종합하여 트레이드오프 관리의 핵심 원칙을 정리한다.
+
+\begin{enumerate}
+ \item \textbf{명시적 결정}: 
+ 트레이드오프를 암묵적으로 회피하지 말고, 명시적으로 결정하고 문서화한다.
+ 
+ \item \textbf{법적 기준 우선}: 
+ 법률이 명시적 기준을 제시하는 경우, 해당 기준을 최우선으로 적용한다.
+ 
+ \item \textbf{안전 우선}: 
+ 인명 피해나 심각한 위험이 관련된 경우, 안전성을 최우선한다.
+ 
+ \item \textbf{이해관계자 참여}: 
+ 기술팀만의 결정이 아닌, 다양한 이해관계자의 의견을 반영한다.
+ 
+ \item \textbf{정기적 재검토}: 
+ 한 번 결정한 우선순위도 환경 변화에 따라 재검토한다.
+ 
+ \item \textbf{완화 조치 병행}: 
+ 희생된 원칙의 영향을 최소화하기 위한 보완 조치를 함께 시행한다.
+ 
+ \item \textbf{투명한 공개}: 
+ 결정 내용과 근거를 이해관계자에게 투명하게 공개한다.
+\end{enumerate}
+
+\section{Ethics 원칙의 문서화와 커뮤니케이션}
+
+윤리적 검토 과정은 반드시 기록으로 남아야 한다.\cite{madaio2020co} 이는 향후 법적 분쟁 시 '상당한 주의(Due Diligence)'를 기울였음을 입증하는 증거가 된다\cite{raji2020closing}.
+
+\subsection{윤리적 의사결정 기록}
+\begin{itemize}
+ \item \textbf{검토 안건}: 제기된 윤리적 이슈 (예: 안면 인식 데이터 수집 시 동의 절차의 모호성).
+ \item \textbf{참여자}: 윤리위원회 위원, 법무팀, 개발팀, 외부 전문가.
+ \item \textbf{논의 내용}: 찬성 및 반대 의견의 요지.
+ \item \textbf{결정 사항}: 조건부 승인(추가 안전장치 마련 조건) 또는 반려.
+ \item \textbf{사후 관리}: 결정 사항의 이행 여부 Check 계획.
+\end{itemize}
+
+\begin{practicaltool}{AI 윤리 원칙 운용화 워크시트}
+\textbf{목표}: 우리 조직의 핵심 가치를 구체적인 행동 규범으로 변환한다.
+
+\begin{tabular}{|p{0.2\textwidth}|p{0.25\textwidth}|p{0.25\textwidth}|p{0.2\textwidth}|}
+\hline
+\textbf{핵심 가치} & \textbf{Definition (정의)} & \textbf{측정 지표 (지표)} & \textbf{허용 기준 (Threshold)} \\ \hline
+\textbf{공정성} & 채용 AI가 성별에 따른 차별을 하지 않음 & 인구통계학적 공정성(DP) Difference & 0.1 미만 (10\% 이내 차이) \\ \hline
+\textbf{안전성} & 챗봇이 유해한 콘텐츠를 생성하지 않음 & 독성 점수 (Toxicity Score, API 활용) & 0.01 미만 \\ \hline
+\textbf{개인정보보호} & 학습 데이터에 식별 정보가 포함되지 않음 & PII 검출 건수 & 0건 (완전 제거) \\ \hline
+\textbf{투명성} & 사용자가 AI와의 상호작용임을 인지함 & 사용자 인지율 설문조사 & 95\% 이상 \\ \hline
+\end{tabular}
+\end{practicaltool}
+
+\begin{practicaltool}{Principle 충돌 해결 의사결정 트리}
+\begin{enumerate}
+ \item \textbf{질문 1}: 해당 충돌이 법적 의무 사항(Legal 요구사항)과 관련이 있는가?
+ \begin{itemize}
+ \item Yes $\rightarrow$ 법적 의무를 무조건 우선.
+ \item No $\rightarrow$ 질문 2로 이동.
+ \end{itemize}
+ \item \textbf{질문 2}: 인명 사고나 심각한 인권 침해 위험이 있는가?
+ \begin{itemize}
+ \item Yes $\rightarrow$ 안전 및 인권 보호를 효율성보다 우선.
+ \item No $\rightarrow$ 질문 3으로 이동.
+ \end{itemize}
+ \item \textbf{질문 3}: 이해관계자(고객, 사회)의 신뢰에 미치는 영향은 무엇인가?
+ \begin{itemize}
+ \item 장기적 신뢰를 위해 단기적 이익(성능 등)을 희생하는 방향으로 결정.
+ \end{itemize}
+\end{enumerate}
+\end{practicaltool}
+
+\section{정답 없는 난제들: 저자의 견해}
+\label{sec:3.4}
+
+AI 윤리 원칙의 운용화를 다루면서 피해갈 수 없는 질문들이 있다. 학계에서도 아직 합의가 없고, 규제 당국도 명확한 답을 내놓지 못한 난제들이다. 필자는 여기서 의도적으로 ``중립적 정리'' 대신 실무자로서 형성한 \textbf{자신의 견해}를 밝히고자 한다. 고전은 정답이 없는 문제에 대해 논리적 해답을 제시하려는 시도에서 태어나기 때문이다.
+
+\subsection{머신 언러닝(Machine Unlearning): ``잊힐 권리''는 실현 가능한가?}
+\label{sec:3.4.1}
+
+\subsubsection*{문제의 본질}
+
+GDPR 제17조와 한국 개인정보보호법은 ``잊힐 권리(Right to be Forgotten)''를 보장한다. 정보주체는 자신의 데이터를 처리하는 기업에 삭제를 요청할 수 있다. 데이터베이스에서의 삭제는 간단하다. 그런데 그 데이터로 \textbf{학습된 AI 모델}에서는 어떻게 삭제하는가?
+
+이것이 머신 언러닝의 핵심 문제다. 현재까지 가장 확실한 방법은 해당 데이터를 제외하고 모델을 처음부터 재학습하는 것이다. 그러나 수백만 건의 데이터로 수주~수개월을 학습한 대형 모델을 매 삭제 요청마다 재학습한다면, 현실적으로 이 권리는 사문화된다.
+
+\subsubsection*{현재 기술의 한계와 진전}
+
+2025--2026년 현재, 머신 언러닝 분야는 빠르게 발전하고 있으나 아직 성숙 단계에 이르지 못했다\cite{unlearning2026iapp}. 주요 접근법은 다음과 같다:
+
+\begin{itemize}
+    \item \textbf{근사적 언러닝(Approximate Unlearning)}: 삭제 대상 데이터의 영향을 추정하고, 그 영향을 역방향으로 상쇄하는 모델 업데이트를 적용한다. 완전하지 않지만 실용적이다.
+    \item \textbf{선택적 미세조정(Targeted Fine-tuning)}: 삭제 대상 정보와 관련된 출력을 억제하도록 모델을 추가 학습한다. LLM에서 특정 개인 정보나 저작권 콘텐츠를 ``잊히게'' 하는 데 활용된다.
+    \item \textbf{소스 없는 언러닝(Source-free Unlearning)}: UC 리버사이드 연구팀이 2025년 제안한 방법으로, 원본 학습 데이터 없이도 언러닝을 수행할 수 있다. 상업용 LLM처럼 원본 데이터를 보관할 수 없는 상황에서 특히 유망하다.
+\end{itemize}
+
+핵심 난제는 \textbf{검증}이다. 언러닝이 성공했는지를 어떻게 증명하는가? 2023년 NeurIPS 머신 언러닝 챌린지가 벤치마크를 제시했지만, ``확률적 시스템에서 완전한 삭제''에 대한 컨센서스는 2026년 현재도 존재하지 않는다.
+
+\subsubsection*{필자의 견해}
+
+필자는 다음의 입장을 취한다.
+
+\textbf{완벽한 머신 언러닝을 기다리는 것은 잘못된 전략이다.} 기술이 완성되기를 기다리는 동안, 기업은 법적·윤리적 의무를 이행하지 못하는 상태에 놓인다. 대신, \textbf{프라이버시 by 설계(Privacy by Design)} 원칙에 따라 가능한 한 개인식별 정보를 학습에 포함시키지 않는 아키텍처를 선택하는 것이 현실적인 해법이다. 차등 프라이버시(Differential Privacy)를 학습 단계에 적용하면, 특정 개인의 데이터가 모델에 미치는 영향 자체를 수학적으로 제한할 수 있다. 이는 ``삭제''의 문제를 ``처음부터 기억하지 않는'' 문제로 전환하는 패러다임 전환이다.
+
+기업의 실무적 대응 원칙으로 다음을 제안한다:
+\begin{enumerate}
+    \item AI 학습에 사용되는 개인정보의 범위를 최소화하고, 가명처리·익명화를 기본값으로 설정한다.
+    \item 삭제 요청 시 근사적 언러닝을 적용하고, 그 결과를 기록하여 ``상당한 주의(Due Diligence)''의 증거로 보존한다.
+    \item 6개월 단위로 관련 기술의 성숙도를 재평가하고, 더 나은 방법이 등장하면 즉시 채택한다.
+\end{enumerate}
+
+\subsection{생성형 AI의 저작권: 창조와 도용 사이의 회색지대}
+\label{sec:3.4.2}
+
+\subsubsection*{문제의 본질}
+
+GPT-4, Claude, Gemini 등 현세대 대형 언어 모델은 수십억 개의 웹 문서, 도서, 뉴스 기사로 학습되었다. 그 중에는 저작권으로 보호되는 작품들이 포함되어 있다. 이 모델들이 저작물에서 영감을 받거나 패턴을 학습하여 새로운 콘텐츠를 생성할 때, 이는 합법적 영감인가, 아니면 저작권 침해인가?
+
+2025년까지 미국, EU, 한국을 비롯한 주요 국가에서 이 문제에 대한 최종적인 법적 판결은 아직 나오지 않았다. 진행 중인 소송은 수십 건이며, 판결 결과는 AI 산업의 미래를 근본적으로 바꿀 수 있다.
+
+\subsubsection*{필자의 견해}
+
+필자는 이 문제에서 \textbf{기술적 사실과 규범적 판단을 구분}해야 한다고 생각한다.
+
+기술적으로 볼 때, 대형 언어 모델은 개별 저작물을 ``기억''하는 것이 아니라 그로부터 통계적 패턴을 추출한다. 그러나 이 패턴이 특정 저작물과 충분히 유사한 출력을 생성할 수 있다는 것 또한 사실이다.
+
+규범적으로 볼 때, 저작권 제도는 창작 유인을 보호하기 위해 설계되었다. AI가 저작물을 학습에 사용하되 그 가치를 창작자와 공유하지 않는다면, 이는 장기적으로 창작 생태계 자체를 약화시킬 수 있다.
+
+필자의 실무적 권고는 다음과 같다:
+\begin{itemize}
+    \item \textbf{단기}: 생성 콘텐츠가 학습 데이터와 비정상적으로 유사한지 검사하는 ``복사 감지'' 파이프라인을 운영한다. OpenAI의 ``메모라이제이션(Memorization)'' 연구에서 제시된 방법론이 참고 기준이 될 수 있다.
+    \item \textbf{중기}: 저작권자와의 라이선스 계약, 수익 분배 모델(Revenue Sharing) 등 산업 차원의 협약 형성에 능동적으로 참여한다. 이것이 법적 리스크를 줄이고 지속가능한 AI 생태계를 만드는 길이다.
+    \item \textbf{장기}: 학습 데이터 출처를 투명하게 공개하고, 저작권 보호 데이터의 학습 포함 여부와 그 근거를 문서화하는 \textbf{데이터 계보(Data Lineage)} 시스템을 구축한다.
+\end{itemize}
+
+\subsection{뉴로심볼릭 AI: 거버넌스의 새로운 지평}
+\label{sec:3.4.3}
+
+\subsubsection*{문제의 본질}
+
+현세대 딥러닝 기반 AI의 가장 큰 거버넌스 난제 중 하나는 \textbf{설명가능성의 한계}다. 모델이 어떤 결정을 내렸는지는 알 수 있어도, 왜 그 결정을 내렸는지를 인간이 납득하는 방식으로 설명하기 어렵다. EU AI Act와 한국 AI 기본법이 ``설명 의무''를 부과하는 것은 바로 이 문제를 겨냥한다.
+
+뉴로심볼릭 AI(Neuro-symbolic AI)는 딥러닝의 패턴 인식 능력과 기호 논리(Symbolic Logic)의 설명가능성을 결합하려는 접근이다. 법령이나 규칙을 명시적인 논리 규칙으로 인코딩하고, 이를 신경망의 추론 과정에 강제 적용함으로써 ``규칙 위반 출력''을 원천적으로 차단할 수 있다.
+
+\subsubsection*{필자의 견해}
+
+뉴로심볼릭 AI는 고위험 AI 거버넌스에서 매우 유망하지만, 아직 실무 도입에는 상당한 장벽이 있다. 필자의 판단은 다음과 같다.
+
+\textbf{고위험 의사결정 시스템(의료 진단 보조, 형사 재판 위험 평가, 신용 대출 심사)에서는 뉴로심볼릭 접근이 단순 딥러닝보다 거버넌스 관점에서 우월하다.} 모델의 결정 과정에 명시적인 법적·윤리적 제약을 하드코딩할 수 있기 때문이다. ``나이에 따른 차별을 금지한다''는 규정을 논리 규칙으로 인코딩하면, 모델은 이를 위반하는 출력을 원천적으로 생성하지 못한다. 이는 사후적 편향 감지보다 훨씬 강력한 보호다.
+
+그러나 뉴로심볼릭 AI는 완전한 해답이 아니다. 현실 세계의 복잡성을 모두 논리 규칙으로 표현하는 것은 불가능에 가깝고, 규칙 작성 자체에 도메인 전문가의 상당한 투자가 필요하다. 필자는 ``위험도에 따른 아키텍처 선택''을 권고한다. 위험도가 낮은 추천 시스템이나 콘텐츠 생성에는 설명가능성 도구(SHAP, LIME)로 사후 감독하는 방식이 충분하다. 반면, 개인의 권리와 자유에 중대한 영향을 미치는 의사결정 시스템에는 뉴로심볼릭 제약을 아키텍처 수준에서 통합하는 설계를 강력히 권고한다.
+
+\begin{tcolorbox}[colback=blue!5!white, colframe=blue!75!black, title={\textbf{저자 총평: AI 윤리의 ``불편한 진실''}}]
+AI 윤리 원칙을 운용화하면서 필자가 도달한 결론은 다음과 같다. \textbf{AI 윤리의 가장 큰 적은 완벽주의다.}
+
+완벽한 공정성 지표가 없다는 이유로 편향 측정을 미루고, 완벽한 머신 언러닝 기술이 없다는 이유로 프라이버시 대응을 늦추고, 뉴로심볼릭 AI가 완성되기를 기다리며 현재의 설명가능성 도구를 외면하는 조직은, 윤리적으로 행동하는 것이 아니라 \textbf{윤리적 행동을 연기}하고 있을 뿐이다.
+
+거버넌스의 실천은 ``완벽한 해법''이 아니라 ``지금 할 수 있는 최선''에서 시작한다. 측정하고, 기록하고, 개선하는 순환이 작동할 때 조직은 윤리적으로 진화한다.
+\end{tcolorbox}

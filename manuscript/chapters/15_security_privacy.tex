@@ -1,0 +1,1289 @@
+%----------------------------------------------------------
+% 제15장. 보안과 프라이버시의 기술적 구현
+%----------------------------------------------------------
+
+\chapter{보안과 프라이버시의 기술적 구현}
+\label{ch:security_privacy}
+
+AI 거버넌스의 신뢰(Trust)는 기술적 안전성이 담보될 때 비로소 완성된다. 기존 IT 보안이 네트워크 경계와 시스템 침입 방지에 집중했다면, AI 보안은 한 차원 다른 위협에 대응해야 한다. 공격자는 더 이상 시스템을 '뚫는' 것이 아니라, 데이터를 '오염'시키고 모델의 '논리적 허점'을 악용한다. 정상적인 입력처럼 보이는 적대적 예제(adversarial example) 하나가 자율주행 차량의 정지 표지판 인식을 무력화하고, 은밀히 주입된 백도어가 특정 조건에서만 악의적 출력을 생성한다.
+
+본 장에서는 AI 시스템에 특화된 보안 위협의 분류체계와 기술적 대응 방안을 다룬다. 나아가 프라이버시 강화 기술(Privacy-Enhancing Technologies, PETs)의 실무적 구현 방법과 AI 자산에 대한 세밀한 접근 제어 아키텍처를 제시한다. 특히 신경망 모델의 본질적 취약성을 보완하기 위한 논리적 강건성(logical robustness) 검증 기법을 심층적으로 다루며, 이는 신뢰할 수 있는 AI 시스템 구축의 핵심 요소가 된다.
+
+%----------------------------------------------------------
+\section{AI 시스템 보안 위협과 대응}
+\label{sec:15.1}
+
+전통적 소프트웨어 보안이 코드의 결함(버퍼 오버플로우, SQL 인젝션 등)을 표적으로 삼았다면, AI 시스템 보안은 학습 데이터, 모델 파라미터, 추론 과정 전반을 공격 표면(attack surface)으로 고려해야 한다. AI 시스템의 공격 표면은 크게 세 가지 차원으로 구분된다: 학습 단계(training-time)에서의 데이터 중독, 추론 단계(inference-time)에서의 회피 공격, 그리고 모델 자체를 표적으로 하는 추출 및 역공학 공격이다.
+
+\subsection{적대적 공격의 분류체계와 위협 모델링}
+\label{sec:15.1.1}
+
+\paragraph{공격 유형의 삼분법}
+
+AI 시스템에 대한 적대적 공격은 공격 시점과 목표에 따라 세 가지 범주로 분류된다.
+
+\begin{enumerate}
+ \item \textbf{회피 공격(Evasion Attack)}: 추론 단계에서 발생한다. 공격자는 모델의 결정 경계(decision boundary)를 교란하는 미세한 섭동(perturbation)을 입력에 추가하여 오분류를 유도한다.
+ \item \textbf{데이터 중독 공격(Data Poisoning Attack)}: 학습 단계를 표적으로 한다. 공격자가 학습 데이터셋에 악의적으로 조작된 샘플을 주입하면, 학습된 모델은 특정 입력에 대해 의도된 오작동을 보인다.
+ \item \textbf{모델 추출 공격(Model Extraction Attack)}: 모델 자체를 표적으로 하여 기능적으로 동등한 대리 모델(surrogate model)을 구축한다. 이는 지적 재산권 침해를 넘어 2차 공격의 발판이 된다.
+\end{enumerate}
+
+\begin{table}[htbp]
+\centering
+\caption{AI 적대적 공격 분류체계}
+\label{tab:adversarial_attack_taxonomy}
+\begin{tabularx}{\textwidth}{p{2cm}p{2cm}Xp{2.5cm}X}
+\toprule
+\textbf{공격 유형} & \textbf{공격 시점} & \textbf{공격자 목표} & \textbf{대표적 기법} & \textbf{실무 위협 시나리오} \\
+\midrule
+회피 공격 & 추론 단계 & 오분류 유도 & FGSM, PGD, C\&W & FDS 우회, 악성코드 탐지 회피 \\
+데이터 중독 & 학습 단계 & 모델 무결성 훼손 & 백도어 삽입, 라벨 플리핑 & 추천 시스템 조작, 품질 검사 무력화 \\
+모델 추출 & 추론 단계 & 지적 재산 탈취 & 쿼리 기반 복제, API 악용 & 경쟁사 모델 복제, 2차 공격 준비 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{위협 모델링 프레임워크 (AI-STRIDE)}
+
+AI 시스템의 보안 설계는 체계적인 위협 모델링에서 출발해야 한다. 전통적인 STRIDE 모델을 AI 맥락에 확장한 AI-STRIDE 프레임워크를 제안한다 (표 \ref{tab:ai_stride}).
+
+\begin{table}[htbp]
+\centering
+\caption{AI-STRIDE 위협 모델링 프레임워크}
+\label{tab:ai_stride}
+\begin{tabularx}{\textwidth}{p{3cm}XX}
+\toprule
+\textbf{STRIDE 범주} & \textbf{AI 시스템 확장 해석} & \textbf{구체적 위협} \\
+\midrule
+Spoofing & 모델 또는 데이터 출처 위조 & 악성 사전학습 모델 배포, 데이터 출처 조작 \\
+Tampering & 학습 데이터/모델 가중치 변조 & 데이터 중독, 모델 파라미터 조작 \\
+Repudiation & AI 의사결정 이력 부인 & 추론 로그 미비, 모델 버전 추적 실패 \\
+Information Disclosure & 학습 데이터/모델 정보 유출 & 멤버십 추론\cite{shokri2017membership}, 모델 역공학 \\
+Denial of Service & AI 서비스 가용성 침해 & 고비용 쿼리 공격, 리소스 고갈 \\
+Elevation of Privilege & AI 시스템 권한 악용 & 에이전트 시스템의 툴 권한 탈취 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{위협 모델링 실행 프로세스}
+
+AI-STRIDE 프레임워크를 실무에 적용하기 위해서는 체계적인 5단계 실행 프로세스가 필요하다. 첫째, \textbf{자산 식별(Asset Identification)} 단계에서는 보호 대상인 학습 데이터, 모델 가중치, 피처 파이프라인, API 엔드포인트, 추론 로그 등을 빠짐없이 목록화하고 각 자산의 기밀성(Confidentiality), 무결성(Integrity), 가용성(Availability) 요구 수준을 정의한다. 둘째, \textbf{위협 열거(Threat Enumeration)} 단계에서는 AI-STRIDE의 6개 범주를 기준으로 각 자산에 대한 잠재적 위협을 식별한다. 이 과정에서 공격자의 역량 수준(화이트박스, 블랙박스), 접근 경로(내부자, 외부 API), 동기(금전적 이익, 경쟁 우위)를 함께 모델링한다. 셋째, \textbf{리스크 평가(Risk Assessment)} 단계에서는 각 위협의 발생 가능성(likelihood)과 영향도(impact)를 정량화하여 우선순위를 결정한다. 넷째, \textbf{대응 전략 수립(Mitigation Strategy)} 단계에서는 리스크 수준에 따라 기술적 대응(적대적 학습, 입력 검증), 절차적 대응(접근 통제, 코드 리뷰), 운영적 대응(모니터링, 인시던트 대응 체계)을 조합하여 방어 계획을 수립한다. 다섯째, \textbf{주기적 재평가(Periodic Reassessment)} 단계에서는 새로운 공격 기법의 등장, 모델 업데이트, 서비스 환경 변화에 따라 위협 모델을 최소 분기 1회 이상 갱신한다. 특히 생성형 AI 시스템의 경우, 프롬프트 인젝션 등 새로운 공격 벡터가 지속적으로 발견되므로 재평가 주기를 더욱 단축할 것을 권장한다.
+
+\paragraph{실제 공격 사례로 본 위협의 현실성}
+
+AI 적대적 공격은 학술적 개념이 아닌 현실의 위협이다. 자율주행 분야에서 Tesla Autopilot에 대한 적대적 공격 연구는 도로 표지판에 미세한 스티커를 부착하는 것만으로 정지 표지판을 속도 제한 표지판으로 오인하게 만들 수 있음을 입증하였다 \cite{goodfellow2014explaining}. 이러한 물리적 적대적 공격(physical adversarial attack)은 디지털 공간의 픽셀 조작을 넘어 실제 환경에서도 위협이 유효함을 보여준다. 생성형 AI 영역에서는 ChatGPT를 비롯한 대규모 언어 모델에 대한 탈옥(jailbreak) 공격이 광범위하게 발견되었다 \cite{weidinger2021ethical}. 초기에는 ``DAN(Do Anything Now)'' 프롬프트와 같은 단순한 역할극 기반 공격이 주류였으나, 점차 다국어 혼합, 인코딩 우회, 논리적 함정 등 정교한 기법으로 발전하고 있다. 이러한 사례들은 AI 보안이 단순한 기술적 문제가 아닌 지속적인 공방(arms race)의 영역임을 시사하며, 조직 차원의 체계적 대응 체계가 필수적임을 강조한다.
+
+\subsection{적대적 공격 방어의 기술적 구현}
+\label{sec:15.1.2}
+
+\paragraph{입력 전처리 기반 방어}
+
+회피 공격에 대한 첫 번째 방어선은 입력 전처리 단계에서 적대적 섭동을 제거하거나 무력화하는 것이다. 대표적인 기법으로 입력 변환(input transformation), 특징 압축(feature squeezing) 등이 있다.
+
+\begin{lstlisting}[language=Python, caption={Input Preprocessing Pipeline for Adversarial Input Detection and Purification}, label={lst:input_defense}]
+import numpy as np
+from scipy.ndimage import median_filter
+from dataclasses import dataclass
+from enum import Enum
+
+class DefenseStrategy(Enum):
+ SPATIAL_SMOOTHING = "spatial_smoothing"
+ FEATURE_SQUEEZING = "feature_squeezing"
+ ENSEMBLE = "ensemble"
+
+@dataclass
+class DefenseConfig:
+ strategy: DefenseStrategy; smoothing_kernel_size: int = 3
+ bit_depth: int = 4; detection_threshold: float = 0.15
+
+class AdversarialInputDefender:
+ """ Detection """
+ def __init__(self, config: DefenseConfig):
+ self.config = config
+
+ def detect_adversarial(self, original_input, model_predict_fn):
+ # Model based on Detection
+ purified = self._apply_spatial_smoothing(original_input)
+ original_pred = model_predict_fn(original_input)
+ purified_pred = model_predict_fn(purified)
+ distance = np.sum(np.abs(original_pred - purified_pred))
+ return distance > self.config.detection_threshold, distance
+
+ def _apply_spatial_smoothing(self, x):
+ return median_filter(x, size=self.config.smoothing_kernel_size)
+
+ def _apply_feature_squeezing(self, x):
+ bit_depth = self.config.bit_depth
+ max_val = 2 ** bit_depth - 1
+ return np.clip(np.round(x * max_val) / max_val, 0, 1)
+\end{lstlisting}
+
+\paragraph{적대적 학습 (Adversarial Training)}
+
+\cite{madry2018towards}는 PGD 공격과 적대적 학습이 가장 강력한 방어 성능을 제공함을 증명했다. 학습 단계에서 적대적 예제를 생성하여 모델이 강건한 경계를 형성하도록 유도한다.
+
+\begin{lstlisting}[language=Python, caption={Adversarial Training based on PGD Attack (PyTorch)}, label={lst:adv_training}]
+import torch
+import torch.nn.functional as F
+
+class PGDAttacker:
+ """Projected Gradient Descent (PGD) Attack Implementation"""
+ def __init__(self, model, config):
+ self.model = model; self.config = config
+
+ def generate(self, x, y):
+ x_adv = x.clone().detach()
+ # Random Start: Scope
+ x_adv = x_adv + torch.empty_like(x_adv).uniform_(-self.config.epsilon, self.config.epsilon)
+ x_adv = torch.clamp(x_adv, 0, 1)
+
+ for _ in range(self.config.num_steps):
+ x_adv.requires_grad_(True)
+ loss = F.cross_entropy(self.model(x_adv), y)
+ grad = torch.autograd.grad(loss, x_adv)[0]
+ # FGSM Projection
+ x_adv = x_adv.detach() + self.config.alpha * grad.sign()
+ delta = torch.clamp(x_adv - x, -self.config.epsilon, self.config.epsilon)
+ x_adv = torch.clamp(x + delta, 0, 1).detach()
+ return x_adv
+\end{lstlisting}
+
+\paragraph{앙상블 방어 (Ensemble Defense)}
+
+단일 방어 기법만으로는 다양한 공격 기법에 대해 일관된 강건성을 보장하기 어렵다. \textbf{앙상블 방어(Ensemble Defense)}는 서로 다른 방어 전략을 결합하여 개별 방어의 한계를 상호 보완하는 접근법이다. 핵심 원리는 ``다양성(diversity)''에 있다. 입력 전처리, 적대적 학습, 모델 구조 다양화를 동시에 적용하면, 특정 공격이 한 방어 계층을 우회하더라도 다른 계층에서 탐지할 수 있다. 예를 들어, 공격자가 PGD 기반 적대적 학습으로 훈련된 모델의 결정 경계를 학습하여 회피에 성공하더라도, 입력 전처리 단계의 Feature Squeezing이 섭동을 제거하거나 별도의 탐지 모델이 이상 입력을 식별할 수 있다. 실무적으로는 방어 기법 간의 상호작용과 전체 추론 지연(latency) 증가를 면밀히 고려해야 하며, 보안 요구 수준과 서비스 응답 시간 사이의 균형점을 설정하는 것이 중요하다.
+
+\begin{table}[htbp]
+\centering
+\caption{적대적 공격 방어 기법 비교}
+\label{tab:defense_comparison}
+\begin{tabularx}{\textwidth}{p{2.2cm}XXp{2cm}}
+\toprule
+\textbf{방어 기법} & \textbf{장점} & \textbf{단점} & \textbf{오버헤드} \\
+\midrule
+입력 전처리 & 모델 재학습 불필요, 배포 용이 & 적응형 공격에 취약, 정확도 소폭 저하 & 낮음 \\
+적대적 학습 & 가장 강건한 경험적 방어, 이론적 근거 확립 & 학습 비용 3--10배 증가, 정상 정확도 저하 & 높음 (학습 시) \\
+모델 앙상블 & 결정 경계 다양화, 전이 공격 방어에 효과적 & 추론 비용 선형 증가, 모델 관리 복잡성 & 중간--높음 \\
+인증 방어 & 수학적 강건성 보장, 검증 가능한 안전 경계 & 보수적 경계로 실용성 제한, 대규모 모델 적용 어려움 & 낮음 (추론 시) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{practicaltool}{금융권 FDS에서의 적대적 공격 시나리오}
+\textbf{공격 시나리오}: 사기 탐지 시스템(FDS)에서 공격자가 거래 특징 벡터를 분석한 후, 모델의 결정 경계를 우회하도록 거래 시점(낮 시간대)이나 금액(소액 분할) 등을 미세 조정하여 정상 거래로 위장.\\
+\textbf{방어 전략}: 앙상블 모델을 통한 결정 경계 다양화, 거래 시퀀스 전체를 분석하는 시계열 모델 도입, Feature Squeezing 기법 적용. 특히 20.1.4절에서 제안된 \textbf{DIRE 모델}은 이러한 '미탐(Missed)' 거래 패턴을 정상 거래와 이중으로 대비하여 탐지함으로써, 기존 룰 기반 FDS가 놓치는 적대적 시도를 포착하는 강력한 보완책이 된다.
+\end{practicaltool}
+
+\begin{practicaltool}{의료 영상 AI에서의 적대적 공격과 Neuro-symbolic Defense}
+의료 영상 분석 AI는 환자의 생명과 직결되므로 최고 수준의 강건성이 요구된다.
+\textbf{공격 시나리오}: 유방 촬영술(Mammography) 영상에 포픽셀 섭동을 주입하여 '악성(Malignant)' 종양을 '양성(Benign)'으로 오분류시켜 치료 시기를 놓치게 함.\\
+\textbf{DIRE 기반 방어}: \textbf{정보 보존 분기}는 영상의 저주파 성분(종양의 형태와 경계)을 유지하여 고주파 노이즈를 필터링하고, \textbf{정보 강화 분기}는 원본과 필터링 영상의 잔차를 분석하여 비정상 패턴을 탐지한다.\\
+\textbf{논리적 제약}: "경계가 불규칙하고 석회화가 존재하면 양성 판정 불가"와 같은 의학적 지식을 심볼릭 규칙으로 인코딩하여 모델의 오작동을 차단한다.
+\end{practicaltool}
+
+\subsection{논리적 강건성 검증: Neuro-symbolic 접근법}
+\label{sec:15.1.3}
+
+신경망 모델의 고유한 불투명성을 극복하기 위해 \textbf{형식 검증(Formal Verification)} 기법을 도입한다.
+
+\paragraph{Interval 경계 전파(Interval Bound Propagation)}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+ node distance=1.5cm,
+ box/.style={rectangle, draw, minimum size=1.5cm, align=center, font=\scriptsize},
+ arrow/.style={->, thick},
+ ]
+
+% 입력 Interval
+\node[box, fill=blue!10] (input) at (0, 0) {입력 Interval\\$[x_L, x_U]$\\($x \pm \epsilon$)};
+
+% 선형 변환
+\node[box, fill=green!10] (linear) at (4, 0) {선형 레이어 후\\$[y_L, y_U]$\\($W^+x_U + W^-x_L + b$)};
+
+% ReLU 변환
+\node[box, fill=orange!10] (relu) at (8, 0) {ReLU 후\\$[z_L, z_U]$\\($\max(0, y_L)$)};
+
+% 연결
+\draw[arrow] (input) -- node[above, font=\tiny] {$W \cdot x + b$} (linear);
+\draw[arrow] (linear) -- node[above, font=\tiny] {$\max(0, \cdot)$} (relu);
+
+% 설명
+\node[font=\tiny, align=left, anchor=north] at (4, -1) {
+ $W^+ = \max(W, 0)$, $W^- = \min(W, 0)$\\
+ 레이어 통과 시 Interval이 확장되는 Over-approximation 발생
+};
+
+\end{tikzpicture}
+\caption{Interval 경계 전파(Interval Bound Propagation) 개념도}
+\label{fig:ibp_concept}
+\end{figure}
+
+\begin{lstlisting}[language=Python, caption={Interval Abstract Domain for Formal Verification of Neural Networks}, label={lst:formal_verify}]
+class IntervalDomain:
+ """Interval Abstract Domain: scope of each neuron [lower, upper] Tracking"""
+ def __init__(self, lower, upper):
+ self.lower = lower; self.upper = upper
+
+ def linear_transform(self, weights, bias):
+ # Weight
+ W_pos = np.maximum(weights, 0)
+ W_neg = np.minimum(weights, 0)
+ new_lower = W_pos @ self.lower + W_neg @ self.upper + bias
+ new_upper = W_pos @ self.upper + W_neg @ self.lower + bias
+ return IntervalDomain(new_lower, new_upper)
+
+ def relu_transform(self):
+ return IntervalDomain(np.maximum(self.lower, 0), np.maximum(self.upper, 0))
+\end{lstlisting}
+
+\paragraph{CROWN 기반 검증}
+
+IBP(Interval Bound Propagation)는 구현이 간단하고 계산 효율이 높지만, 레이어가 깊어질수록 경계가 과도하게 확장(over-approximation)되는 한계가 있다. 이를 보완하기 위해 \textbf{CROWN(Convex Relaxation based perturbation analysis on Neural networks)} 기법은 각 뉴런의 활성화 함수를 선형 상한(upper bound)과 선형 하한(lower bound)으로 완화(linear relaxation)하여 더 촘촘한(tighter) 경계를 계산한다. CROWN의 핵심 아이디어는 ReLU와 같은 비선형 활성화 함수를 두 개의 선형 함수로 감싸는 것이다. 불안정한 뉴런(unstable neuron), 즉 $y_L < 0 < y_U$인 뉴런에 대해 상한은 $y_U(y - y_L)/(y_U - y_L)$로, 하한은 $0$ 또는 $y$ 중 더 촘촘한 것으로 설정한다. 이 선형 완화를 역방향으로 전파하면 IBP 대비 훨씬 정밀한 출력 경계를 얻을 수 있으며, 이를 통해 ``입력 $x$에 $\epsilon$ 크기의 섭동을 가해도 모델의 분류 결과가 변하지 않는다''는 속성을 수학적으로 증명할 수 있다. 특히 \textbf{alpha-beta-CROWN}은 이를 더욱 발전시켜, 경계의 기울기 파라미터($\alpha$, $\beta$)를 최적화 문제로 풀어 가장 촘촘한 경계를 자동으로 탐색한다.
+실무적으로 CROWN 기반 검증은 자율주행, 의료 AI 등 안전 필수 시스템에서 모델 배포 전 ``이 모델은 $\epsilon = 0.01$ 범위 내의 어떤 섭동에도 분류 결과가 바뀌지 않는다''는 인증서(certificate)를 발급하는 데 활용된다 \cite{papernot2016towards}.
+
+\paragraph{검증 도구 생태계}
+
+신경망 형식 검증 분야는 최근 활발한 도구 개발이 이루어지고 있으며, VNN-COMP(Verification of Neural Networks Competition)를 통해 매년 성능이 벤치마크되고 있다. 대표적인 도구로는 \textbf{alpha-beta-CROWN}(2021--2023 VNN-COMP 우승), \textbf{Marabou}(SMT 기반 정밀 검증), \textbf{ERAN}(ETH Zurich의 추상 해석 기반 검증기)이 있다. alpha-beta-CROWN은 GPU 가속 경계 전파와 분기 한정(branch-and-bound) 알고리즘을 결합하여 대규모 네트워크에서도 실용적인 검증 속도를 달성한다. Marabou는 SMT(Satisfiability Modulo Theories) 솔버를 활용하여 완전한(complete) 검증을 제공하며, 특히 안전 필수(safety-critical) 시스템에서의 속성 검증에 강점을 보인다. ERAN은 DeepPoly, DeepZ 등 다양한 추상 도메인을 지원하여 정밀도와 확장성 간의 유연한 트레이드오프를 허용한다.
+
+\begin{table}[htbp]
+\centering
+\caption{신경망 형식 검증 도구 비교}
+\label{tab:verification_tools}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{2.5cm}XXp{2cm}}
+\toprule
+\textbf{도구명} & \textbf{검증 방법} & \textbf{강점} & \textbf{한계} & \textbf{확장성} \\
+\midrule
+alpha-beta-CROWN & 경계 전파 + 분기 한정 & GPU 가속, VNN-COMP 연속 우승, 대규모 네트워크 지원 & 근사적 검증, 일부 속성에 불완전 & 높음 \\
+Marabou & SMT 기반 & 완전 검증, 복잡한 속성 표현 가능 & 대규모 네트워크에서 느림 & 낮음--중간 \\
+ERAN & 추상 해석 & 다양한 추상 도메인, 정밀도 조절 가능 & 도메인 선택에 전문 지식 필요 & 중간--높음 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{생성형 AI 특화 보안}
+\label{sec:15.1.4}
+
+LLM 기반 시스템은 \textbf{프롬프트 인젝션(Prompt Injection)}과 \textbf{데이터 유출}에 대응하는 전용 보안 계층이 필요하다.
+
+\begin{lstlisting}[language=Python, caption={LLM Security Gateway and Prompt Injection Defense}, label={lst:llm_gateway}]
+import re
+
+class PromptInjectionDefender:
+ """ injection based on pattern and structure analysis Detection """
+ def __init__(self):
+ self.patterns = [
+ r"(?i)(ignore|disregard)\s+(all\s+)?(previous|above)\s+instructions",
+ r"(?i)(you\s+are\s+now|act\s+as|roleplay\s+as)\s+[a-zA-Z]+",
+ r"(?i)(reveal|print)\s+(your\s+)?system\s+prompt"
+ ]
+
+ def check(self, user_input):
+ for p in self.patterns:
+ if re.search(p, user_input): return True
+ return False
+
+class LLMSecurityGateway:
+ """ Preprocessing -> LLM -> Post-processing Integrated Pipeline"""
+ def process(self, user_input, llm_fn):
+ if PromptInjectionDefender().check(user_input):
+ return "Security Policy Violation."
+
+ response = llm_fn(user_input)
+ # (PII) Filtering
+ filtered, _ = OutputFilter().filter_output(response)
+ return filtered
+\end{lstlisting}
+
+\paragraph{다계층 프롬프트 방어 아키텍처}
+
+앞서 제시한 패턴 기반 탐지는 생성형 AI 보안의 출발점에 불과하다. 정교한 공격자는 패턴 매칭을 우회하는 다양한 기법(다국어 혼합, 유니코드 조작, 간접적 지시문 등)을 사용하므로, \textbf{심층 방어(Defense-in-Depth)} 원칙에 따라 다계층 방어 아키텍처를 구축해야 한다. 이 아키텍처는 네 개의 방어 계층으로 구성된다.
+
+\textbf{제1계층 -- 입력 정규화 및 정적 필터링}: 사용자 입력을 정규화(유니코드 정규화, 인코딩 해제)한 후 알려진 공격 패턴과 대조한다. 이 계층은 빠르고 저비용이지만 알려지지 않은 공격에는 취약하다. \textbf{제2계층 -- 의미적 분석(Semantic Analysis)}: 별도의 분류 모델이 입력의 의도(intent)를 분석하여 악의적 지시문을 탐지한다. 사전 학습된 소형 LLM이나 미세 조정된 분류기를 활용하며, 패턴 기반 탐지가 놓치는 의미적 공격을 포착한다. \textbf{제3계층 -- 출력 검증 및 가드레일}: LLM의 응답이 사전 정의된 안전 정책을 준수하는지 검증한다. 개인정보(PII) 노출, 유해 콘텐츠 생성, 시스템 프롬프트 유출 여부를 점검하며, 위반 시 응답을 차단하거나 수정한다. \textbf{제4계층 -- 런타임 모니터링 및 이상 탐지}: 사용자 세션 수준에서 비정상적 패턴(반복적 탈옥 시도, 점진적 프롬프트 조작)을 탐지하고, 리스크 임계값 초과 시 세션을 차단하거나 인간 검토자에게 에스컬레이션한다.
+
+\begin{table}[htbp]
+\centering
+\caption{생성형 AI 특화 보안 위협 분류}
+\label{tab:genai_threats}
+\begin{tabularx}{\textwidth}{p{2.2cm}p{1.2cm}XXp{2cm}}
+\toprule
+\textbf{위협 유형} & \textbf{심각도} & \textbf{공격 벡터} & \textbf{잠재적 피해} & \textbf{대응 전략} \\
+\midrule
+프롬프트 인젝션 & 높음 & 시스템 프롬프트 무력화 지시문 삽입 & 안전 가드레일 우회, 비인가 기능 활성화 & 다계층 필터링, 의미 분석 \\
+데이터 유출 & 높음 & 학습 데이터 추출 유도 질의 & 개인정보/영업비밀 유출 & 출력 필터링, 멤버십 추론 방어 \\
+환각 악용 & 중간 & 확신에 찬 허위 정보 생성 유도 & 잘못된 의사결정, 법적 책임 & RAG 기반 근거 검증, 불확실성 표시 \\
+탈옥 & 높음 & 역할극, 인코딩 우회, 논리적 함정 & 유해 콘텐츠 생성, 정책 위반 & Constitutional AI, RLHF 강화 \\
+간접 인젝션 & 매우 높음 & 외부 문서/웹페이지에 악성 지시문 은닉 & 에이전트 시스템의 비인가 행동 유발 & 입력 격리, 권한 최소화 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{RAG 시스템의 보안 고려사항}
+
+RAG(Retrieval-Augmented Generation) 아키텍처의 확산과 함께 새로운 보안 위협이 등장하고 있다. \textbf{벡터 DB 중독(Vector DB Poisoning)}은 검색 대상 문서 저장소에 악의적 콘텐츠를 주입하여 LLM의 응답을 조작하는 공격이다. 공격자가 조직의 지식 베이스에 접근 권한을 확보한 경우, 정상 문서처럼 보이지만 악성 지시문을 포함하는 문서를 삽입할 수 있다. 이 문서가 사용자 질의와 높은 유사도로 검색되면, LLM은 악성 지시문을 컨텍스트로 수용하여 의도치 않은 행동을 수행한다. \textbf{컨텍스트 인젝션(Context Injection)}은 검색된 문서 내에 은닉된 지시문이 시스템 프롬프트를 무력화하는 공격으로, 간접 프롬프트 인젝션의 대표적 변형이다. 이에 대한 방어로는 문서 출처의 신뢰도 평가(provenance verification), 검색 결과에 대한 별도의 안전성 스캐닝, 컨텍스트와 지시문 간의 명시적 구분자(delimiter) 적용, 그리고 검색된 문서의 권한 수준에 따른 응답 범위 제한 등이 있다. 특히 에이전트 시스템에서 RAG를 통해 외부 데이터를 참조하는 경우, 검색된 컨텍스트가 에이전트의 도구 호출(tool call) 권한에 영향을 미치지 않도록 엄격한 권한 격리가 필요하다 \cite{bommasani2021opportunities}.
+이는 13장에서 다룬 에이전트 아키텍처의 거버넌스 원칙과도 직결되며, 데이터 흐름과 제어 흐름의 명확한 분리가 RAG 보안의 근본적 해법이 된다.
+
+\begin{lstlisting}[language=Python, caption={Multi-Layer LLM Defense Pipeline}, label={lst:multi_layer_defense}]
+import re
+from dataclasses import dataclass, field
+from typing import List, Callable, Tuple, Optional
+from enum import Enum
+
+class ThreatLevel(Enum):
+ SAFE = "safe"
+ SUSPICIOUS = "suspicious"
+ BLOCKED = "blocked"
+
+@dataclass
+class SecurityCheckResult:
+ level: ThreatLevel
+ layer: str
+ detail: str
+
+class MultiLayerLLMDefense:
+ """Defense-in-Depth Pipeline for LLM Security"""
+
+ def __init__(self, classifier_fn, llm_fn, policy_checker_fn):
+ self.pattern_filter = PromptInjectionDefender()
+ self.classifier_fn = classifier_fn  # semantic intent classifier
+ self.llm_fn = llm_fn
+ self.policy_checker_fn = policy_checker_fn
+ self.session_tracker = {}
+
+ def process(self, user_id: str, user_input: str,
+ context_docs: Optional[List[str]] = None) -> Tuple[str, List[SecurityCheckResult]]:
+ checks = []
+
+ # Layer 1: Static Pattern Filtering with Input Normalization
+ normalized = self._normalize_input(user_input)
+ if self.pattern_filter.check(normalized):
+ checks.append(SecurityCheckResult(ThreatLevel.BLOCKED, "L1_pattern", "Known injection pattern"))
+ return "Security policy violation detected.", checks
+ checks.append(SecurityCheckResult(ThreatLevel.SAFE, "L1_pattern", "Passed"))
+
+ # Layer 2: Semantic Intent Analysis
+ intent_score = self.classifier_fn(normalized)
+ if intent_score > 0.85:
+ checks.append(SecurityCheckResult(ThreatLevel.BLOCKED, "L2_semantic", f"score={intent_score:.2f}"))
+ return "Request flagged by security analysis.", checks
+ checks.append(SecurityCheckResult(ThreatLevel.SAFE, "L2_semantic", f"score={intent_score:.2f}"))
+
+ # Context Document Safety Check (for RAG)
+ if context_docs:
+ for i, doc in enumerate(context_docs):
+ if self.pattern_filter.check(doc):
+ checks.append(SecurityCheckResult(
+ ThreatLevel.BLOCKED, "L2_context", f"Malicious content in doc[{i}]"))
+ context_docs[i] = "[REDACTED: Security policy violation]"
+
+ # LLM Inference
+ full_prompt = self._build_prompt(normalized, context_docs)
+ response = self.llm_fn(full_prompt)
+
+ # Layer 3: Output Validation and Guardrails
+ policy_result = self.policy_checker_fn(response)
+ if not policy_result["safe"]:
+ checks.append(SecurityCheckResult(ThreatLevel.BLOCKED, "L3_output", policy_result["reason"]))
+ return "Response withheld due to policy violation.", checks
+ checks.append(SecurityCheckResult(ThreatLevel.SAFE, "L3_output", "Passed"))
+
+ # Layer 4: Session-Level Anomaly Tracking
+ self._update_session(user_id, intent_score)
+ if self._is_session_anomalous(user_id):
+ checks.append(SecurityCheckResult(ThreatLevel.SUSPICIOUS, "L4_session", "Anomalous pattern"))
+
+ return response, checks
+
+ def _normalize_input(self, text: str) -> str:
+ import unicodedata
+ text = unicodedata.normalize("NFKC", text)
+ text = text.encode("ascii", "ignore").decode("ascii", errors="replace")
+ return text.strip()
+
+ def _build_prompt(self, user_input, context_docs):
+ if context_docs:
+ context = "\n---\n".join(context_docs)
+ return f"[CONTEXT]\n{context}\n[END CONTEXT]\n\n[USER QUERY]\n{user_input}"
+ return user_input
+
+ def _update_session(self, user_id, score):
+ if user_id not in self.session_tracker:
+ self.session_tracker[user_id] = []
+ self.session_tracker[user_id].append(score)
+ # Keep last 20 interactions
+ self.session_tracker[user_id] = self.session_tracker[user_id][-20:]
+
+ def _is_session_anomalous(self, user_id) -> bool:
+ scores = self.session_tracker.get(user_id, [])
+ if len(scores) < 5:
+ return False
+ recent_avg = sum(scores[-5:]) / 5
+ return recent_avg > 0.5  # Sustained suspicious activity
+\end{lstlisting}
+
+\paragraph{레드팀 테스팅}
+
+기술적 방어 계층의 실효성을 검증하기 위해서는 \textbf{체계적 레드팀 테스팅(Structured Red-Teaming)}이 필수적이다 \cite{casper2023explore}. 레드팀 테스팅은 전문 보안 인력이 공격자의 관점에서 LLM 시스템의 취약점을 탐색하는 과정으로, 단순한 침투 테스트(penetration testing)를 넘어 AI 시스템 고유의 공격 벡터를 포괄한다. 효과적인 레드팀 테스팅은 다음의 구조화된 절차를 따른다. 먼저 \textbf{범위 정의(Scoping)}에서 테스트 대상 시스템의 경계, 허용 가능한 공격 유형, 성공 기준을 명시한다. 다음으로 \textbf{위협 시나리오 설계}에서 프롬프트 인젝션, 탈옥, 간접 인젝션, 데이터 추출 등 각 위협 범주별 공격 시나리오를 사전에 수립한다. \textbf{자동화 탐색(Automated Probing)} 단계에서는 GCG(Greedy Coordinate Gradient), AutoDAN 등 자동화 공격 도구를 활용하여 대규모 공격 공간을 체계적으로 탐색하고, \textbf{인간 전문가 탐색(Manual Probing)}에서는 자동화가 포착하지 못하는 창의적이고 맥락 의존적인 공격을 시도한다. 마지막으로 \textbf{결과 분석 및 개선}에서 발견된 취약점을 심각도별로 분류하고, 방어 계층의 보완 사항을 도출한다. \cite{anthropic2023constitutional}의 Constitutional AI 접근법은 레드팀 테스팅의 결과를 모델 학습에 직접 반영하여 내재적 안전성을 강화하는 대표적 방법론이다. 엔터프라이즈 환경에서는 모델 배포 전 레드팀 테스팅을 필수 게이트(gate)로 설정하고, 주요 모델 업데이트 시마다 반복 수행하는 것을 권장한다. \cite{openai2023gpt4}는 GPT-4 개발 과정에서 50명 이상의 외부 레드팀 전문가를 참여시킨 사례를 공개하였으며, 이는 대규모 모델 출시 전 레드팀 테스팅이 산업 표준으로 자리잡고 있음을 보여준다.
+
+\begin{practicaltool}{생성형 AI 레드팀 테스팅 체크리스트}
+\textbf{사전 준비}: 1) 테스트 범위 및 규칙(Rules of Engagement) 합의, 2) 위협 범주별 공격 시나리오 라이브러리 구축, 3) 자동화 도구(GCG, AutoDAN, TAP) 및 인간 전문가 팀 편성.\\
+\textbf{실행}: 1) 자동화 탐색으로 기본 취약점 스캐닝, 2) 전문가에 의한 창의적 공격 시도(다국어 우회, 논리적 함정, 간접 인젝션), 3) 에이전트 시스템의 도구 호출 권한 탈취 시도.\\
+\textbf{사후 조치}: 1) 취약점을 CVSS 기준으로 심각도 분류, 2) 방어 계층별 보완 사항 도출 및 우선순위 결정, 3) 수정 후 재테스트(regression test) 수행, 4) 결과 문서화 및 거버넌스 위원회 보고.
+\end{practicaltool}
+
+%----------------------------------------------------------
+%----------------------------------------------------------
+% 제15장 Section 15.2 - 프라이버시 강화 기술 (PETs)
+%----------------------------------------------------------
+
+\section{프라이버시 강화 기술 (PETs)}
+\label{sec:15.2}
+
+AI 시스템은 학습된 모델 자체가 개인정보를 '기억'할 수 있다는 새로운 위협에 직면해 있다. 멤버십 추론 공격(Membership Inference Attack)을 통해 특정 개인의 데이터가 학습에 사용되었는지 추정할 수 있으며, 모델 역공학(Model Inversion)으로 학습 데이터를 복원하는 것도 가능하다. 프라이버시 강화 기술(PETs)은 데이터의 유용성을 보존하면서도 이러한 위협을 정량적으로 제한한다. 본 절에서는 차등 프라이버시, 연합 학습\cite{kairouz2021advances}, 머신 언러닝, 동형 암호\cite{abadi2016deep}, 그리고 합성 데이터에 이르는 PETs의 기술적 구현과 실무 적용 전략을 체계적으로 다룬다.
+
+\subsection{차등 프라이버시 (Differential Privacy)}
+\label{sec:15.2.1}
+
+차등 프라이버시(DP)는 개별 데이터의 포함 여부가 분석 결과에 미치는 영향을 수학적으로 제한하는 프레임워크이다. \cite{dwork2006calibrating}가 제안한 이 개념은 현재 프라이버시 보호의 사실상 표준(de facto standard)으로 자리 잡았다.
+
+\paragraph{($\epsilon$, $\delta$)-차등 프라이버시의 형식적 정의}
+
+하나의 데이터 포인트만 다른 두 인접 데이터셋 $D$와 $D'$에 대해, 무작위화 메커니즘 $\mathcal{M}$이 다음 조건을 만족하면 ($\epsilon$, $\delta$)-DP를 보장한다고 정의한다 \cite{dwork2014algorithmic}:
+
+$$\Pr[\mathcal{M}(D) \in S] \leq e^{\epsilon} \cdot \Pr[\mathcal{M}(D') \in S] + \delta$$
+
+여기서 $S$는 가능한 출력의 임의의 부분집합이다. 직관적으로 해석하면,
+$\epsilon$은 \textbf{프라이버시 예산(privacy budget)}으로서
+한 개인의 데이터가 결과에 미치는 최대 영향을 제한한다.
+$\epsilon$이 작을수록 보호가 강하다.
+$\delta$는 이 보장이 실패할 확률의 상한으로,
+일반적으로 학습 데이터 크기 $n$에 대해 $\delta \ll 1/n$으로 설정한다.
+예를 들어, $\epsilon = 1.0$이면 한 개인의 데이터 포함 여부에 따른
+출력 확률의 비율이 $e^{1.0} \approx 2.72$배를 넘지 않는다.
+이는 공격자가 출력을 관찰하더라도
+특정 개인의 참여 여부를 높은 신뢰도로 추론하기 어렵다는 것을 의미한다.
+
+\paragraph{DP 메커니즘의 유형}
+
+차등 프라이버시를 달성하기 위한 대표적인 노이즈 메커니즘은 다음 세 가지이다:
+
+\begin{itemize}
+    \item \textbf{라플라스 메커니즘(Laplace Mechanism)}: 쿼리 함수 $f$의 감도(sensitivity) $\Delta f$에 비례하는 라플라스 분포 노이즈 $\text{Lap}(\Delta f / \epsilon)$를 결과에 추가한다. 순수 $\epsilon$-DP를 보장하며, 수치 쿼리(합계, 카운트, 평균)에 주로 사용된다. 구현이 단순하여 센서스 데이터 공개 등에 널리 활용된다.
+    \item \textbf{가우시안 메커니즘(Gaussian Mechanism)}: 가우시안 분포 $\mathcal{N}(0, \sigma^2)$ 노이즈를 추가하며, ($\epsilon$, $\delta$)-DP를 보장한다. $\sigma$는 $\Delta f \cdot \sqrt{2 \ln(1.25/\delta)} / \epsilon$으로 설정한다. 딥러닝의 DP-SGD에서 표준으로 채택되며, 라플라스 대비 고차원 데이터에서 효율적이다.
+    \item \textbf{지수 메커니즘(Exponential Mechanism)}: 비수치적(categorical) 출력에 적합하다. 각 후보 출력 $r$에 대해 유용성 점수(utility score) $u(D, r)$에 비례하는 확률 $\propto \exp(\epsilon \cdot u(D,r) / 2\Delta u)$로 출력을 선택한다. 추천 시스템이나 경매에서의 프라이버시 보호에 활용된다.
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Differential Privacy Training based on DP-SGD (using Opacus)}, label={lst:dp_sgd}]
+from opacus import PrivacyEngine
+
+def train_with_dp(model, train_loader, optimizer, epochs, target_epsilon, target_delta):
+    # Privacy Engine
+    privacy_engine = PrivacyEngine()
+    model, optimizer, train_loader = privacy_engine.make_private(
+        module=model,
+        optimizer=optimizer,
+        data_loader=train_loader,
+        noise_multiplier=1.1,
+        max_grad_norm=1.0,
+    )
+
+    # Learning
+    for epoch in range(epochs):
+        # ... training loop ...
+        epsilon = privacy_engine.get_epsilon(target_delta)
+        if epsilon >= target_epsilon: break
+\end{lstlisting}
+
+\begin{table}[htbp]
+\centering
+\caption{epsilon 값에 따른 프라이버시-유용성 가이드라인}
+\label{tab:dp_epsilon}
+\begin{tabularx}{\textwidth}{p{2cm}p{3cm}p{3cm}X}
+\toprule
+\textbf{$\epsilon$ 범위} & \textbf{프라이버시 수준} & \textbf{유용성 영향} & \textbf{권장 사용 사례} \\
+\midrule
+0.1 ~ 0.5 & 매우 강함 & 상당한 저하 & 극민감 의료/유전체 데이터 \\
+1.0 ~ 3.0 & 강함 & 중간 수준 저하 & 금융 신용평가, 정밀 의료 \\
+3.0 ~ 8.0 & 보통 & 경미한 저하 & 추천 시스템, 마케팅 분석 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{프라이버시 예산 관리 전략}
+
+실무 환경에서는 단일 쿼리가 아닌 다수의 분석 작업이 동일 데이터셋에 반복적으로 수행된다. 이때 프라이버시 예산의 누적(composition)을 체계적으로 관리해야 한다. \textbf{순차 합성(Sequential Composition)} 정리에 따르면, $k$개의 메커니즘을 순차 적용하면 총 프라이버시 손실은 $\epsilon_{total} = \sum_{i=1}^{k} \epsilon_i$로 누적된다. 반면 \textbf{병렬 합성(Parallel Composition)}에서는 서로 겹치지 않는(disjoint) 데이터 파티션에 독립적으로 메커니즘을 적용하면 총 손실이 $\epsilon_{total} = \max_i \epsilon_i$로 제한되어 훨씬 효율적이다.
+
+조직 차원에서의 프라이버시 예산 관리를 위해 다음 전략을 권장한다.
+첫째, 연간 또는 분기별 총 프라이버시 예산 상한을 설정하고
+(예: $\epsilon_{annual} \leq 10.0$), 각 분석 프로젝트에 예산을 사전 배분한다.
+둘째, R\'{e}nyi 차등 프라이버시(RDP)를 활용한
+\textbf{고급 합성(Advanced Composition)} 기법을 도입하여
+순차 합성 대비 더 타이트한 예산 추적이 가능하도록 한다.
+셋째, 프라이버시 회계사(Privacy Accountant) 시스템을 구축하여
+각 데이터셋별 누적 $\epsilon$ 사용량을 실시간으로 모니터링하고,
+예산 소진 시 추가 분석을 차단하는 자동화된 제어를 구현한다.
+
+\paragraph{차등 프라이버시의 실무 한계와 대응}
+
+차등 프라이버시의 실무 적용에서는 몇 가지 핵심적인 한계를 인식해야 한다. 첫째, \textbf{유용성-프라이버시 트레이드오프}가 불가피하다. 강한 프라이버시 보장($\epsilon < 1.0$)은 모델 정확도를 유의미하게 저하시킬 수 있으며, 이는 특히 소규모 데이터셋이나 희귀 클래스 탐지 작업에서 심각해진다. 둘째, \textbf{그룹 프라이버시(Group Privacy)} 문제가 존재한다. 표준 DP는 한 개인의 데이터에 대한 보호를 보장하지만, 동일 가족이나 조직에 속하는 다수 데이터 포인트가 관련되어 있을 경우 보호 수준이 선형적으로 약화된다($k$명의 그룹에 대해 $k\epsilon$-DP). 셋째, \textbf{배포 환경의 복잡성}으로 인해 이론적 보장과 실제 구현 사이에 간극이 발생할 수 있다. 부동소수점 연산의 정밀도 한계, 사이드 채널 공격, 그리고 하이퍼파라미터 튜닝 과정에서의 프라이버시 누수 등을 종합적으로 고려해야 한다. 이러한 한계에도 불구하고, 차등 프라이버시는 Apple(iOS 키보드 데이터), Google(Chrome 브라우저 통계), US Census Bureau(2020 인구조사) 등에서 대규모 프로덕션 시스템에 성공적으로 적용되어 그 실용성이 입증되었다. 한국 기업에서는 금융 데이터 분석, 통신사 위치 통계, 의료 데이터 공유 등의 영역에서 DP 도입이 가속화되고 있으며, 개인정보보호위원회의 가이드라인에서도 DP를 가명정보 처리의 기술적 보완 수단으로 권장하고 있다.
+
+\subsection{연합 학습 (Federated Learning)}
+\label{sec:15.2.2}
+
+연합 학습은 데이터를 반출하지 않고 모델 가중치만 서버로 전송하여 집계하는 분산 학습 방식이다. 데이터 주권(data sovereignty)을 유지하면서도 다수 기관의 데이터를 활용한 공동 모델 학습을 가능하게 한다. Google이 스마트폰 키보드 예측에 연합 학습을 최초로 대규모 적용한 이래, 의료, 금융, 제조 등 데이터 반출이 법적으로 제한되는 산업 분야에서 핵심 기술로 자리 잡고 있다. McMahan 등이 제안한 \textbf{FedAvg(Federated Averaging)} 알고리즘은 각 클라이언트가 로컬 SGD를 수행한 후 서버에서 가중 평균으로 집계하는 방식으로, 연합 학습의 사실상 표준 프로토콜이다.
+
+\begin{lstlisting}[language=Python, caption={Federated Learning Aggregation based on FedAvg Algorithm}, label={lst:fedavg}]
+class FedAvgAggregation:
+    """weighted average based local model aggregation"""
+    def aggregate(self, global_model, client_updates):
+        total_samples = sum(size for _, size in client_updates)
+        global_state = global_model.state_dict()
+
+        for key in global_state.keys():
+            global_state[key] = torch.zeros_like(global_state[key])
+            for client_model, data_size in client_updates:
+                global_state[key] += (data_size / total_samples) * client_model.state_dict()[key]
+        global_model.load_state_dict(global_state)
+\end{lstlisting}
+
+\paragraph{연합 학습의 보안 위협}
+
+연합 학습은 원천 데이터를 공유하지 않지만, 교환되는 모델 업데이트(그래디언트 또는 가중치)를 통해 여전히 프라이버시가 침해될 수 있다. 주요 보안 위협은 다음과 같다:
+
+\begin{itemize}
+    \item \textbf{비잔틴 공격(Byzantine Attack)}: 악의적 참여자가 임의로 조작된 모델 업데이트를 전송하여 글로벌 모델의 수렴을 방해하거나 특정 방향으로 편향시킨다. 전체 참여자의 일정 비율(일반적으로 33\% 미만)이 악의적이더라도 방어할 수 있는 비잔틴 내성(Byzantine-resilient) 집계 알고리즘이 연구되고 있다.
+    \item \textbf{그래디언트 역전 공격(Gradient Inversion Attack)}: 공유된 그래디언트로부터 원본 학습 데이터를 역으로 복원하는 공격이다. 특히 배치 크기가 작은 경우 고해상도 이미지까지 복원이 가능하다는 점에서, 연합 학습의 프라이버시 보장이 본질적으로 완벽하지 않음을 보여준다.
+    \item \textbf{무임승차 공격(Free-rider Attack)}: 참여자가 실질적인 로컬 학습 없이 랜덤 노이즈나 이전 라운드의 글로벌 모델을 자신의 업데이트로 제출하여 공동 학습의 혜택만 취하는 공격이다. 이는 모델 품질 저하와 참여 공정성 문제를 야기한다.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{연합 학습의 보안 위협 및 대응 전략}
+\label{tab:fl_security_threats}
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{3cm}X}
+\toprule
+\textbf{공격 유형} & \textbf{공격 설명} & \textbf{탐지 방법} & \textbf{완화 전략} \\
+\midrule
+비잔틴 공격 & 조작된 업데이트로 글로벌 모델 훼손 & 업데이트 크기/방향 이상 탐지 & Krum, Trimmed Mean, Bulyan 등 강건 집계 \\
+그래디언트 역전 & 공유 그래디언트로 원본 데이터 복원 & -- & 그래디언트 압축, DP 노이즈 추가, Secure Aggregation \\
+무임승차 & 학습 기여 없이 글로벌 모델만 취득 & 업데이트 유사도 분석 & 기여도 기반 인센티브, 검증 데이터셋 평가 \\
+백도어 삽입 & 특정 트리거에 반응하는 모델 조작 & 이상 뉴런 활성화 분석 & Norm Clipping, 스펙트럼 필터링 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{practicaltool}{의료 데이터 연합 학습: 다기관 협력 시나리오}
+서울아산병원과 타 대형병원이 희귀 심장 질환 진단 AI를 공동 개발할 때, 환자 기록 반출 없이 각 병원 내에서 로컬 학습 후 가중치만 교환한다. \textbf{Flower} 프레임워크 등을 활용하여 실제 인프라에 구현하며, 데이터 이질성을 극복하기 위해 FedProx 기법을 적용한다.
+\end{practicaltool}
+
+\paragraph{[실무 팁 15-1] Flower 프레임워크를 활용한 프로덕션급 연합 학습}
+
+Flower(flwr)는 연합 학습의 프로덕션 배포를 위한 표준 프레임워크로, gRPC 기반 통신, 보안 집계, 이기종 클라이언트 지원 등을 제공한다.
+
+\begin{lstlisting}[language=Python, caption={Federated Learning Client Implementation based on Flower Framework}, label={lst:flower_client}]
+import flwr as fl
+from flwr.client import NumPyClient
+
+class FlowerClient(NumPyClient):
+    def __init__(self, model, train_loader, val_loader):
+        self.model = model
+        self.train_loader = train_loader
+        self.val_loader = val_loader
+
+    def get_parameters(self, config):
+        return [val.cpu().numpy() for val in self.model.state_dict().values()]
+
+    def fit(self, parameters, config):
+        self.set_parameters(parameters)
+        # Learning  (15.2.2 Reference)
+        self._train(config.get("local_epochs", 1))
+        return self.get_parameters(config), len(self.train_loader.dataset), {}
+
+    def set_parameters(self, parameters):
+        params_dict = zip(self.model.state_dict().keys(), parameters)
+        state_dict = {k: torch.tensor(v) for k, v in params_dict}
+        self.model.load_state_dict(state_dict, strict=True)
+\end{lstlisting}
+
+\paragraph{수직 연합 학습 (Vertical Federated Learning)}
+
+앞서 다룬 수평 연합 학습(Horizontal FL)은 각 참여자가 동일한 특징 공간(feature space)의 데이터를 보유하되 서로 다른 샘플을 가진 경우에 적합하다. 반면 \textbf{수직 연합 학습(Vertical FL)}은 동일 사용자에 대해 서로 다른 특징을 보유한 기관들이 협력하는 시나리오이다. 예를 들어 은행은 금융 거래 이력을, 통신사는 데이터 사용 패턴을, 유통사는 구매 이력을 각각 보유하고 있으며, 이들을 결합하면 더 정확한 신용평가가 가능하다.
+
+수직 FL의 대표적 적용 사례로는 금융권의 신용평가 고도화, 의료 분야의 다기관 임상 데이터 통합 분석, 그리고 공공 분야의 복지 사각지대 발굴 등이 있다.
+
+수직 FL에서는 각 기관이 자신의 특징에 대한 중간 표현(intermediate representation)만 공유하는 \textbf{분할 학습(Split Learning)} 방식을 활용한다. 모델의 하위 레이어는 각 기관 로컬에서 실행되고, 상위 레이어만 서버에서 집계한다. 이 과정에서 Private Set Intersection(PSI) 프로토콜을 통해 공통 사용자를 식별하되 각 기관의 전체 사용자 목록은 노출하지 않는다. 수직 FL은 한국의 신용정보법 및 데이터 3법 체계에서 가명정보 결합의 기술적 대안으로 주목받고 있다 \cite{oecd2024regulatory_ai_finance}.
+
+\paragraph{연합 학습 거버넌스 프레임워크}
+
+연합 학습의 성공적 운영을 위해서는 기술적 구현을 넘어 참여자 간 거버넌스 체계가 확립되어야 한다. 기술적으로 완벽한 FL 시스템이라 하더라도, 참여자 간 신뢰와 규칙이 부재하면 지속 가능한 협력이 불가능하다. 핵심 거버넌스 요소는 다음과 같다:
+
+\begin{itemize}
+    \item \textbf{참여자 합의(Participant Agreement)}: 학습 목적, 모델 아키텍처, 데이터 요건, 라운드 수, 프라이버시 보호 수준($\epsilon$ 값 등)에 대한 사전 합의 문서를 작성한다. 각 참여 기관의 데이터 품질 기준과 최소 참여 조건을 명시한다.
+    \item \textbf{기여도 공정성(Contribution Fairness)}: Shapley Value 기반 기여도 측정을 통해 각 참여자의 데이터 품질과 양이 글로벌 모델 성능에 기여한 정도를 정량화한다. 이를 기반으로 모델 접근 권한이나 인센티브를 차등 배분한다.
+    \item \textbf{모델 소유권(Model Ownership)}: 공동 학습된 글로벌 모델의 지적 재산권 귀속, 상업적 활용 범위, 탈퇴 시 권리 처리 방안을 사전에 정의한다. 특히 참여자 탈퇴 시 해당 기관 데이터의 영향을 제거하는 머신 언러닝 절차와의 연계가 필요하다.
+\end{itemize}
+
+\subsection{머신 언러닝 및 동형 암호}
+\label{sec:15.2.3}
+
+\paragraph{잊힐 권리의 구현 (Machine Unlearning)}
+GDPR 제17조의 삭제권(Right to Erasure)과 한국 개인정보보호법의 파기 요구권은 AI 모델에서도 특정 데이터의 영향을 제거할 것을 요구한다. 단순히 학습 데이터를 삭제하는 것으로는 불충분하며, 모델 파라미터에 이미 인코딩된 정보를 효과적으로 제거해야 한다. 대규모 언어 모델(LLM)의 경우 이 문제는 더욱 심각해지는데, 수조 개의 토큰으로 학습된 모델에서 특정 개인의 정보를 선별적으로 제거하는 것은 기술적으로 매우 도전적인 과제이다.
+
+\textbf{SISA (Sharded, Isolated, Sliced, Aggregated)} 전략 \cite{bourtoule2021unlearning}은 머신 언러닝의 대표적 접근법이다. 핵심 아이디어는 학습 데이터를 사전에 여러 샤드(shard)로 분할하고, 각 샤드에 대해 독립적인 서브모델을 학습한 뒤, 추론 시 이들의 출력을 집계하는 것이다. 특정 데이터의 삭제가 요청되면 해당 데이터가 포함된 샤드의 서브모델만 재학습하면 되므로, 전체 모델 재학습 대비 비용이 $1/S$ ($S$는 샤드 수)로 감소한다. 각 샤드 내에서도 데이터를 슬라이스(slice)로 나누어 증분 학습(incremental training)의 체크포인트를 저장함으로써, 재학습 시작점을 더욱 최적화할 수 있다. 예를 들어, 100만 건의 학습 데이터를 10개의 샤드로 분할하면, 하나의 삭제 요청 처리 시 10만 건에 대해서만 재학습이 필요하다. 샤드 수를 늘리면 언러닝 효율은 증가하지만, 각 서브모델의 학습 데이터가 줄어 전체 앙상블 정확도가 저하될 수 있으므로 적절한 균형점을 찾아야 한다.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=0.8cm,
+    shard/.style={rectangle, draw, fill=blue!10, minimum width=1.8cm, minimum height=0.8cm, align=center, font=\scriptsize},
+    model/.style={rectangle, draw, fill=orange!15, minimum width=1.8cm, minimum height=0.8cm, align=center, font=\scriptsize},
+    agg/.style={rectangle, draw, fill=green!15, minimum width=2.2cm, minimum height=0.8cm, align=center, font=\scriptsize},
+    data/.style={rectangle, draw, fill=gray!10, minimum width=8cm, minimum height=0.8cm, align=center, font=\scriptsize},
+    arrow/.style={->, thick},
+    xmark/.style={red, thick, font=\scriptsize},
+]
+
+% 전체 데이터
+\node[data] (fulldata) at (0, 3) {전체 학습 데이터 $D$};
+
+% 샤드 분할
+\node[shard] (s1) at (-3, 1.5) {샤드 $S_1$};
+\node[shard] (s2) at (-1, 1.5) {샤드 $S_2$};
+\node[shard, fill=red!15] (s3) at (1, 1.5) {샤드 $S_3$\\(삭제 대상)};
+\node[shard] (s4) at (3, 1.5) {샤드 $S_k$};
+
+% 화살표: 데이터 -> 샤드
+\draw[arrow] (fulldata) -- (s1);
+\draw[arrow] (fulldata) -- (s2);
+\draw[arrow] (fulldata) -- (s3);
+\draw[arrow] (fulldata) -- (s4);
+
+% 서브모델
+\node[model] (m1) at (-3, 0) {모델 $M_1$};
+\node[model] (m2) at (-1, 0) {모델 $M_2$};
+\node[model, fill=red!15] (m3) at (1, 0) {모델 $M_3$\\(재학습)};
+\node[model] (m4) at (3, 0) {모델 $M_k$};
+
+% 화살표: 샤드 -> 모델
+\draw[arrow] (s1) -- (m1);
+\draw[arrow] (s2) -- (m2);
+\draw[arrow, red, dashed] (s3) -- (m3);
+\draw[arrow] (s4) -- (m4);
+
+% 집계
+\node[agg] (agg) at (0, -1.5) {앙상블 집계\\$M_{final} = \text{Agg}(M_1, ..., M_k)$};
+
+\draw[arrow] (m1) -- (agg);
+\draw[arrow] (m2) -- (agg);
+\draw[arrow, red, dashed] (m3) -- (agg);
+\draw[arrow] (m4) -- (agg);
+
+% 점선: 나머지 샤드 표시
+\node[font=\scriptsize] at (2, 1.5) {...};
+\node[font=\scriptsize] at (2, 0) {...};
+
+\end{tikzpicture}
+\caption{SISA 전략의 샤딩 기반 머신 언러닝 개념도. 삭제 요청 시 해당 샤드의 서브모델만 재학습하여 효율성을 확보한다.}
+\label{fig:sisa_strategy}
+\end{figure}
+
+SISA가 정확한 언러닝(Exact Unlearning)을 보장하는 반면, 대규모 모델에서는 근사 언러닝(Approximate Unlearning)이 더 실용적일 수 있다. 특히 수십억 파라미터를 가진 대규모 언어 모델(LLM)이나 복잡한 딥러닝 모델에서는 전체 재학습의 계산 비용이 수백만 원에서 수천만 원에 달할 수 있으므로, 근사적 방법의 경제적 이점이 매우 크다. 그래디언트 기반 근사 제거 기법은 삭제 대상 데이터에 대한 영향함수(Influence Function)를 활용하여, 전체 재학습 없이 모델 파라미터를 조정한다.
+
+\begin{lstlisting}[language=Python, caption={Gradient-based Approximate Machine Unlearning}, label={lst:approx_unlearn}]
+import torch
+
+class ApproximateUnlearner:
+    """Influence Function based approximate data removal from trained model"""
+    def __init__(self, model, learning_rate=0.01, num_steps=100):
+        self.model = model
+        self.lr = learning_rate
+        self.num_steps = num_steps
+
+    def compute_gradient(self, data_point, label, loss_fn):
+        self.model.zero_grad()
+        output = self.model(data_point)
+        loss = loss_fn(output, label)
+        loss.backward()
+        return [p.grad.clone() for p in self.model.parameters()]
+
+    def unlearn(self, forget_data, forget_labels, loss_fn):
+        """Gradient ascent on forget set to remove data influence"""
+        for step in range(self.num_steps):
+            self.model.zero_grad()
+            output = self.model(forget_data)
+            loss = loss_fn(output, forget_labels)
+            loss.backward()
+            with torch.no_grad():
+                for param in self.model.parameters():
+                    # ascent: reverse the gradient direction
+                    param.data += self.lr * param.grad
+        return self.model
+\end{lstlisting}
+
+\paragraph{언러닝 검증 (Unlearning Verification)}
+
+머신 언러닝이 성공적으로 수행되었는지 검증하는 것은 법적 준수(compliance)와 직결되는 중요한 과제이다. 대표적인 검증 방법은 \textbf{멤버십 추론 공격(Membership Inference Attack, MIA)}을 역활용하는 것이다. 삭제 대상 데이터에 대해 MIA를 수행했을 때, 해당 데이터가 학습에 사용되지 않은 것으로 판정되면 언러닝이 효과적으로 이루어진 것으로 간주한다. 구체적으로, 언러닝 전후의 MIA 성공률이 비학습 데이터(holdout set)의 기저 성공률(baseline)에 수렴해야 한다. 이 외에도 Certified Unlearning은 언러닝된 모델의 파라미터 분포가 해당 데이터 없이 처음부터 학습된 모델의 분포와 ($\epsilon$, $\delta$)-수준에서 통계적으로 구분 불가능함을 수학적으로 보장하여, 고위험 AI의 법적 대응 근거가 된다. 실무적으로는 언러닝 전후의 MIA AUC 차이가 0.05 미만이고, 전체 테스트 정확도 저하가 1\% 이내일 때 성공적인 언러닝으로 판정하는 기준을 적용할 수 있다.
+
+\paragraph{데이터 비노출 연산 (Homomorphic Encryption)}
+
+동형 암호(HE)는 암호화된 상태에서 직접 연산을 수행할 수 있는 암호 체계로, 데이터를 복호화하지 않고도 AI 추론이 가능하다. 이는 클라우드 환경에서의 모델 서빙이나 제3자에게 추론을 위탁하는 시나리오에서 핵심적인 프라이버시 보호 수단이 된다. 동형 암호는 완전 동형 암호(Fully Homomorphic Encryption, FHE)와 부분 동형 암호(Partially HE)로 나뉘는데, ML 추론에는 덧셈과 곱셈 모두를 지원하는 FHE가 필요하다.
+
+ML 추론에 가장 적합한 \textbf{CKKS(Cheon-Kim-Kim-Song)} 스킴은 실수 근사 연산을 지원하여 신경망의 가중치 곱셈과 덧셈을 암호문 상에서 직접 수행할 수 있다. 다만 비선형 활성화 함수(ReLU, Sigmoid 등)는 다항식으로 근사해야 하므로 정확도와 연산 비용 사이의 트레이드오프가 존재한다. 예를 들어, ReLU를 $x^2$ 또는 저차 다항식으로 대체하는 방식이 일반적이다.
+
+\begin{table}[htbp]
+\centering
+\caption{동형 암호 스킴 비교 및 ML 적합성}
+\label{tab:he_schemes}
+\begin{tabularx}{\textwidth}{p{1.8cm}p{2.5cm}p{2.5cm}p{2.5cm}X}
+\toprule
+\textbf{스킴} & \textbf{연산 유형} & \textbf{데이터 타입} & \textbf{주요 라이브러리} & \textbf{ML 적합 시나리오} \\
+\midrule
+BFV & 정수 산술 & 정수 & SEAL, HElib & 정수 기반 분류, 카운트 쿼리 \\
+BGV & 정수 산술 & 정수 & HElib, PALISADE & 부울 회로, 비교 연산 \\
+CKKS & 근사 실수 산술 & 실수 (근사) & SEAL, OpenFHE, HEAAN & 신경망 추론, 로지스틱 회귀, 실수 연산 전반 \\
+TFHE & 부울 게이트 & 비트 단위 & TFHE, Concrete & 결정 트리, 비선형 함수 정확 계산 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{실무 적용 사례: 금융 신용평가의 암호화 추론}
+
+금융권에서 개인 신용평가 모델을 제3자(핀테크 기업 등)에게 서비스형으로 제공할 때, 고객의 민감한 금융 정보가 모델 서비스 제공자에게 노출되는 문제가 발생한다. CKKS 기반 동형 암호 추론 파이프라인을 적용하면 다음과 같이 동작한다: (1) 고객의 금융 데이터를 로컬에서 CKKS로 암호화, (2) 암호문을 서버로 전송, (3) 서버에서 암호화된 상태로 신용평가 모델 추론 수행, (4) 암호화된 결과를 클라이언트로 반환, (5) 클라이언트가 비밀키로 복호화하여 신용등급 확인. 이 과정에서 서버는 고객의 금융 데이터도, 추론 결과도 일체 확인할 수 없다. 현재 CKKS 기반 로지스틱 회귀 추론은 평문 대비 약 10--100배의 시간 오버헤드가 발생하지만, GPU 가속과 알고리즘 최적화를 통해 실시간 서비스가 점차 가능해지고 있다 \cite{oecd2024regulatory_ai_finance}. 한국에서는 서울대학교 천정희 교수팀이 개발한 HEaaN 라이브러리가 CKKS 기반 암호화 ML 추론의 실용화를 선도하고 있으며, 금융보안원과의 협력을 통해 실제 금융 서비스 적용 사례를 확보하고 있다.
+
+\begin{table}[htbp]
+\centering
+\caption{[실무 도구 15-2] 프라이버시 보호 기법 선정 가이드}
+\label{tab:pet_guide}
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{2.5cm}X}
+\toprule
+\textbf{기법} & \textbf{핵심 장점} & \textbf{주요 한계} & \textbf{적합 시나리오} \\
+\midrule
+차등 프라이버시 & 수학적 프라이버시 보장 & 모델 정확도 하락 & 통계 분석, 모델 배포 \\
+연합 학습 & 원천 데이터 반출 방지 & 통신 오버헤드 & 다기관 공동 학습 \\
+동형 암호 & 데이터 비노출 추론 & 매우 높은 계산 비용 & 클라우드 위탁 추론 \\
+머신 언러닝 & 특정 데이터 사후 제거 & 재학습 비용 발생 & 삭제 요청 대응 \\
+합성 데이터 & 원본 비노출 학습 & 분포 왜곡 가능성 & 개발/테스트, 데이터 공유 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{practicaltool}{금융권 가명정보 결합 및 차등 프라이버시 적용}
+K-Bank가 통신사 및 유통사 데이터와 결합하여 신용평가 모델을 고도화하는 시나리오를 가정한다.
+\textbf{처리 공정}: 1) 금융보안원 인증 기법을 통한 가명처리, 2) 수직 연합 학습(Vertical FL)을 통한 데이터 비반출 결합, 3) 그래디언트에 $\epsilon=2.0$ 수준의 DP 노이즈 주입, 4) 누적 프라이버시 예산 관리($\epsilon_{total} \leq 8.0$).
+\textbf{거버넌스}: 데이터 결합 전문기관의 사전 심의, 활용 목적 명시, 가명정보 안전성 평가(k-익명성 등) 수행 후 결과 문서화가 필수적이다.
+\end{practicaltool}
+
+\subsection{합성 데이터를 통한 프라이버시 보호}
+\label{sec:15.2.4}
+
+합성 데이터(Synthetic Data)는 원본 데이터의 통계적 특성을 보존하면서도 실제 개인정보를 포함하지 않는 인공 생성 데이터이다. 원본 데이터에 직접 접근하지 않고도 AI 모델 개발, 테스트, 그리고 외부 데이터 공유가 가능하다는 점에서 PETs의 중요한 축으로 부상하고 있다. Gartner는 2025년까지 AI 학습에 사용되는 데이터의 60\%가 합성 데이터가 될 것으로 전망한 바 있으며, 이는 프라이버시 규제 강화와 데이터 확보 비용 증가에 따른 자연스러운 귀결이다. 특히 한국의 데이터 3법 체계에서 가명처리-결합-활용의 복잡한 절차를 거치지 않고도 데이터 활용이 가능하다는 점에서 실무적 매력이 크다.
+
+\paragraph{합성 데이터 생성 기법}
+
+합성 데이터 생성의 주요 접근법은 다음과 같다:
+
+\begin{itemize}
+    \item \textbf{GAN 기반 생성}: 생성적 적대 신경망(GAN)을 활용하여 원본 데이터 분포를 학습하고, 이를 모방하는 새로운 데이터를 생성한다. 정형 데이터에는 CTGAN(Conditional Tabular GAN)이, 의료 영상에는 StyleGAN 계열이 널리 사용된다. 다만 GAN은 모드 붕괴(mode collapse)와 학습 불안정성이 단점이다.
+    \item \textbf{확산 모델 기반 생성(Diffusion-based)}: 최근 확산 모델(Diffusion Model)이 GAN 대비 더 안정적이고 다양한 샘플을 생성하는 것으로 알려지며 주목받고 있다. 특히 정형 데이터에 대한 TabDDPM 등의 기법은 기존 GAN 기반 방법보다 통계적 충실도(fidelity)와 다양성(diversity) 모두에서 우수한 성능을 보인다.
+    \item \textbf{DP 합성 데이터}: 차등 프라이버시를 합성 데이터 생성 과정에 결합하여 수학적 프라이버시 보장을 제공한다. DP-CTGAN이나 PATE-GAN이 대표적이며, 생성된 합성 데이터에 대해 임의의 후속 분석을 수행하더라도 프라이버시가 보장되는 장점이 있다(후처리 불변성, Post-processing Immunity).
+    \item \textbf{통계적 모델 기반 생성}: 베이지안 네트워크나 코퓰라(Copula) 등 전통 통계 모델을 활용하는 방법으로, 딥러닝 기반 방법 대비 해석가능성이 높고 소규모 데이터셋에서도 안정적으로 작동한다. 변수 간 조건부 의존 관계를 명시적으로 모델링할 수 있어, 도메인 전문가의 사전 지식을 반영하기 용이하다.
+\end{itemize}
+
+\paragraph{합성 데이터의 품질 평가와 프라이버시 보장}
+
+합성 데이터의 프라이버시 보장 수준은 생성 방법에 따라 크게 다르다. 단순 GAN 기반 합성 데이터는 과적합(overfitting)된 생성 모델이 원본 데이터를 그대로 재현할 위험이 있으므로, \textbf{최근접 이웃 거리 비율(Distance to Closest Record, DCR)} 분석을 통해 합성 데이터와 원본 데이터의 유사도를 정량적으로 평가해야 한다. 반면 DP 합성 데이터는 ($\epsilon$, $\delta$)-DP의 수학적 보장을 제공하므로, 규제 기관에 프라이버시 보호의 정량적 근거를 제시할 수 있다. 합성 데이터의 품질 평가에는 충실도(fidelity: 원본과의 통계적 유사도), 유용성(utility: 다운스트림 태스크 성능), 프라이버시(privacy: 재식별 위험도)의 세 축을 균형 있게 평가해야 한다.
+
+\paragraph{실무 활용 사례}
+
+\begin{table}[htbp]
+\centering
+\caption{산업별 합성 데이터 활용 시나리오}
+\label{tab:synthetic_data_usecases}
+\begin{tabularx}{\textwidth}{p{2cm}p{3.5cm}X}
+\toprule
+\textbf{산업 분야} & \textbf{활용 시나리오} & \textbf{기대 효과} \\
+\midrule
+의료 & 희귀 질환 데이터 증강, 다기관 데이터 공유 \cite{topol2019high} & IRB 심의 없는 연구 데이터 확보, 클래스 불균형 해소 \\
+금융 & 이상 거래 탐지 모델 학습, 외부 핀테크 협력 & 사기 패턴 데이터 안전 공유, 규제 샌드박스 활용 \cite{oecd2024regulatory_ai_finance} \\
+공공 & 센서스 마이크로데이터 공개, 정책 시뮬레이션 & 연구자 데이터 접근성 향상, 개인 재식별 방지 \\
+제조 & 품질 불량 데이터 증강, 협력사 데이터 공유 & 희귀 불량 탐지 성능 향상, 공급망 AI 고도화 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={DP-Synthetic Data Generation using CTGAN with Differential Privacy}, label={lst:dp_synthetic}]
+from sdv.single_table import CTGANSynthesizer
+from sdv.metadata import SingleTableMetadata
+
+class DPSyntheticDataGenerator:
+    """Differentially Private synthetic data generation pipeline"""
+    def __init__(self, epsilon=1.0, epochs=300):
+        self.epsilon = epsilon
+        self.epochs = epochs
+
+    def generate(self, real_data, metadata, num_samples):
+        # Metadata
+        meta = SingleTableMetadata()
+        meta.detect_from_dataframe(real_data)
+
+        # CTGAN with DP noise injection
+        synthesizer = CTGANSynthesizer(
+            metadata=meta,
+            epochs=self.epochs,
+            verbose=True
+        )
+        synthesizer.fit(real_data)
+        synthetic_data = synthesizer.sample(num_rows=num_samples)
+        return synthetic_data
+
+    def evaluate_privacy(self, real_data, synthetic_data):
+        """DCR (Distance to Closest Record) privacy metric"""
+        from sklearn.neighbors import NearestNeighbors
+        nn = NearestNeighbors(n_neighbors=1, metric='euclidean')
+        nn.fit(real_data.select_dtypes(include='number'))
+        distances, _ = nn.kneighbors(
+            synthetic_data.select_dtypes(include='number')
+        )
+        dcr_ratio = (distances > 0).mean()
+        return {"dcr_non_zero_ratio": dcr_ratio,
+                "mean_distance": distances.mean()}
+\end{lstlisting}
+
+\begin{practicaltool}{의료 합성 데이터를 활용한 다기관 AI 연구 가속화}
+대학병원 A가 보유한 500건의 희귀 심장부정맥 ECG 데이터를 활용하여 합성 데이터 5,000건을 생성하고, 이를 외부 연구 기관과 공유하는 시나리오이다.
+\textbf{생성 파이프라인}: 1) 원본 ECG 데이터에 대해 DP-CTGAN($\epsilon=2.0$)으로 합성 데이터 생성, 2) 통계적 충실도 평가(원본과 합성 데이터의 분포 유사도 KS-test), 3) DCR 분석으로 프라이버시 리스크 정량 평가(DCR 비율 $> 0.95$ 목표), 4) IRB 면제 확인 후 외부 공유.
+\textbf{기대 효과}: 기존 6개월 이상 소요되던 IRB 심의 및 데이터 이전 절차를 2--4주로 단축하면서도, 합성 데이터로 학습한 모델이 원본 데이터 학습 모델 대비 92--95\% 수준의 성능을 달성할 수 있다 \cite{price2019privacy}.
+\textbf{주의사항}: 합성 데이터 생성 모델 자체가 프라이버시 리스크을 내포하므로, 생성 모델의 접근 제어와 모델 카드(Model Card) 작성이 필수적이다. 또한 합성 데이터의 품질 보고서(충실도, 유용성, 프라이버시 메트릭)를 생성하여 데이터 이용자에게 제공해야 한다.
+\end{practicaltool}
+
+%----------------------------------------------------------
+% 제15장 Section 15.3: AI 자산 접근 제어와 권한 관리
+
+\section{AI 자산 접근 제어와 권한 관리}
+\label{sec:15.3}
+
+기술적 방어를 넘어 ``누가, 어떤 조건에서 AI 자산에 접근할 수 있는가''를 정의하는 것은 거버넌스의 마지막 관문이다. AI 시스템은 전통적 IT 자산과 근본적으로 다른 접근 제어 요구사항을 갖는다. 모델 가중치, 학습 데이터, 피처 파이프라인, 추론 API 등 다양한 자산 유형이 존재하며, 각 자산의 민감도와 활용 맥락이 동적으로 변화한다. 본 절에서는 역할 기반(RBAC)과 속성 기반(ABAC) 접근 제어의 통합 설계, API 수준의 거버넌스 아키텍처, MLOps 파이프라인에서의 최소 권한 원칙, 그리고 AI 특화 보안 사고 대응 체계를 체계적으로 다룬다 \cite{falco2021governing}.
+
+\subsection{AI 모델 및 피처 단위의 RBAC/ABAC 설계}
+\label{sec:15.3.1}
+
+\paragraph{전통적 접근 제어의 한계}
+
+전통적인 역할 기반 접근 제어(RBAC)는 ``관리자'', ``개발자'', ``조회자'' 등 정적 역할에 기반하여 권한을 부여한다. 그러나 AI 시스템에서는 이러한 정적 모델만으로 충분하지 않다. 첫째, AI 자산은 모델 버전, 학습 데이터셋, 피처 저장소, 추론 엔드포인트 등 세분화된 단위로 관리되어야 하며 각각의 민감도가 상이하다. 둘째, 동일한 역할을 가진 사용자라도 접근 시점(업무 시간 vs. 심야), 접근 환경(사내 네트워크 vs. 외부), 대상 모델의 리스크 등급에 따라 차등적 통제가 필요하다. 셋째, AI 모델의 생명주기에 따라 동일 자산에 대한 권한 요구사항이 변화한다---개발 단계에서는 넓은 실험 권한이 필요하지만, 프로덕션 배포 후에는 엄격한 변경 통제가 적용되어야 한다 \cite{sculley2015hidden}. 이러한 한계를 극복하기 위해 RBAC를 기본 골격으로 유지하면서 \textbf{속성 기반 접근 제어(ABAC)}를 결합하는 하이브리드 접근이 권장된다.
+
+\paragraph{AI 시스템을 위한 역할 계층 설계}
+
+AI 거버넌스에 적합한 RBAC 역할 체계는 표 \ref{tab:ai_rbac_roles}와 같이 설계한다.
+
+\begin{table}[htbp]
+\centering
+\caption{AI 자산 유형별 RBAC 역할 권한 매트릭스}
+\label{tab:ai_rbac_roles}
+\begin{tabularx}{\textwidth}{p{2.2cm}XXXXX}
+\toprule
+\textbf{자산 유형} & \textbf{AI 개발자} & \textbf{데이터 엔지니어} & \textbf{모델 검증자} & \textbf{거버넌스 관리자} & \textbf{경영진} \\
+\midrule
+학습 데이터 & R & CRUD & R & R/감사 & --- \\
+피처 저장소 & R/W & CRUD & R & R/감사 & --- \\
+모델 가중치 & CRUD & --- & R/검증 & R/감사 & --- \\
+추론 API & R/배포 & --- & R/테스트 & R/W/감사 & R(대시보드) \\
+실험 메타데이터 & CRUD & R & R/W & R/감사 & R(요약) \\
+감사 로그 & R(본인) & R(본인) & R & CRUD & R(요약) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{ABAC 정책 속성 분류 체계}
+
+ABAC 정책은 네 가지 속성 범주의 조합으로 접근 결정을 내린다. 표 \ref{tab:abac_attributes}는 AI 시스템에 특화된 속성 분류 체계를 보여준다.
+
+\begin{table}[htbp]
+\centering
+\caption{ABAC 정책 속성 분류 체계}
+\label{tab:abac_attributes}
+\begin{tabularx}{\textwidth}{p{2cm}p{3cm}X}
+\toprule
+\textbf{속성 범주} & \textbf{속성 예시} & \textbf{AI 시스템 적용 맥락} \\
+\midrule
+주체 속성 & 역할, 부서, 보안 인증 레벨, AI 윤리 교육 이수 여부 & 고위험 모델 접근 시 윤리 교육 이수 요건 확인 \\
+객체 속성 & 모델 리스크 등급, PII 포함 여부, 배포 상태, 데이터 분류 등급 & 프로덕션 모델 가중치의 변경 권한 제한 \\
+환경 속성 & 접근 시간, 네트워크 위치, 디바이스 신뢰 수준, MFA 인증 여부 & 외부 네트워크에서의 고위험 자산 접근 차단 \\
+행위 속성 & 요청 유형(읽기/쓰기/실행), 배치 크기, 호출 빈도 & 대량 데이터 추출 시도 탐지 및 차단 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{통합 ABAC 엔진 구현}
+
+다음 코드는 시간 기반 접근 제어, 인증 검증, 감사 로깅을 통합한 ABAC 엔진이다.
+
+\begin{lstlisting}[language=Python, caption={Hybrid RBAC/ABAC Engine for AI Asset Access Control}, label={lst:abac_engine_v2}]
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import List, Tuple
+import logging
+
+class RiskLevel(Enum):
+    LOW = "LOW"; MEDIUM = "MEDIUM"; HIGH = "HIGH"; CRITICAL = "CRITICAL"
+
+class AccessAction(Enum):
+    READ = "read"; WRITE = "write"; EXECUTE = "execute"; DELETE = "delete"
+
+@dataclass
+class Subject:
+    user_id: str; role: str; department: str
+    certifications: List[str] = field(default_factory=list)
+    security_clearance: int = 1
+    ethics_training_completed: bool = False
+
+@dataclass
+class AIAsset:
+    asset_id: str; asset_type: str; risk_level: RiskLevel
+    contains_pii: bool = False; deployment_stage: str = "development"
+
+@dataclass
+class Environment:
+    is_internal_network: bool; access_time: datetime
+    mfa_verified: bool = False; device_trusted: bool = False
+
+class AIAccessController:
+    """Hybrid RBAC/ABAC engine with time-based controls and audit trail"""
+    def __init__(self):
+        self.audit_logger = logging.getLogger("ai_access_audit")
+        self.business_hours = (9, 18)
+
+    def check_permission(self, subject: Subject, asset: AIAsset,
+                         env: Environment, action: AccessAction
+                         ) -> Tuple[bool, str]:
+        # Policy 1: High-risk models require ethics certification
+        if asset.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL):
+            if not subject.ethics_training_completed:
+                return self._deny(subject, asset, action,
+                    "High-risk asset requires ethics training")
+            if "ai_ethics_cert" not in subject.certifications:
+                return self._deny(subject, asset, action,
+                    "High-risk asset requires AI ethics certification")
+        # Policy 2: PII assets blocked from external networks
+        if asset.contains_pii and not env.is_internal_network:
+            return self._deny(subject, asset, action,
+                "PII assets require internal network access")
+        # Policy 3: Critical writes only during business hours with MFA
+        if (asset.risk_level == RiskLevel.CRITICAL
+                and action in (AccessAction.WRITE, AccessAction.DELETE)):
+            hour = env.access_time.hour
+            if not (self.business_hours[0] <= hour < self.business_hours[1]):
+                return self._deny(subject, asset, action,
+                    "Critical modification restricted to business hours")
+            if not env.mfa_verified:
+                return self._deny(subject, asset, action,
+                    "Critical modification requires MFA verification")
+        # Policy 4: Production model changes require governance role
+        if (asset.deployment_stage == "production"
+                and action == AccessAction.WRITE
+                and subject.role not in ("governance_admin", "model_validator")):
+            return self._deny(subject, asset, action,
+                "Production model changes require governance approval")
+        self._log_access(subject, asset, action, "GRANTED")
+        return True, "Access granted"
+
+    def _deny(self, subject, asset, action, reason):
+        self._log_access(subject, asset, action, f"DENIED: {reason}")
+        return False, reason
+
+    def _log_access(self, subject, asset, action, result):
+        self.audit_logger.info(
+            f"[ACCESS] user={subject.user_id} role={subject.role} "
+            f"asset={asset.asset_id} action={action.value} result={result} "
+            f"time={datetime.now().isoformat()}")
+\end{lstlisting}
+
+\paragraph{정책 충돌 해결}
+
+복수의 ABAC 정책이 동시에 적용될 때 상충되는 결정이 발생할 수 있다. 이러한 충돌을 해결하기 위해 \textbf{거부 우선(Deny-Override)} 원칙을 기본 전략으로 채택한다. 즉, 하나의 정책이라도 거부를 반환하면 최종 결정은 거부가 된다. 다만 업무 연속성 확보를 위해 \textbf{긴급 접근(Break-the-Glass)} 메커니즘을 병행하여, 사전 승인된 긴급 상황에서는 거부 정책을 일시적으로 우회할 수 있도록 하되, 모든 우회 사례는 감사 로그에 기록하고 24시간 이내에 사후 검토를 수행해야 한다 \cite{ammanath2022trustworthy}.
+
+\subsection{API 거버넌스: 인증, 인가 및 호출 감사}
+\label{sec:15.3.2}
+
+AI 서비스는 주로 API 형태로 제공되므로, API 수준의 세밀한 거버넌스가 필수적이다. API 게이트웨이는 모든 AI 서비스 호출의 단일 진입점(single entry point)으로서 인증, 인가, 속도 제한, 콘텐츠 필터링, 감사 로깅을 통합적으로 수행한다.
+
+\paragraph{API 게이트웨이 아키텍처}
+
+다음 그림은 AI 서비스를 위한 API 거버넌스 아키텍처를 보여준다. 모든 클라이언트 요청은 게이트웨이를 통과하며, 각 거버넌스 계층에서 순차적으로 검증된다.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.2cm,
+    box/.style={rectangle, draw, rounded corners, minimum width=2.5cm, minimum height=0.9cm, align=center, font=\scriptsize},
+    gate/.style={rectangle, draw, fill=blue!10, rounded corners, minimum width=2.5cm, minimum height=0.9cm, align=center, font=\scriptsize},
+    svc/.style={rectangle, draw, fill=green!10, rounded corners, minimum width=2.5cm, minimum height=0.9cm, align=center, font=\scriptsize},
+    arrow/.style={->, thick},
+]
+\node[box] (client) at (0, 0) {클라이언트\\(웹/모바일/내부)};
+\node[gate] (gw) at (3.5, 0) {API Gateway\\(Kong/Envoy)};
+\node[gate] (auth) at (7, 1.5) {인증/인가\\(OAuth2 + JWT)};
+\node[gate] (rate) at (7, 0) {Rate Limiting\\(토큰 할당량)};
+\node[gate] (filter) at (7, -1.5) {Content Filter\\(PII 탐지)};
+\node[svc] (llm) at (11, 1) {LLM 서비스};
+\node[svc] (ml) at (11, -1) {ML 추론 서비스};
+\node[box, fill=orange!10] (audit) at (7, -3.2) {감사 로그 저장소\\(Elasticsearch)};
+\draw[arrow] (client) -- (gw);
+\draw[arrow] (gw) -- (auth);
+\draw[arrow] (gw) -- (rate);
+\draw[arrow] (gw) -- (filter);
+\draw[arrow] (auth) -- (llm);
+\draw[arrow] (rate) -- (ml);
+\draw[arrow] (filter) -- (ml);
+\draw[arrow, dashed] (auth) -- (audit);
+\draw[arrow, dashed] (rate) -- (audit);
+\draw[arrow, dashed] (filter) -- (audit);
+\end{tikzpicture}
+\caption{AI 서비스 API 거버넌스 아키텍처}
+\label{fig:api_governance_arch}
+\end{figure}
+
+\paragraph{인증 및 인가 설계}
+
+AI API의 인증은 \textbf{OAuth 2.0 + JWT(JSON Web Token)} 기반으로 설계한다. JWT 클레임에 사용자 역할, 부서, 허용된 모델 목록, 토큰 할당량 등 AI 거버넌스에 필요한 속성을 포함시켜 매 요청마다 게이트웨이에서 검증한다. API 키 관리는 프로젝트 단위로 발급하며, 키 로테이션 주기를 90일로 설정하고 미사용 키는 30일 후 자동 비활성화한다.
+
+\paragraph{호출 감사 및 로깅}
+
+AI API의 감사 로그는 전통적 웹 서비스 로깅보다 상세한 정보를 기록해야 한다. 최소한 다음 항목을 포함한다: (1) \textbf{누가}---호출자 ID, 역할, 부서, (2) \textbf{어떤 모델을}---모델 ID, 버전, 엔드포인트, (3) \textbf{어떤 입력으로}---요청 해시(원문은 암호화 저장), 토큰 수, (4) \textbf{어떤 출력을}---응답 해시, 생성 토큰 수, 지연 시간, (5) \textbf{언제}---타임스탬프(밀리초 정밀도), (6) \textbf{어디서}---소스 IP, 디바이스 정보, 지역.
+
+\begin{lstlisting}[language=Python, caption={API Governance Middleware with Rate Limiting and Content Filtering}, label={lst:api_governance}]
+import time, hashlib, re
+from dataclasses import dataclass
+from typing import Dict, Tuple
+
+@dataclass
+class APIQuota:
+    max_tokens_per_day: int; used_tokens: int = 0
+    max_requests_per_minute: int = 60; request_timestamps: list = None
+
+class AIAPIGovernanceMiddleware:
+    """API gateway middleware enforcing auth, rate limit, and content policy"""
+    def __init__(self):
+        self.quotas: Dict[str, APIQuota] = {}
+        self.pii_patterns = [
+            r'\d{6}-[1-4]\d{6}',    # Korean resident registration number
+            r'\d{3}-\d{2}-\d{5}',   # US SSN format
+            r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',  # Email
+        ]
+
+    def process_request(self, request: dict) -> Tuple[bool, str]:
+        dept = request.get("department", "default")
+        # Step 1: Rate limiting
+        if not self._check_rate_limit(dept):
+            return False, "Rate limit exceeded for department"
+        # Step 2: Token quota check
+        estimated_tokens = request.get("max_tokens", 1000)
+        if not self._check_token_quota(dept, estimated_tokens):
+            return False, "Daily token quota exhausted"
+        # Step 3: Input content filtering (PII detection)
+        if self._detect_pii(request.get("prompt", "")):
+            self._log_security_event(request, "PII_DETECTED")
+            return False, "PII detected in request payload"
+        # Step 4: Audit logging
+        self._log_api_call(request, "APPROVED")
+        return True, "Request approved"
+
+    def _check_rate_limit(self, dept: str) -> bool:
+        quota = self.quotas.get(dept)
+        if not quota: return True
+        now = time.time()
+        if quota.request_timestamps is None: quota.request_timestamps = []
+        quota.request_timestamps = [
+            t for t in quota.request_timestamps if now - t < 60]
+        if len(quota.request_timestamps) >= quota.max_requests_per_minute:
+            return False
+        quota.request_timestamps.append(now); return True
+
+    def _check_token_quota(self, dept: str, tokens: int) -> bool:
+        quota = self.quotas.get(dept)
+        if not quota: return True
+        if quota.used_tokens + tokens > quota.max_tokens_per_day: return False
+        quota.used_tokens += tokens; return True
+
+    def _detect_pii(self, text: str) -> bool:
+        return any(re.search(p, text) for p in self.pii_patterns)
+
+    def _log_api_call(self, request: dict, status: str):
+        audit_record = {"timestamp": time.time(),
+            "caller_id": request.get("user_id"),
+            "model_id": request.get("model_id"),
+            "request_hash": hashlib.sha256(
+                request.get("prompt", "").encode()).hexdigest(),
+            "status": status}  # send to Elasticsearch in production
+\end{lstlisting}
+
+\paragraph{토큰 기반 비용 관리}
+
+생성형 AI API의 비용 관리는 토큰 단위 할당량으로 구현한다. 표 \ref{tab:token_quota}는 부서별 할당량 설계 예시이다. 할당량은 월 단위로 갱신되며, 초과 시 관리자 승인 워크플로우가 트리거된다.
+
+\begin{table}[htbp]
+\centering
+\caption{부서별 AI API 토큰 할당량 설계 예시}
+\label{tab:token_quota}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{2.5cm}p{2.5cm}X}
+\toprule
+\textbf{부서} & \textbf{일 할당량(토큰)} & \textbf{월 할당량(토큰)} & \textbf{허용 모델 등급} \\
+\midrule
+AI 연구팀 & 5,000,000 & 100,000,000 & 모든 모델(GPT-4급 포함) \\
+제품 개발팀 & 2,000,000 & 40,000,000 & GPT-3.5급 이하, 사내 모델 \\
+마케팅팀 & 500,000 & 10,000,000 & 사내 모델, 경량 모델만 \\
+경영지원팀 & 200,000 & 4,000,000 & 사내 챗봇만 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{MLOps 환경에서의 최소 권한 원칙(PoLP)}
+\label{sec:15.3.3}
+
+MLOps 파이프라인의 각 단계(수집, 전처리, 학습, 검증, 배포, 서빙, 모니터링)는 작업에 필요한 최소한의 리소스에만 접근해야 한다. \textbf{최소 권한 원칙(Principle of Least Privilege, PoLP)}은 보안 사고 발생 시 피해 범위(blast radius)를 최소화하는 핵심 전략이다 \cite{amodei2016concrete}.
+
+\paragraph{파이프라인 단계별 권한 설계}
+
+\begin{table}[htbp]
+\centering
+\caption{MLOps 파이프라인 단계별 최소 권한 설계}
+\label{tab:mlops_polp}
+\begin{tabularx}{\textwidth}{p{2cm}p{4.5cm}X}
+\toprule
+\textbf{파이프라인 단계} & \textbf{부여 권한} & \textbf{명시적 거부 권한} \\
+\midrule
+데이터 수집 & 원천 DB 읽기, 스테이징 버킷 쓰기 & 모델 저장소 접근, 프로덕션 DB 쓰기 \\
+전처리 & 스테이징 버킷 읽기/쓰기, 피처 저장소 쓰기 & 원천 DB 직접 접근, 모델 레지스트리 접근 \\
+모델 학습 & 피처 저장소 읽기, 실험 추적 쓰기, GPU 클러스터 접근 & 프로덕션 엔드포인트 변경, 원천 데이터 삭제 \\
+모델 검증 & 모델 아티팩트 읽기, 테스트 데이터 읽기, 검증 결과 쓰기 & 모델 가중치 변경, 학습 데이터 접근 \\
+배포 & 모델 레지스트리 읽기, 서빙 인프라 변경 & 학습 데이터 접근, 피처 파이프라인 변경 \\
+서빙 & 모델 아티팩트 읽기, 피처 저장소 읽기, 응답 캐시 쓰기 & 학습 데이터 원본 접근, 모델 가중치 변경 \\
+모니터링 & 추론 로그 읽기, 메트릭 저장소 쓰기, 알림 발송 & 모델/데이터 변경, 서빙 인프라 직접 제어 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{서비스 계정 설계 패턴}
+
+각 파이프라인 단계에는 전용 서비스 계정(Service Account)을 할당한다. 공유 계정 사용은 감사 추적을 불가능하게 만들므로 엄격히 금지한다. 서비스 계정 명명 규칙은 \texttt{svc-<project>-<stage>-<env>} 형식을 따르며, 예를 들어 \texttt{svc-fraud-detection-training-prod}는 사기 탐지 프로젝트의 프로덕션 학습 단계 전용 계정이다.
+
+\begin{lstlisting}[language=Python, caption={IAM Policy Configuration for ML Pipeline Stages}, label={lst:iam_mlops}]
+ML_PIPELINE_IAM_POLICIES = {
+    "training_stage": {
+        "service_account": "svc-project-training-prod",
+        "allow": ["feature_store:read:*", "experiment_tracker:write:*",
+                   "gpu_cluster:submit_job:training-pool",
+                   "model_registry:write:staging/*"],
+        "deny":  ["production_endpoint:*", "raw_data_lake:delete:*",
+                   "feature_store:write:*", "iam:*"],
+        "conditions": {"max_session_duration": "8h",
+                        "ip_restriction": "10.0.0.0/8"}
+    },
+    "serving_stage": {
+        "service_account": "svc-project-serving-prod",
+        "allow": ["model_registry:read:production/*",
+                   "feature_store:read:online/*",
+                   "response_cache:read_write:*", "metrics:write:serving/*"],
+        "deny":  ["raw_data_lake:*", "model_registry:write:*",
+                   "training_cluster:*", "experiment_tracker:write:*"],
+        "conditions": {"max_session_duration": "24h",
+                        "auto_rotate_credentials": "7d"}
+    },
+}
+\end{lstlisting}
+
+\paragraph{권한 크립(Permission Creep) 방지}
+
+시간이 경과하면서 불필요한 권한이 누적되는 ``권한 크립'' 현상은 AI 시스템에서 특히 위험하다. 이를 방지하기 위해 다음 프로세스를 수행한다. 첫째, \textbf{분기별 접근 권한 리뷰}를 실시하여 90일간 미사용된 권한을 자동 식별하고 제거 후보로 표시한다. 둘째, \textbf{Just-In-Time(JIT) 권한 부여}를 도입하여 고위험 작업(모델 배포, 데이터 삭제 등)에 대해서는 요청 시점에 한시적 권한을 부여하고 작업 완료 후 자동 회수한다. 셋째, 모든 권한 변경 이력을 \textbf{변경 관리 시스템}에 기록하여 추적 가능성을 확보한다.
+
+\subsection{보안 사고 대응 및 포렌식}
+\label{sec:15.3.4}
+
+AI 시스템의 보안 사고는 전통적 IT 사고와 본질적으로 다른 특성을 갖는다. 모델 중독, 적대적 입력 공격, 학습 데이터 유출 등은 즉각적인 시스템 장애를 유발하지 않을 수 있어 탐지가 어렵고, 피해 범위 산정이 복잡하다.
+
+\paragraph{AI 보안 사고 대응 6단계}
+
+\begin{enumerate}
+    \item \textbf{탐지(Detection)}: 모델 성능 이상(정확도 급락, 편향 증가), 비정상 API 호출 패턴, 데이터 파이프라인 무결성 위반 등 AI 특화 지표를 모니터링한다. 자동화된 이상 탐지 시스템이 임계치 초과 시 즉각 알림을 발생시킨다.
+    \item \textbf{분류(Classification)}: 탐지된 사고를 표 \ref{tab:incident_severity_security}의 심각도 분류 기준에 따라 등급을 매긴다.
+    \item \textbf{격리(Containment)}: 영향받은 모델의 서빙을 즉시 중단하거나 이전 안전 버전으로 롤백한다. 오염이 의심되는 데이터 파이프라인을 차단하고, 관련 API 엔드포인트를 비활성화한다.
+    \item \textbf{분석(Analysis)}: 모델 포렌식을 수행하여 공격 벡터와 피해 범위를 파악한다. 학습 데이터 무결성 검증, 모델 가중치 비교 분석, 추론 로그 역추적 등을 실시한다.
+    \item \textbf{복구(Recovery)}: 검증된 안전한 체크포인트에서 모델을 재배포한다. 오염된 데이터를 제거하고 필요 시 클린 데이터로 재학습을 수행한다.
+    \item \textbf{사후 검토(Post-Incident Review)}: 근본 원인 분석(RCA)을 수행하고 재발 방지 대책을 수립한다. 플레이북을 갱신한다.
+\end{enumerate}
+
+\paragraph{AI 보안 사고 심각도 분류}
+
+\begin{table}[htbp]
+\centering
+\caption{AI 시스템 보안 사고 심각도 분류}
+\label{tab:incident_severity_security}
+\begin{tabularx}{\textwidth}{p{1.5cm}p{3cm}Xp{2.5cm}}
+\toprule
+\textbf{심각도} & \textbf{사고 유형 예시} & \textbf{판단 기준} & \textbf{대응 시한} \\
+\midrule
+P0 (Critical) & 프로덕션 모델 가중치 변조, 대규모 PII 유출 & 고객 피해 발생 또는 법적 보고 의무 & 1시간 이내 \\
+P1 (High) & 학습 데이터 중독 의심, 모델 추출 시도 탐지 & 모델 무결성 훼손 가능성 & 4시간 이내 \\
+P2 (Medium) & 비정상 API 호출 급증, 경미한 모델 성능 저하 & 서비스 품질 영향 & 24시간 이내 \\
+P3 (Low) & 내부 실험 환경 권한 위반, 미승인 모델 복제 & 직접적 서비스 영향 없음 & 72시간 이내 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{모델 포렌식 절차}
+
+침해가 의심되는 모델에 대한 포렌식은 다음 절차를 따른다. 첫째, 현재 프로덕션 모델 가중치와 마지막으로 검증된 안전 체크포인트 간의 \textbf{가중치 차이(weight diff) 분석}을 수행하여 비인가 변경 여부를 확인한다. 둘째, 모델의 \textbf{학습 데이터 계보(lineage)}를 역추적하여 데이터 중독 가능성을 조사한다. 셋째, 최근 추론 로그를 분석하여 \textbf{이상 입력 패턴}(동일 소스에서의 반복적 경계값 쿼리 등)을 식별한다. 넷째, 모델의 \textbf{결정 경계 변화}를 시각화하여 특정 클래스에 대한 편향 이동 여부를 확인한다.
+
+\paragraph{보안 사고 시 커뮤니케이션 프로토콜}
+
+AI 보안 사고 발생 시 내부 커뮤니케이션은 ``알아야 할 필요(Need-to-Know)'' 원칙에 따라 제한한다. P0/P1 사고는 즉시 CISO, AI 거버넌스 위원회, 법무팀에 보고하며, 외부 커뮤니케이션은 법무팀의 검토를 거쳐 진행한다. 특히 개인정보 유출이 수반된 경우 개인정보보호법에 따라 72시간 이내에 개인정보보호위원회에 신고해야 한다.
+
+\begin{practicaltool}{[실무 도구 15-1] AI 보안 위협 모델링 워크시트}
+AI 시스템 배포 전 다음 항목을 체계적으로 검토하여 위협 모델을 수립한다.\\[0.3em]
+\textbf{1. 자산 식별}: 보호 대상 AI 자산을 나열한다(모델 가중치, 학습 데이터, 피처 파이프라인, 추론 API, 메타데이터).\\
+\textbf{2. 위협 행위자}: 잠재적 공격자를 식별한다(외부 해커, 내부 악의적 사용자, 경쟁사, 공급망 위협).\\
+\textbf{3. 공격 벡터}: AI-STRIDE(표 \ref{tab:ai_stride}) 프레임워크를 적용하여 각 자산별 공격 경로를 분석한다.\\
+\textbf{4. 영향도 평가}: 각 위협 시나리오의 비즈니스 영향(재무적 손실, 평판 피해, 법적 책임)을 정량화한다.\\
+\textbf{5. 기존 통제 평가}: 현재 적용된 보안 통제의 효과성을 평가하고 잔여 리스크를 식별한다.\\
+\textbf{6. 대응 계획}: 잔여 리스크에 대한 추가 통제(기술적/절차적/관리적)를 설계하고 우선순위를 부여한다.\\[0.3em]
+이 워크시트는 분기 1회 이상 갱신하되, 모델 주요 변경이나 새로운 위협 정보 입수 시 즉시 재검토한다.
+\end{practicaltool}
+
+\begin{practicaltool}{DIRE 모델 관점의 ``논리적 결함 없는'' 권한 검증}
+접근 제어 시스템 자체의 논리적 결함(정책 충돌, 권한 누수)을 방지하기 위해 \textbf{완전성(Completeness)}과 \textbf{무모순성(Consistency)}을 형식 검증 툴(Z3 등)로 입증한다. 구체적으로, 모든 AI 자산-역할 조합에 대해 명시적 허용 또는 거부 정책이 존재하는지(완전성), 동일 요청에 대해 상충되는 결정이 발생하지 않는지(무모순성)를 자동화된 검증으로 확인한다. 이는 15.1.3절에서 다룬 신경망 형식 검증과 동일한 철학적 기반 위에 있다.
+\end{practicaltool}
+
+\begin{table}[htbp]
+\centering
+\caption{[실무 도구 15-3] AI 자산 접근 제어 설계 체크리스트}
+\label{tab:access_checklist}
+\begin{tabularx}{\textwidth}{p{3cm}p{6.5cm}X}
+\toprule
+\textbf{검토 항목} & \textbf{핵심 체크포인트} & \textbf{적합 여부} \\
+\midrule
+RBAC 역할 정의 & AI 자산 유형별 역할-권한 매트릭스가 문서화되어 있는가 & \\
+ABAC 정책 설계 & 주체/객체/환경/행위 4개 속성 범주가 모두 반영되었는가 & \\
+정책 충돌 해결 & 거부 우선 원칙 및 긴급 접근 메커니즘이 정의되었는가 & \\
+API 인증/인가 & OAuth2+JWT 기반 인증, 모델별 인가 정책이 적용되었는가 & \\
+토큰 할당량 & 부서별/프로젝트별 토큰 기반 비용 관리가 구현되었는가 & \\
+API 감사 로깅 & 6W(누가, 무엇을, 어떤 입출력, 언제, 어디서, 왜) 기록 여부 & \\
+MLOps PoLP & 파이프라인 단계별 전용 서비스 계정 및 명시적 거부 정책 설정 & \\
+권한 크립 방지 & 분기별 권한 리뷰 및 JIT 권한 부여 프로세스 운영 여부 & \\
+사고 대응 계획 & AI 특화 사고 분류 기준 및 6단계 대응 프로세스 수립 여부 & \\
+모델 포렌식 역량 & 가중치 비교, 데이터 계보 역추적, 결정 경계 분석 도구 확보 & \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection*{제15장 요약}
+
+본 장에서는 AI 거버넌스의 기술적 안전판인 보안과 프라이버시를 포괄적으로 다루었다.
+
+\begin{enumerate}
+    \item \textbf{체계적 위협 대응}: AI-STRIDE 프레임워크를 활용한 위협 모델링과 적대적 학습(Adversarial Training)을 통해 모델의 강건성을 확보한다. 회피 공격, 데이터 중독, 모델 추출 등 AI 고유의 공격 벡터에 대한 다층 방어 체계를 구축해야 한다.
+    \item \textbf{프라이버시 보존 기술}: 차등 프라이버시(DP-SGD), 연합 학습(Federated Learning), 머신 언러닝, 동형 암호 등 프라이버시 강화 기술(PETs)을 활용하여 데이터 활용과 개인정보 보호의 균형을 달성한다.
+    \item \textbf{세분화된 접근 제어}: RBAC의 역할 계층 위에 ABAC의 동적 속성 평가를 결합하여 AI 자산의 세분화된 접근 통제를 구현한다. 시간 기반 제어, 인증 요건, 환경 조건 등 다차원 속성을 활용한 정책 설계가 핵심이다.
+    \item \textbf{API 수준의 거버넌스}: API 게이트웨이를 단일 진입점으로 활용하여 인증, 인가, 속도 제한, 콘텐츠 필터링, 감사 로깅을 통합 수행한다. 토큰 기반 비용 관리를 통해 부서별 AI 서비스 사용을 투명하게 통제한다.
+    \item \textbf{MLOps 보안 내재화}: 파이프라인 단계별 전용 서비스 계정과 명시적 거부 정책을 통해 최소 권한 원칙을 구현하고, 주기적 권한 리뷰와 JIT 권한 부여로 권한 크립을 방지한다.
+    \item \textbf{AI 특화 사고 대응}: 탐지, 분류, 격리, 분석, 복구, 사후 검토의 6단계 사고 대응 체계와 모델 포렌식 역량을 사전에 확보하여, AI 보안 사고 발생 시 신속하고 체계적으로 대응할 수 있어야 한다.
+\end{enumerate}

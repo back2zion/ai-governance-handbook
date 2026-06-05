@@ -1,0 +1,399 @@
+\chapter*{부록 C. AI 거버넌스 실무 템플릿 킷(Toolkit)}
+\label{ch:appendix_c}
+\addcontentsline{toc}{chapter}{부록 C. AI 거버넌스 실무 템플릿 킷(Toolkit)}
+\markboth{부록 C}{부록 C}
+
+본 부록은 조직의 AI 거버넌스 현장에서 즉시 활용할 수 있는 표준 템플릿 킷이다. 특히 2026년 1월 22일 시행된 국내 \textbf{AI 기본법}의 고영향 AI 리스크 평가 요건과 EU AI Act의 기술 문서화 요건, 그리고 NIST AI RMF 1.0을 동시에 충족하도록 설계되었다. 각 템플릿은 Word/Excel 형식으로 변환하여 조직 내 즉시 도입할 수 있도록 구성되었다.
+
+\begin{tcolorbox}[colback=blue!5, colframe=blue!60, title=부록 C 구성 안내]
+\begin{itemize}
+    \item \textbf{C.1} AI 영향 평가(AIA) 상세 리포트 템플릿 — 프로젝트 기획 단계
+    \item \textbf{C.2} 전사 AI 윤리 및 운영 정책(Charter) 표준안 — 조직 정책 수립
+    \item \textbf{C.3} AI 모델 카드(Model Card) 마스터 양식 — 개발→운영 인계 문서
+    \item \textbf{C.4} AI 거버넌스 전사 RACI 매트릭스 — 역할/책임 분담
+    \item \textbf{C.5} AI 리스크 등록부(Risk Register) — 상시 위험 관리 대장
+    \item \textbf{C.6} 알고리즘 감사 체크리스트 — 연간 감사 및 AI 기본법 대응
+    \item \textbf{C.7} LLM/GenAI 특화 거버넌스 체크리스트 — 생성 AI 전용
+    \item \textbf{C.8} AI 인시던트 대응 플레이북 — 사고 발생 시 24시간 대응
+    \item \textbf{C.9} AI 거버넌스 KPI 측정 양식 — 성과 측정 및 경영진 보고
+    \item \textbf{C.10} 제3자 AI 공급망 리스크 평가 양식 — 외부 AI 도입 심사
+\end{itemize}
+\end{tcolorbox}
+
+\section*{C.1 AI 영향 평가(AIA) 상세 리포트 템플릿}
+
+이 양식은 프로젝트 기획 단계에서 리스크 등급을 판정하고 거버넌스 방향을 결정하는 핵심 문서이다.
+
+\begin{tcolorbox}[colback=white, colframe=blue, title={[Template C.1] AI 영향 평가 결과 보고서}]
+\textbf{1. 프로젝트 개요}
+\begin{itemize}
+    \item 프로젝트명: \underline{\hspace{4cm}} / 담당 부서: \underline{\hspace{3cm}} / 책임자(PM): \underline{\hspace{2cm}}
+    \item AI 유형: [$\square$ 예측 $\square$ 생성(GenAI) $\square$ 분류 $\square$ 자동제어 $\square$ 기타]
+    \item 배포 대상: [$\square$ 내부 직원 전용 $\square$ B2B 고객 $\square$ 일반 소비자 $\square$ 공공 서비스]
+\end{itemize}
+
+\textbf{2. 법적 등급 판정 (2026 KR AI 기본법 / EU AI Act 기준)}
+\begin{center}
+\begin{tabular}{|p{6cm}|c|c|}
+\hline
+\textbf{판단 기준} & \textbf{해당 여부} & \textbf{근거 조항} \\ \hline
+의료/생체 인식 관련 & $\square$ 예 $\square$ 아니오 & AI 기본법 §2 / EU AI Act Annex III \\ \hline
+금융/신용 평가 관련 & $\square$ 예 $\square$ 아니오 & AI 기본법 §2 \\ \hline
+채용/인사 평가/교육 관련 & $\square$ 예 $\square$ 아니오 & AI 기본법 §2 / EU AI Act Art. 6 \\ \hline
+수사/사법/공공 행정 관련 & $\square$ 예 $\square$ 아니오 & AI 기본법 §2 \\ \hline
+불특정 다수에게 영향 & $\square$ 예 $\square$ 아니오 & AI 기본법 §3 \\ \hline
+\end{tabular}
+\end{center}
+\textit{*하나라도 '예'인 경우 \textbf{[고영향 AI]} 등급으로 분류되며 CAIO 최종 승인 필수.}
+
+\textbf{3. 상세 리스크 진단 (NIST AI RMF 기반)}
+\begin{center}
+\begin{tabular}{|l|c|l|}
+\hline
+\textbf{평가 항목} & \textbf{점수(1-5)} & \textbf{완화 전략 (Mitigation)} \\ \hline
+테크니컬 강건성 & \hspace{0.5cm} & [예: 교차 검증 및 적대적 테스트] \\ \hline
+데이터 공정성 & \hspace{0.5cm} & [예: 인구통계학적 가중치 조정] \\ \hline
+투명성/설명가능성 & \hspace{0.5cm} & [예: LIME/SHAP 기법 적용] \\ \hline
+보안/프라이버시 & \hspace{0.5cm} & [예: 가명화 처리 및 접근 제어] \\ \hline
+환각(Hallucination) 제어 & \hspace{0.5cm} & [예: RAG 파이프라인, 팩트체크] \\ \hline
+드리프트 대응 계획 & \hspace{0.5cm} & [예: 월간 PSI 모니터링] \\ \hline
+\end{tabular}
+\end{center}
+
+\textbf{4. 종합 의견 및 승인 절차}
+\begin{itemize}
+    \item 판정결과: [$\square$ 조건부 승인 $\square$ 모니터링 필수 $\square$ 반려 $\square$ 추가 심의 요청]
+    \item 조건 사항: \underline{\hspace{7cm}}
+    \item CAIO 서명: \underline{\hspace{3cm}} / 일자: 2026. \hspace{0.5cm} . \hspace{0.5cm} .
+    \item 차기 재검토 예정일: 2026. \hspace{0.5cm} . \hspace{0.5cm} . \quad (고영향 AI: 6개월 이내 필수)
+\end{itemize}
+\end{tcolorbox}
+
+\section*{C.2 전사 AI 윤리 및 운영 정책(Charter) 표준안}
+
+조직 내 AI 활용의 헌법 역할을 하는 문서로, 전 임직원이 서명하고 준수해야 한다.
+
+\begin{tcolorbox}[colback=gray!5, title={[Template C.2] 전사 AI 활용 및 거버넌스 정책}]
+\textbf{제1조 (목적)}
+본 정책은 [회사명]의 모든 인공지능 자산을 안전하고 신뢰할 수 있게 활용함으로써 고객 가치를 높이고 법적 리스크를 최소화함을 목적으로 한다.
+
+\textbf{제2조 (6대 핵심 원칙)}
+\begin{enumerate}
+    \item \textbf{인간 존엄성}: AI는 인간의 기본권을 침해하거나 차별하지 않는다.
+    \item \textbf{책임성}: AI 시스템의 결과에 대한 최종 책임은 담당 부서장과 CAIO에게 있다.
+    \item \textbf{투명한 고지}: AI와 상호작용하는 고객에게 해당 사실을 명확히 알린다.
+    \item \textbf{안전한 데이터}: 저작권을 존중하고 개인정보를 철저히 보호하는 데이터만을 사용한다.
+    \item \textbf{지속적 감시}: 배포 후에도 성능 저하 및 리스크를 상시 모니터링한다.
+    \item \textbf{인간 최종 통제}: 고영향 AI의 최종 의사결정은 반드시 인간이 검토한다.
+\end{enumerate}
+
+\textbf{제3조 (거버넌스 체계)}
+조직 내 모든 AI 프로젝트는 CAIO 산하 'AI 거버넌스 위원회'의 심의를 통과해야 한다.
+
+\textbf{제4조 (준수 의무)}
+전 임직원은 본 정책을 숙지하고 연 1회 이상 AI 윤리 교육을 이수해야 하며, 위반 시 내부 징계 규정에 따른다.
+
+\textbf{제5조 (개정)}
+본 정책은 법령 개정, 기술 환경 변화 등에 따라 연 1회 이상 검토하며, 중대 변경 시 이사회 보고를 요한다.
+\end{tcolorbox}
+
+\section*{C.3 2026년형 AI 모델 카드 (Model Card) 마스터 양식}
+
+개발팀이 운영팀과 거버넌스 팀에 전달해야 하는 모델 명세서이다.
+
+\begin{table}[htbp]
+\centering
+\caption{[Template C.3] AI 모델 운영 및 거버넌스 명세서}
+\begin{tabularx}{\textwidth}{|p{3.5cm}|X|}
+\hline
+\textbf{항목} & \textbf{상세 내용 (2026 필수 기재)} \\ \hline
+\textbf{모델 기본 정보} & 모델명, 버전, 아키텍처(예: Llama-3-variant), 학습일자, 모델 ID \\ \hline
+\textbf{목적 및 사용 범위} & 의도된 사용 시나리오 / 사용 금지 영역(Out-of-scope) 명시 \\ \hline
+\textbf{데이터 컨텍스트} & 학습 데이터셋명, 저작권 확보 여부, 개인정보 가명화 기법, 데이터 수집 기간 \\ \hline
+\textbf{투명성/설명성 기법} & 적용된 XAI 알고리즘 및 주요 변수 중요도(Feature Importance) Top 5 \\ \hline
+\textbf{품질/공정성 지표} & Accuracy, F1-Score, Demographic Parity Ratio, Equal Opportunity Diff \\ \hline
+\textbf{환각/오류 특성} & 알려진 환각 유형, RAG 적용 여부, 팩트체크 도구 \\ \hline
+\textbf{워터마크 적용} & [$\square$ 적용됨 $\square$ 해당 없음] / 적용 기술 명칭 \\ \hline
+\textbf{리스크 승인 번호} & AIA-2026-XXXX (거버넌스 시스템 연동 번호) \\ \hline
+\textbf{재학습/폐기 기준} & 드리프트 임계치([X]\% 하락 시 재학습), 모델 수명(EOL) 예정일 \\ \hline
+\textbf{비상 연락처} & 기술 담당자 / 윤리 담당자 / CAIO 오피스 \\ \hline
+\end{tabularx}
+\end{table}
+
+\section*{C.4 AI 거버넌스 전사 RACI 매트릭스 (Full Version)}
+
+\begin{table}[htbp]
+\centering
+\caption{[Template C.4] 전사 AI 거버넌스 RACI 매트릭스}
+\begin{tabular}{|l|c|c|c|c|c|c|}
+\hline
+\textbf{거버넌스 활동} & \textbf{비즈니스} & \textbf{데이터팀} & \textbf{개발팀} & \textbf{CAIO} & \textbf{법무} & \textbf{위원회} \\ \hline
+유즈케이스 가치 평가 & A/R & I & C & C & I & I \\ \hline
+리스크 등급 판정(AIA) & C & C & R & A & C & I \\ \hline
+학습 데이터 권리 검토 & I & R & C & A & R & I \\ \hline
+모델 공정성 테스트 & I & I & R & A & C & I \\ \hline
+이용자 약관/UI 고지 & C & I & C & I & A/R & C \\ \hline
+배포 최종 승인 & I & I & C & C & C & A \\ \hline
+운영 중 드리프트 모니터링 & I & C & R & A & I & I \\ \hline
+인시던트 대응 & C & R & R & A & C & I \\ \hline
+연간 알고리즘 감사 & I & C & C & A & R & R \\ \hline
+규제 기관 보고 & C & I & I & R & A & C \\ \hline
+\end{tabular}
+\end{table}
+{\small * R: 실행(Responsible), A: 책임(Accountable), C: 협의(Consulted), I: 통보(Informed)}
+
+\section*{C.5 AI 리스크 등록부 (Risk Register)}
+
+AI 리스크 등록부는 조직 내 모든 AI 시스템에서 식별된 리스크를 상시 관리하는 살아있는 문서(Living Document)다. 분기별 갱신을 원칙으로 하며, AI 거버넌스 위원회에 정기 보고한다.
+
+\begin{tcolorbox}[colback=white, colframe=red!60, title={[Template C.5] AI 리스크 등록부 (분기별 갱신)}]
+\textbf{조직명:} \underline{\hspace{3cm}} \quad \textbf{기준일:} 2026. \hspace{0.3cm} . \hspace{0.3cm} . \quad \textbf{버전:} \underline{\hspace{1cm}}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{|c|p{2cm}|p{1.8cm}|c|c|p{2.5cm}|p{1.5cm}|}
+\hline
+\textbf{ID} & \textbf{AI 시스템} & \textbf{리스크 유형} & \textbf{발생가능성} & \textbf{영향도} & \textbf{완화 조치} & \textbf{상태} \\ \hline
+R-001 & [시스템명] & 공정성 편향 & H/M/L & H/M/L & [조치 내용] & 진행중 \\ \hline
+R-002 & [시스템명] & 데이터 드리프트 & H/M/L & H/M/L & [조치 내용] & 완료 \\ \hline
+R-003 & [시스템명] & 환각/오정보 & H/M/L & H/M/L & [조치 내용] & 모니터링 \\ \hline
+R-004 & [시스템명] & 프라이버시 침해 & H/M/L & H/M/L & [조치 내용] & 완료 \\ \hline
+R-005 & [시스템명] & 보안 취약점 & H/M/L & H/M/L & [조치 내용] & 진행중 \\ \hline
+\end{tabularx}
+\end{center}
+
+\textbf{리스크 유형 코드}: FI(공정성), DR(드리프트), HA(환각), PV(프라이버시), SC(보안), CP(컴플라이언스), OP(운영)
+
+\textbf{분기 총평}: \underline{\hspace{10cm}}
+
+\textbf{위원회 검토자}: \underline{\hspace{3cm}} \quad \textbf{서명}: \underline{\hspace{2cm}}
+\end{tcolorbox}
+
+\section*{C.6 알고리즘 감사 체크리스트 (AI 기본법 대응)}
+
+AI 기본법 및 EU AI Act는 고영향 AI에 대한 정기적 알고리즘 감사를 요구한다. 아래 체크리스트는 연간 내부 감사 또는 외부 감사 시 활용한다. 각 항목은 관련 법령 조항과 매핑되어 있다.
+
+\begin{tcolorbox}[colback=white, colframe=black!70, title={[Template C.6] 알고리즘 감사 체크리스트 (연간)}]
+\textbf{감사 대상 시스템:} \underline{\hspace{3cm}} \quad \textbf{감사일:} 2026. \hspace{0.3cm} . \hspace{0.3cm} . \quad \textbf{감사자:} \underline{\hspace{2cm}}
+
+\vspace{0.5em}
+\textbf{[1부] 데이터 및 학습 프로세스 감사}
+\begin{itemize}
+    \item[$\square$] 학습 데이터 출처 및 수집 경위를 문서화하였는가? \hfill (AI 기본법 §7)
+    \item[$\square$] 개인정보 처리 시 동의/가명화 절차를 준수하였는가? \hfill (개인정보보호법 §28의2)
+    \item[$\square$] 저작권 보호 데이터를 무단 사용하지 않았는가? \hfill (저작권법 §35의5)
+    \item[$\square$] 학습 데이터의 인구통계학적 대표성을 검증하였는가? \hfill (NIST AI RMF MAP 5.1)
+    \item[$\square$] 데이터 계보(Lineage)를 추적 가능한 형태로 기록하였는가? \hfill (EU AI Act Art. 10)
+\end{itemize}
+
+\textbf{[2부] 모델 성능 및 공정성 감사}
+\begin{itemize}
+    \item[$\square$] 현재 모델 정확도가 배포 시 기준값 ±[X]\% 이내인가? \hfill (드리프트 임계치)
+    \item[$\square$] 보호 속성(성별, 연령, 지역 등)별 성능 격차를 측정하였는가? \hfill (AI 기본법 §8)
+    \item[$\square$] Demographic Parity Ratio가 0.8 이상인가? \hfill (4/5 rule)
+    \item[$\square$] Equal Opportunity Difference가 0.1 이하인가? \hfill (Fairlearn 기준)
+    \item[$\square$] 모델 설명성(XAI) 보고서를 최신 상태로 유지하고 있는가? \hfill (EU AI Act Art. 13)
+\end{itemize}
+
+\textbf{[3부] 운영 및 거버넌스 감사}
+\begin{itemize}
+    \item[$\square$] 고영향 AI 결정에 인간 검토(Human-in-the-loop) 절차가 작동하는가? \hfill (AI 기본법 §6)
+    \item[$\square$] 이용자에게 AI 판단임을 고지하는 UI/UX가 구현되어 있는가? \hfill (AI 기본법 §10)
+    \item[$\square$] 이의 제기 채널이 운영되고 응답 SLA(예: 7일)가 지켜지고 있는가? \hfill (EU AI Act Art. 26)
+    \item[$\square$] 모델 카드(C.3)가 최신 버전으로 유지되고 있는가? \hfill (AI 기본법 §7)
+    \item[$\square$] 6개월 이내 인시던트 발생 시 원인 분석 및 재발 방지 조치를 완료하였는가?
+\end{itemize}
+
+\textbf{감사 결과}: [$\square$ 적합 $\square$ 조건부 적합(조치 필요) $\square$ 부적합(즉시 개선)] \\
+\textbf{주요 발견 사항}: \underline{\hspace{8cm}} \\
+\textbf{후속 조치 기한}: 2026. \hspace{0.5cm} . \hspace{0.5cm} .
+\end{tcolorbox}
+
+\section*{C.7 LLM/GenAI 특화 거버넌스 체크리스트}
+
+생성 AI(Large Language Model, 이미지 생성 모델 등)는 기존 예측 AI와는 다른 거버넌스 위험을 가진다. 아래 체크리스트는 기업 내 GenAI 도입 시 추가로 점검해야 할 사항들이다.
+
+\begin{tcolorbox}[colback=orange!5, colframe=orange!60, title={[Template C.7] LLM/GenAI 특화 거버넌스 체크리스트}]
+\textbf{대상 시스템:} \underline{\hspace{3cm}} \quad \textbf{LLM 기반 모델:} \underline{\hspace{3cm}} \quad \textbf{점검일:} \underline{\hspace{2cm}}
+
+\vspace{0.5em}
+\textbf{[A] 환각(Hallucination) 및 오정보 통제}
+\begin{itemize}
+    \item[$\square$] Retrieval-Augmented Generation(RAG)을 적용하였는가?
+    \item[$\square$] 중요 출력에 대한 자동 팩트체크 파이프라인이 구축되어 있는가?
+    \item[$\square$] 신뢰도 점수(Confidence Score) 또는 불확실성 표시를 사용자에게 제공하는가?
+    \item[$\square$] 환각 발생률을 정기적으로 측정하고 기록하는가? (예: TruthfulQA 벤치마크)
+\end{itemize}
+
+\textbf{[B] 저작권 및 데이터 거버넌스}
+\begin{itemize}
+    \item[$\square$] 파인튜닝(Fine-tuning) 데이터의 저작권 및 라이선스를 확인하였는가?
+    \item[$\square$] 저작권 보호 콘텐츠 생성을 방지하는 필터가 적용되어 있는가?
+    \item[$\square$] 학습 데이터 삭제 요청(Machine Unlearning) 처리 절차를 갖추고 있는가?
+    \item[$\square$] 개인정보가 모델 가중치에 기억되지 않도록 처리하였는가? (Memorization 테스트)
+\end{itemize}
+
+\textbf{[C] 남용 방지 및 안전 장치}
+\begin{itemize}
+    \item[$\square$] 유해 콘텐츠(혐오 표현, 불법 정보 등) 생성 방지 필터가 작동하는가?
+    \item[$\square$] 프롬프트 인젝션 공격에 대한 방어 메커니즘이 있는가?
+    \item[$\square$] AI 생성 콘텐츠임을 식별할 수 있는 워터마킹을 적용하였는가?
+    \item[$\square$] 허용 사용 정책(Acceptable Use Policy)이 사용자에게 고지되었는가?
+\end{itemize}
+
+\textbf{[D] 투명성 및 고지}
+\begin{itemize}
+    \item[$\square$] 사용자가 AI와 대화하고 있음을 명확히 인지할 수 있는가? (AI 기본법 §9)
+    \item[$\square$] 생성 결과의 한계와 부정확성 가능성을 명시적으로 고지하는가?
+    \item[$\square$] 모델 버전 및 학습 데이터 기준일을 공개하는가?
+\end{itemize}
+
+\textbf{[E] 비용 및 환경 거버넌스}
+\begin{itemize}
+    \item[$\square$] API 사용량 및 비용에 대한 상한선(Rate Limit)을 설정하였는가?
+    \item[$\square$] 탄소 배출(추론 비용) 모니터링 체계가 있는가?
+    \item[$\square$] 모델 사이즈 최적화(Quantization, LoRA 등) 검토를 수행하였는가?
+\end{itemize}
+\end{tcolorbox}
+
+\section*{C.8 AI 인시던트 대응 플레이북}
+
+AI 시스템에서 중대한 오류, 편향 사건, 개인정보 침해, 환각으로 인한 피해 등이 발생했을 때의 24-72시간 대응 절차다.
+
+\begin{tcolorbox}[colback=red!5, colframe=red!70, title={[Template C.8] AI 인시던트 대응 플레이북 (24/72h)}]
+\textbf{인시던트 등급 분류}
+\begin{center}
+\begin{tabular}{|c|p{4cm}|p{4cm}|c|}
+\hline
+\textbf{등급} & \textbf{기준} & \textbf{예시} & \textbf{대응 시한} \\ \hline
+P1 (위기) & 다수 사용자 피해 / 법적 의무 위반 & 차별적 대출 거절 10,000건 & 2시간 이내 \\ \hline
+P2 (중대) & 제한적 피해 / 성능 급락 & 특정 그룹 오분류율 급등 & 24시간 이내 \\ \hline
+P3 (보통) & 단일 사례 / 운영 이상 & 환각 출력 고객 민원 & 72시간 이내 \\ \hline
+P4 (경미) & 모니터링 이상 신호 & 드리프트 경고 알림 & 1주일 이내 \\ \hline
+\end{tabular}
+\end{center}
+
+\textbf{대응 절차 (P1/P2 기준)}
+
+\textbf{0-2시간 (봉쇄 단계)}
+\begin{itemize}
+    \item[$\square$] 인시던트 감지 → 인시던트 ID 발급 (INC-2026-XXXX)
+    \item[$\square$] 온콜 담당자 즉시 연락 → 인시던트 지휘관(IC) 지정
+    \item[$\square$] 피해 확산 방지: 해당 AI 기능 즉시 비활성화 또는 Fallback 전환
+    \item[$\square$] 영향 범위 초기 평가 (영향받은 사용자 수, 데이터 범위)
+    \item[$\square$] CAIO 및 법무팀 긴급 보고
+\end{itemize}
+
+\textbf{2-24시간 (조사 단계)}
+\begin{itemize}
+    \item[$\square$] 근본 원인 분석 (RCA: Root Cause Analysis) 시작
+    \item[$\square$] 영향받은 사용자 식별 및 데이터 보전
+    \item[$\square$] 필요 시 규제 당국 사전 보고 (AI 기본법 §15: 중대 사고 72시간 내 신고)
+    \item[$\square$] 언론/소셜미디어 모니터링 시작
+    \item[$\square$] 고객 대응 메시지 준비 (법무 검토 필수)
+\end{itemize}
+
+\textbf{24-72시간 (복구 단계)}
+\begin{itemize}
+    \item[$\square$] 수정 모델 또는 이전 버전 배포 (테스트 완료 후)
+    \item[$\square$] 피해 사용자 개별 통지 및 구제 절차 안내
+    \item[$\square$] 공식 규제 기관 보고서 제출
+    \item[$\square$] Post-Mortem 문서 작성 (원인, 타임라인, 재발 방지 조치)
+    \item[$\square$] AI 거버넌스 위원회 인시던트 보고 및 리스크 등록부 갱신
+\end{itemize}
+
+\textbf{인시던트 기록 양식}\\
+인시던트 ID: INC-2026-\underline{\hspace{1cm}} \quad 등급: \underline{\hspace{1cm}} \quad 시스템명: \underline{\hspace{2cm}} \\
+최초 감지: \hspace{1cm}시 \hspace{0.5cm}분 \quad 봉쇄 완료: \hspace{1cm}시 \hspace{0.5cm}분 \quad 복구 완료: \hspace{1cm}시 \hspace{0.5cm}분 \\
+영향받은 사용자 수: \underline{\hspace{1cm}}명 \quad 재발 방지 조치 완료 예정: \underline{\hspace{3cm}}
+\end{tcolorbox}
+
+\section*{C.9 AI 거버넌스 KPI 측정 양식}
+
+AI 거버넌스 성과를 정량화하여 경영진에게 보고하는 분기별 대시보드 양식이다. 측정 가능한 지표가 없는 거버넌스는 형식에 그칠 위험이 있다.
+
+\begin{tcolorbox}[colback=green!5, colframe=green!60, title={[Template C.9] AI 거버넌스 KPI 분기 대시보드}]
+\textbf{보고 기간:} 2026년 \hspace{0.5cm}분기 \quad \textbf{보고자:} \underline{\hspace{2cm}} \quad \textbf{보고일:} \underline{\hspace{2cm}}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{|p{3cm}|p{2.5cm}|c|c|p{3cm}|}
+\hline
+\textbf{KPI 항목} & \textbf{측정 방법} & \textbf{목표} & \textbf{실적} & \textbf{비고} \\ \hline
+\multicolumn{5}{|l|}{\textbf{[거버넌스 체계 지표]}} \\ \hline
+AIA 완료율 & 신규 AI 프로젝트 중 AIA 실시 비율 & 100\% & \hspace{0.5cm}\% & \\ \hline
+CAIO 검토 SLA & 심의 요청→결과 통보 소요일 & $\leq$5일 & \hspace{0.5cm}일 & \\ \hline
+직원 AI 윤리 교육 이수율 & 연간 이수 직원/전체 & $\geq$90\% & \hspace{0.5cm}\% & \\ \hline
+\multicolumn{5}{|l|}{\textbf{[모델 품질 지표]}} \\ \hline
+고영향 AI 드리프트 발생 건 & PSI $>$ 0.2 발생 모델 수 & $\leq$1건 & \hspace{0.5cm}건 & \\ \hline
+공정성 위반 감지 건 & DPR $<$ 0.8 발생 건 & 0건 & \hspace{0.5cm}건 & \\ \hline
+환각 민원 건수 & GenAI 환각 관련 고객 민원 & $\leq$5건 & \hspace{0.5cm}건 & \\ \hline
+\multicolumn{5}{|l|}{\textbf{[리스크 및 사고 지표]}} \\ \hline
+P1/P2 인시던트 수 & 중대 AI 사고 발생 건 & 0건 & \hspace{0.5cm}건 & \\ \hline
+인시던트 평균 해결 시간 & MTTR (Mean Time to Resolve) & $\leq$24h & \hspace{0.5cm}h & \\ \hline
+미해결 리스크 등록부 항목 & High 등급 미완료 항목 & 0건 & \hspace{0.5cm}건 & \\ \hline
+\multicolumn{5}{|l|}{\textbf{[비즈니스 가치 지표]}} \\ \hline
+AI 기반 의사결정 정확도 향상 & 거버넌스 도입 전 대비 & +10\% & \hspace{0.5cm}\% & \\ \hline
+AI 관련 규제 과태료 & 규제 기관 처분 건/금액 & 0건 & \hspace{0.5cm}건 & \\ \hline
+\end{tabularx}
+\end{center}
+
+\textbf{총평 및 차분기 중점 과제}: \underline{\hspace{10cm}}
+
+\textbf{CAIO 확인}: \underline{\hspace{3cm}} \quad \textbf{이사회 보고 여부}: [$\square$ 예 $\square$ 아니오]
+\end{tcolorbox}
+
+\section*{C.10 제3자 AI 공급망 리스크 평가 양식}
+
+기업이 외부 AI 솔루션(SaaS AI, API 서비스, 사전학습 모델 등)을 도입할 때 수행해야 하는 공급자 실사(Vendor Due Diligence) 양식이다. EU AI Act와 AI 기본법 모두 공급망 책임을 강조한다.
+
+\begin{tcolorbox}[colback=purple!5, colframe=purple!60, title={[Template C.10] AI 공급망 리스크 평가 (Vendor Due Diligence)}]
+\textbf{공급업체명:} \underline{\hspace{3cm}} \quad \textbf{솔루션명:} \underline{\hspace{3cm}} \quad \textbf{평가일:} \underline{\hspace{2cm}} \\
+\textbf{도입 목적:} \underline{\hspace{8cm}} \quad \textbf{AI 유형:} \underline{\hspace{2cm}}
+
+\vspace{0.5em}
+\textbf{[1] 법규 준수 및 인증}
+\begin{itemize}
+    \item[$\square$] EU AI Act 적합성 선언(Declaration of Conformity)을 보유하는가?
+    \item[$\square$] ISO/IEC 42001 (AI 관리 시스템) 인증을 보유하는가?
+    \item[$\square$] 국내 AI 기본법 관련 정부 가이드라인을 준수하는가?
+    \item[$\square$] SOC 2 Type II 또는 ISO 27001 정보보안 인증을 보유하는가?
+\end{itemize}
+
+\textbf{[2] 투명성 및 문서화}
+\begin{itemize}
+    \item[$\square$] 학습 데이터의 출처와 라이선스를 문서로 제공하는가?
+    \item[$\square$] 모델 카드(Model Card) 또는 동등한 기술 명세서를 제공하는가?
+    \item[$\square$] 모델의 한계(Limitations)와 알려진 편향을 공개하는가?
+    \item[$\square$] API 버전 변경 및 모델 업데이트 시 사전 통보 정책이 있는가?
+\end{itemize}
+
+\textbf{[3] 데이터 보호 및 프라이버시}
+\begin{itemize}
+    \item[$\square$] 고객 데이터를 모델 재학습에 사용하지 않음을 계약으로 보장하는가?
+    \item[$\square$] 데이터 처리 지역(Data Residency)이 법령 요건을 충족하는가?
+    \item[$\square$] 개인정보 처리 동의 및 삭제 요청 처리 절차를 갖추고 있는가?
+    \item[$\square$] 데이터 침해(Breach) 발생 시 72시간 내 통보를 계약에 명시하는가?
+\end{itemize}
+
+\textbf{[4] 운영 안정성}
+\begin{itemize}
+    \item[$\square$] SLA 가용성 보장이 99.5\% 이상인가?
+    \item[$\square$] 서비스 중단 또는 모델 폐기(EOL) 시 최소 6개월 사전 통보를 보장하는가?
+    \item[$\square$] 감사 로그(Audit Log)에 대한 고객 접근 권한을 제공하는가?
+\end{itemize}
+
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{종합 평가} & \textbf{적합 (승인)} & \textbf{부적합 (조건부/반려)} \\ \hline
+체크 결과 & \hspace{1cm}항목 충족 / 전체 16항목 & 미충족 항목: \hspace{1cm} \\ \hline
+\end{tabular}
+\end{center}
+
+\textbf{도입 결정}: [$\square$ 승인 $\square$ 조건부 승인(조건: \underline{\hspace{3cm}}) $\square$ 반려] \\
+\textbf{검토자}: \underline{\hspace{3cm}} \quad \textbf{법무 확인}: \underline{\hspace{2cm}} \quad \textbf{CAIO 승인}: \underline{\hspace{2cm}}
+\end{tcolorbox}
+
+\vspace{1em}
+\begin{tcolorbox}[colback=blue!5, colframe=blue!60, title=부록 C 활용 안내]
+본 부록의 모든 템플릿은 조직의 규모와 산업에 따라 수정하여 사용할 수 있다. 중소기업의 경우 C.4(RACI), C.6(감사 체크리스트), C.9(KPI)를 우선 도입하고, 대기업 및 고영향 AI 운영 조직은 전체 10개 템플릿의 통합 운영을 권장한다. 디지털 버전(Word/Excel/Notion 형식)은 저자의 GitHub(\texttt{github.com/back2zion})에서 제공한다.
+\end{tcolorbox}

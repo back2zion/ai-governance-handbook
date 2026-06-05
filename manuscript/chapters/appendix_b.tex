@@ -1,0 +1,91 @@
+\chapter*{부록 B. 국내외 AI 관련 법령 및 표준 상세 분석}
+\label{ch:appendix_b}
+\addcontentsline{toc}{chapter}{부록 B. 국내외 AI 관련 법령 및 표준 상세 분석}
+\markboth{부록 B}{부록 B}
+
+본 부록은 2026년 1월 20일 현재 가장 핵심적인 규제 프레임워크인 대한민국의 '인공지능 기본법'과 유럽연합의 'EU AI Act', 그리고 국제 표준인 'ISO/IEC 42001'을 실무적 관점에서 심층 분석하여 제공한다.
+
+\section*{B.1 대한민국: 인공지능 산업 육성 및 신뢰 기반 조성에 관한 법률 (AI 기본법)}
+
+대한민국 AI 기본법은 2026년 1월 22일 전면 시행을 앞두고 있으며, 산업 진흥과 신뢰성 확보의 균형을 강조하는 '한국형 거버넌스'의 정수이다.
+
+\subsection*{B.1.1 핵심 조항 및 실무 대응 가이드}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{4cm}}
+\toprule
+\textbf{주요 조항} & \textbf{핵심 내용} & \textbf{기업 실무 대응 사항} \\
+\midrule
+\textbf{제2조 (정의)} & '인공지능'과 '인공지능 사업자'의 범위를 명확히 규정하며, 특히 '고영향 인공지능(High-impact AI)'을 정의함. & 우리가 활용하는 AI 서비스가 '고영향' 범주(의료, 금융, 채용 등)에 포함되는지 전수 조사 필요. \\
+\midrule
+\textbf{제13조 (신뢰성 확보)} & 사업자는 AI 시스템의 신뢰성과 안전성을 확보하기 위한 조치를 취해야 하며, 이용자에게 고지할 의무가 있음. & 이용자 약관 및 서비스 UI에 'AI 활용 고지' 문구 삽입 및 내부 검증 프로세스 구축. \\
+\midrule
+\textbf{제24조 (고영향 AI 리스크 평가)} & 고영향 AI를 운영하는 사업자는 잠재적 리스크를 사전에 평가하고 이를 정부에 보고할 수 있음. & AI 영향 평가(AIA) 프로세스를 전사 표준 운영 절차(SOP)화하여 결과 보고서 상시 준비. \\
+\midrule
+\textbf{제35조 (콘텐츠 식별 표시)} & 생성형 AI 결과물에 대해 이용자가 이를 인지할 수 있도록 워터마킹 등 식별 표시를 의무화함. & 이미지, 영상, 텍스트 생성 결과물에 디지털 워터마킹 기술 적용 및 검토. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection*{B.1.2 2026년 주요 마일스톤}
+\begin{itemize}
+    \item \textbf{1월 22일}: AI 기본법 전면 시행 및 국가 AI 안전 연구소 정식 가동.
+    \item \textbf{3월}: 정부의 '제1차 AI 국가 Master Plan' 발표(3개년 계획). 기업의 대응 전략 수립 시점.
+    \item \textbf{하반기}: 고위험 영역별 세부 시행령 및 가이드라인 확정 배포.
+\end{itemize}
+
+\section*{B.2 유럽연합 (EU): AI Act (인공지능법)}
+
+EU AI Act는 세계 최초의 포괄적 AI 규제법으로, 2024년 8월 발효 후 2026년 1월 현재 단계적 시행의 중심에 있다.
+
+\subsection*{B.2.1 등급별 규제 및 시행 타임라인}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+\textbf{리스크 등급} & \textbf{주요 대상} & \textbf{규제 강도 및 기간} \\
+\midrule
+\textbf{금지 (Unacceptable)} & 사회적 신용 평가, 실시간 원격 생체 식별 등 & \textbf{즉시 금지} (2025년 2월 이후 전면 금지됨) \\
+\midrule
+\textbf{고위험 (High Risk)} & 고용, 교육, 금융, 중요 인프라 등 & \textbf{2026년 8월 시행}: 적합성 평가 및 품질 관리 시스템 구축 필수. \\
+\midrule
+\textbf{범용 AI (GPAI)} & LLM (GPT-4, Claude 3 등 대규모 모델) & \textbf{2025년 8월 시행}: 기술 문서 작성, 리스크 관리, 시스템적 리스크 보고 의무. \\
+\midrule
+\textbf{최소 리스크 (Minimal)} & 스팸 필터, AI 게임 도구 등 & 고지 의무(Transparency) 중심의 자율 준수. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection*{B.2.2 역외 적용(Extraterritoriality) 주의사항}
+EU 내에서 AI를 출시하거나, EU 거주자에게 영향을 미치는 AI를 운영하는 한국 기업은 직접적인 규제 대상이다. 특히 글로벌 매출액의 최대 7\%에 달하는 막대한 벌금이 부과될 수 있음을 주의해야 한다.
+
+\section*{B.3 국제 표준: ISO/IEC 42001:2023 (AIMS)}
+
+ISO/IEC 42001은 인공지능 경영시스템(Artificial Intelligence Management System)에 대한 국제 표준으로, 기업이 AI 거버넌스를 구축했음을 증명하는 현존하는 가장 강력한 인증 도구이다.
+
+\subsection*{B.3.1 핵심 통제 항목 및 실무 체크포인트}
+\begin{itemize}
+    \item \textbf{Clause 6 (기획)}: AI 도입 목적의 명확화 및 리스크/기회 식별(NIST AI RMF와 연계).
+    \item \textbf{Clause 8 (운영)}: AI 생명주기 전반의 프로세스 통제 및 데이터 품질 관리 체계 수립.
+    \item \textbf{Clause 9 (성능 평가)}: 거버넌스 KPI 수립 및 정기적 내부 감사를 통한 유효성 검증.
+    \item \textbf{Clause 10 (개선)}: 부적합 사항 발생 시 시정 조치 및 지속적인 고도화 절차.
+\end{itemize}
+
+\section*{B.4 글로벌 규제 비교 요약표 (2026 기준)}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{lXXX}
+\toprule
+\textbf{비교 항목} & \textbf{한국 AI 기본법} & \textbf{EU AI Act} & \textbf{미국 행정명령/NIST} \\
+\midrule
+\textbf{접근 방식} & 자율성 존중 기반 사후 규제 & 리스크 기반 엄격한 사전 규제 & 안전 및 혁신 중심의 가이드라인 \\
+\midrule
+\textbf{관리 대상} & 고영향 AI 중심 & 고위험 및 GPAI & 고성능 기반 모델(Frontier) \\
+\midrule
+\textbf{벌금/제재} & 시정 명령 및 과태료 중심 & 글로벌 매출액 \% 비례 과징금 & 정부 조달 금지 및 조사 위주 \\
+\bottomrule
+\end{tabularx}
+\end{table}
