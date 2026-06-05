@@ -24,7 +24,7 @@
 
 - **즉시 프로덕션에 적용 가능한 AI 거버넌스 컴포넌트** — 복사-붙여넣기가 아닌 `pip install`로 시작하는 실무 라이브러리
 - **AI 기본법(한국), EU AI Act, NIST AI RMF를 실코드로 구현한 유일한 오픈소스** — 법령 조항과 코드 모듈의 1:1 매핑
-- **22개 챕터, 129개 실행 가능 코드블록, `core/` 재사용 라이브러리** — 처음부터 끝까지 일관된 거버넌스 아키텍처
+- **22개 챕터, 218개 코드 셀, `core/` 재사용 라이브러리** — 처음부터 끝까지 일관된 거버넌스 아키텍처
 
 ---
 
@@ -123,30 +123,30 @@ python -m aigov drift --baseline train.csv --current prod.csv
 
 ## 22개 챕터 노트북
 
-| 챕터 | 제목 | 코드 수 | Colab 실행 |
+| 챕터 | 제목 | 코드 셀 | Colab 실행 |
 |------|------|---------|-----------|
-| ch01 | AI 거버넌스 개념과 필요성 | 1 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch01.ipynb) |
-| ch02 | 글로벌 AI 거버넌스 프레임워크 | 2 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch02.ipynb) |
-| ch03 | AI 윤리 실무화 | 12 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch03.ipynb) |
-| ch04 | AI 거버넌스 조직 체계 | 3 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch04.ipynb) |
-| ch05a | AI 정책 설계 | 4 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch05a.ipynb) |
-| ch05b | 산업별 AI 적용 | 5 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch05b.ipynb) |
-| ch06 | 거버넌스 도구와 플랫폼 | 6 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch06.ipynb) |
-| ch07 | 사례 연구 | 4 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch07.ipynb) |
-| ch08 | 유즈케이스 발굴 | 5 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch08.ipynb) |
-| ch09 | 데이터 거버넌스 | 7 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch09.ipynb) |
-| ch10 | 모델 개발 거버넌스 | 6 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch10.ipynb) |
-| ch11 | 알고리즘 감사와 인증 | 3 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch11.ipynb) |
-| ch12 | 운영 및 생명주기 관리 | 6 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch12.ipynb) |
-| ch12b | 생성 AI 거버넌스 | 3 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch12b.ipynb) |
-| ch13 | 거버넌스 아키텍처 | 9 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch13.ipynb) |
-| ch14 | 도구 및 플랫폼 | 9 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch14.ipynb) |
-| ch15 | 보안과 프라이버시 | 13 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch15.ipynb) |
-| ch16 | 의료 AI 거버넌스 | 3 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch16.ipynb) |
-| ch17 | 금융 AI 거버넌스 | 10 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch17.ipynb) |
-| ch18 | 공공 AI 거버넌스 | 6 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch18.ipynb) |
-| ch19 | 산업 AI 거버넌스 | 6 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch19.ipynb) |
-| ch20 | AI 거버넌스의 미래 | 5 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch20.ipynb) |
+| ch01 | AI 거버넌스 개념과 필요성 | 3 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch01.ipynb) |
+| ch02 | 글로벌 AI 거버넌스 프레임워크 | 7 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch02.ipynb) |
+| ch03 | AI 윤리 실무화 | 15 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch03.ipynb) |
+| ch04 | AI 거버넌스 조직 체계 | 4 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch04.ipynb) |
+| ch05a | AI 정책 설계 | 11 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch05a.ipynb) |
+| ch05b | 산업별 AI 적용 | 9 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch05b.ipynb) |
+| ch06 | 거버넌스 도구와 플랫폼 | 7 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch06.ipynb) |
+| ch07 | 사례 연구 | 5 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch07.ipynb) |
+| ch08 | 유즈케이스 발굴 | 11 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch08.ipynb) |
+| ch09 | 데이터 거버넌스 | 14 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch09.ipynb) |
+| ch10 | 모델 개발 거버넌스 | 12 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch10.ipynb) |
+| ch11 | 알고리즘 감사와 인증 | 4 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch11.ipynb) |
+| ch12 | 운영 및 생명주기 관리 | 11 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch12.ipynb) |
+| ch12b | 생성 AI 거버넌스 | 7 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch12b.ipynb) |
+| ch13 | 거버넌스 아키텍처 | 19 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch13.ipynb) |
+| ch14 | 도구 및 플랫폼 | 11 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch14.ipynb) |
+| ch15 | 보안과 프라이버시 | 15 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch15.ipynb) |
+| ch16 | 의료 AI 거버넌스 | 7 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch16.ipynb) |
+| ch17 | 금융 AI 거버넌스 | 17 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch17.ipynb) |
+| ch18 | 공공 AI 거버넌스 | 11 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch18.ipynb) |
+| ch19 | 산업 AI 거버넌스 | 10 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch19.ipynb) |
+| ch20 | AI 거버넌스의 미래 | 8 | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/back2zion/ai-governance-handbook/blob/main/notebooks/ch20.ipynb) |
 
 ---
 
