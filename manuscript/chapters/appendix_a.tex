@@ -1,0 +1,127 @@
+\chapter*{부록 A. AI 거버넌스 상세 용어 사전 (KR-EN)}
+\label{ch:appendix_a}
+\addcontentsline{toc}{chapter}{부록 A. AI 거버넌스 상세 용어 사전 (국문-영문 대조)}
+\markboth{부록 A}{부록 A}
+
+본 용어 사전은 2026년 1월 기준, 인공지능 거버넌스 실무 및 글로벌 규제 대응(KR AI Act, EU AI Act, ISO/IEC 42001)에서 필수적으로 사용되는 핵심 용어 50여 개를 선정하여 상세 정의와 함께 수록하였다.
+
+\section*{A.1 기술적 거버넌스 및 AI 안전 (Technical \& Safety)}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{p{3.5cm}p{4cm}X}
+\toprule
+\textbf{국문 용어} & \textbf{영문 용어} & \textbf{정의 및 2026년 실무 맥락} \\
+\midrule
+워터마킹 의무 & Watermarking Obligation & 생성형 AI가 생성한 콘텐츠에 디지털 식별표시를 삽입하는 의무. 한국 AI 기본법(2026) 제정 시 가짜뉴스 방지를 위한 핵심 조항으로 포함됨. \\
+\midrule
+범용 인공지능 & General Purpose AI (GPAI) & 다양한 작업에 대응 가능한 대규모 모델. EU AI Act 이후 시스템적 리스크(Systemic Risk) 관리 대상이 됨. \\
+\midrule
+설명가능한 AI & Explainable AI (XAI) & AI의 판단 근거를 인간이 이해할 수 있도록 제시하는 기술. 법적 '설명 요구권' 대응의 기술적 토대. \\
+\midrule
+데이터 계보 & Data Lineage & 데이터의 생애주기 추적성. 학습 데이터의 저작권 및 오염(Poisoning) 여부 확인을 위해 필수적임. \\
+\midrule
+적대적 공격 & Adversarial Attack & 입력값에 미세한 소음을 추가하여 모델의 오작동을 유도하는 공격. 보안 거버넌스의 주요 대응 영역. \\
+\midrule
+모델 드리프트 & Model Drift & 학습 시점과 운영 시점의 데이터 분포 차이로 성능이 저하되는 현상. MLOps 거버넌스의 상시 모니터링 대상. \\
+\midrule
+할루시네이션 & Hallucination & 모델이 사실과 다른 정보를 그럴듯하게 생성하는 현상. RAG 기반 아키텍처 도입 시 주된 거버넌스 체크 포인트. \\
+\midrule
+인간 개입 체계 & Human-in-the-Loop (HITL) & AI 의사결정의 결정적 단계에 인간이 개입하여 검토하는 절차. 고위험 AI의 법적 필수 요건. \\
+\midrule
+범위 한정 데이터 & Curated Dataset & 특정 목적을 위해 정제된 학습 데이터. 편향성(Bias) 및 저작권 리스크를 줄이기 위해 강조됨. \\
+\midrule
+동적 프롬프트 가드레일 & Dynamic Prompt Guardrail & 부적절한 입력이나 출력을 실시간으로 차단하는 기술적 장치. LLM 거버넌스의 핵심 기술 요소. \\
+\midrule
+뉴로-심볼릭 AI & Neuro-Symbolic AI & 데이터 기반 신경망과 논리 기반 상징 추론을 결합한 AI. 설명가능성과 강건성 확보를 위한 차세대 대안. \\
+\midrule
+연합 학습 & Federated Learning & 개인 데이터를 중앙으로 수집하지 않고 로컬에서 학습하여 모델만 공유하는 방식. 프라이버시 보존 거버넌스의 대안. \\
+\midrule
+차분 프라이버시 & Differential Privacy & 통계 결과에 미세한 노이즈를 추가하여 개별 식별을 방해하는 기술. 데이터 활용 거버넌스의 표준 기법. \\
+\midrule
+모델 카드 & Model Card & 모델의 성능, 용도, 한계를 문서화한 표준 양식. 투명성 확보를 위한 거버넌스 산출물. \\
+\midrule
+시스템적 리스크 & Systemic Risk & 사회 전반에 영향을 미칠 수 있는 대규모 AI 모델의 잠재적 리스크. GPAI 관리의 핵심 지표. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\newpage
+\section*{A.2 법률 및 규제 대응 (Legal \& Regulatory)}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{p{3.5cm}p{4cm}X}
+\toprule
+\textbf{국문 용어} & \textbf{영문 용어} & \textbf{정의 및 2026년 실무 맥락} \\
+\midrule
+고영향 AI & High-impact AI & 대한민국 AI 기본법 제2조에서 정의한 의료, 금융, 공공 등 특정 영향력을 가진 AI. 리스크 평가 의무화 대상. \\
+\midrule
+AI 영향 평가 & AI Impact Assessment (AIA) & AI 시스템이 인권과 안전에 미치는 영향을 사전에 분석하는 절차. 법적 컴플라이언스의 핵심 프로세스. \\
+\midrule
+자율 규제 & Self-regulation & 정부 주도 규제 전 단계에서 기업이 스스로 윤리 가이드라인을 준수하는 체계. 한국형 거버넌스의 기반 요소. \\
+\midrule
+국가 AI 안전 연구소 & National AI Safety Institute & AI 안전 표준 제정 및 검증을 담당하는 정부 산하 기구. 2026년 본격 가동되어 기업의 모델 검증 지원. \\
+\midrule
+가명정보 & Pseudonymized Data & 추가 정보 없이는 특정인을 식별할 수 없게 처리한 정보. AI 학습용 데이터 활용 시 법적 근거로 주로 활용됨. \\
+\midrule
+알고리즘 공정성 & Algorithmic Fairness & 특정 집단을 부당하게 차별하지 않는 속성. 금융 및 고용 AI 감사 시 제1 점검 항목. \\
+\midrule
+적합성 평가 & Conformity Assessment & 시스템이 특정 표준(ISO/IEC 42001 등)이나 법령을 준수하는지 전문기관이 검증하는 절차. \\
+\midrule
+인공지능 문해력 & AI Literacy & AI 시스템을 이해하고 비판적으로 활용할 수 있는 능력. EU AI Act 상의 조직원 교육 의무 사항. \\
+\midrule
+사후 시장 감시 & Post-market Monitoring & 배포된 AI 시스템의 성능 및 리스크를 지속적으로 추적하는 활동. 의료 및 모빌리티 AI의 법적 요건. \\
+\midrule
+규제 샌드박스 & Regulatory Sandbox & 새로운 AI 비즈니스 실증을 위해 일정 기간 규제를 면제해주는 제도. 혁신 거버넌스를 위한 통로. \\
+\midrule
+세이프가드 & Safeguard & 리스크 발생 시 자동으로 시스템을 중단하거나 안전 모드로 전환하는 보호 장치. \\
+\midrule
+인적 감독 의무 & Human Oversight & 고위험 AI 모델 개발 시 인간이 직접 통제 권한을 가진다는 것을 입증해야 하는 법적 의무. \\
+\midrule
+데이터 주권 & Data Sovereignty & 국가나 개인이 자국 데이터의 수집 및 활용에 대해 갖는 통제권. 글로벌 거버넌스의 전략적 고려사항. \\
+\midrule
+투명성 고지 & Transparency Disclosure & 이용자가 상대하는 대상이 AI임을 알려야 하는 의무. 챗봇 및 생성형 컨텐츠의 필수 요건. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\newpage
+\section*{A.3 조직 운영 및 전략 (Organizational Strategy)}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{p{3.5cm}p{4cm}X}
+\toprule
+\textbf{국문 용어} & \textbf{영문 용어} & \textbf{정의 및 2026년 실무 맥락} \\
+\midrule
+인공지능 최고책임자 & Chief AI Officer (CAIO) & 전사 AI 전략 및 거버넌스를 총괄하는 임원. 2026년 기준 대기업 및 금융권의 필수 보직으로 정착. \\
+\midrule
+AI 윤리 위원회 & AI Ethics Committee & 각계 전문가가 참여하여 윤리적 이슈를 심의하는 기구. CAIO 조직의 핵심 자문/의사결정 기구. \\
+\midrule
+리스크 레지스터 & Risk Register & 식별된 AI 리스크와 그에 대한 대응 방안을 체계적으로 기록한 대장. AIMS(ISO 42001) 운영의 핵심 도구. \\
+\midrule
+거버넌스 성숙도 & Governance Maturity & 조직의 거버넌스 역량 수준. 1단계(미인식)에서 5단계(최적화)로 구분하여 진단. \\
+\midrule
+주요 리스크 지표 & Key Risk Indicator (KRI) & AI 잠재적 리스크를 조기에 감지하기 위한 정량 지표 (예: 모델 성능 하락 폭, 고객 불만 건수). \\
+\midrule
+RACI 매트릭스 & RACI Matrix & 주요 작업별 실행(R), 책임(A), 협의(C), 통보(I) 주체를 정의한 표. 부서 간 R\&R 충돌 방지에 활용. \\
+\midrule
+윤리적 설계 & Value-Sensitive Design & 기획 초기 단계부터 인간의 가치를 시스템 아키텍처에 반영하는 접근법. \\
+\midrule
+변경 관리 & Change Management & 거버넌스 체계 도입에 따른 조직 문화 및 업무 방식의 변화를 성공적으로 이끄는 활동. \\
+\midrule
+도구 체인 & Governance Toolchain & AIA, 모니터링, 문서화를 자동화해주는 소프트웨어 도구 모음. 실무 효율성 확보를 위한 수단. \\
+\midrule
+리스크 프로파일링 & Risk Profiling & 특정 프로젝트나 유즈케이스의 리스크 요인을 분류하고 우선순위를 산정하는 작업. \\
+\midrule
+AI 자산 인벤토리 & AI Asset Inventory & 조직 내 모든 AI 모델, 데이터, 하드웨어 자산을 리스트화하여 관리하는 체계. \\
+\midrule
+컴플라이언스 대시보드 & Compliance Dashboard & 전사 프로젝트들의 법적 준수 상태를 한눈에 볼 수 있는 가시화 도구. \\
+\midrule
+보증서 & Attestation & 거버넌스 프로세스가 적절히 수행되었음을 CAIO가 공식적으로 보증하는 행위 또는 문서. \\
+\midrule
+데이터 거버넌스 통합 & Data-AI Governance Integration & 기존 데이터 관리 체계와 AI 모델 관리 체계를 동기화하여 시너지를 내는 운영 전략. \\
+\bottomrule
+\end{tabularx}
+\end{table}

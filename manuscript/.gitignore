@@ -1,0 +1,19 @@
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.log
+*.out
+*.toc
+*.run.xml
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+main.pdf
+
+# Generated chapter PDFs
+chapters_pdf/
+
+# Scan / scratch output
+*scan_results*.txt

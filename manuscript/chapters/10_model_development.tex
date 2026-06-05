@@ -1,0 +1,1834 @@
+%----------------------------------------------------------
+% 제10장. 모델 개발 단계의 거버넌스
+%----------------------------------------------------------
+
+\chapter{모델 개발 단계의 거버넌스}
+\label{ch:model_development}
+
+모델 개발 단계는 데이터 사이언티스트와 엔지니어들이 가장 활발하게 활동하는 영역이자, AI 시스템의 성능과 안전성이 결정되는 시기이다. 이 단계에서의 거버넌스는 ``창의성을 저해하는 통제''가 아니라, ``시행착오를 줄이고 성공 확률을 높이는 가이드라인''으로 작동해야 한다. 모델이 복잡해질수록(블랙박스(Black-box)), 개발 과정의 투명성과 검증의 중요성은 더욱 커진다.
+
+본 장에서는 모델 개발의 전 과정---표준화된 문서화, 실험 관리와 재현성\cite{studer2021towards}, 공정성 검증, 강건성\cite{madry2018towards} 및 보안 테스트, 설명가능성 구현, 승인과 릴리스 관리, 그리고 기술 부채 관리---에 걸쳐 실무에 바로 적용 가능한 거버넌스 프레임워크를 제시한다.
+
+%----------------------------------------------------------
+\section{모델 개발 표준과 문서화}
+\label{sec:10.1}
+%----------------------------------------------------------
+
+개발자마다 제각각의 방식으로 코드를 작성하고 모델을 만든다면, 그 모델은 ``일회용''이 되고 만다. 표준화는 협업과 유지보수의 기반\cite{paleyes2022challenges}이다.
+
+\subsection{모델 카드(Model Card) 작성}
+\label{sec:10.1.1}
+
+구글이 제안한 모델 카드\cite{mitchell2019model}는 AI 모델의 ``사양서''이자 ``설명서''\cite{arnold2019factsheets}이다. 모델 개발 완료 시 다음 내용을 필수적으로 포함하여 문서화해야 한다. 이는 향후 감사의 핵심 증거 자료가 된다.
+
+\begin{enumerate}
+  \item \textbf{모델 세부 정보(Model Details)}:
+  \begin{itemize}
+    \item 개발자/조직, 모델 버전, 모델 아키텍처(예: 트랜스포머(Transformer), CNN), 파라미터 수.
+    \item 모델 생성 일자, 라이선스 정보.
+  \end{itemize}
+  \item \textbf{의도된 용도(Intended Use)}:
+  \begin{itemize}
+    \item 모델이 해결하고자 하는 문제\cite{rismani2023beyond}와 타겟 사용자.
+    \item 사용하면 안 되는 경우(Out-of-scope Use) 명시 (예: ``이 챗봇은 의학적 조언을 제공하지 않음'').
+  \end{itemize}
+  \item \textbf{요인(Factors)}:
+  \begin{itemize}
+    \item 모델 성능에 영향을 미치는 변수들 (인구통계학적 그룹, 환경 조건, 입력 기기 등).
+  \end{itemize}
+  \item \textbf{평가 지표(Metrics)}:
+  \begin{itemize}
+    \item 성능 측정에 사용된 지표(정확도(Accuracy), F1-점수, AUC 등)와 그 결과값.
+    \item 성능의 신뢰 구간(Confidence Interval).
+  \end{itemize}
+  \item \textbf{학습 데이터(Training Data)}:
+  \begin{itemize}
+    \item 사용된 데이터셋의 출처, 크기, 전처리 방식.
+  \end{itemize}
+  \item \textbf{윤리적 고려사항(Ethical Considerations)}:
+  \begin{itemize}
+    \item 식별된 리스크(편향성 등)와 이를 완화하기 위해 취한 조치.
+  \end{itemize}
+\end{enumerate}
+
+\subsection{모델 카드 작성 자동화}
+\label{sec:10.1.2}
+
+모델 카드를 수작업으로 작성하면 누락과 불일치가 빈번하게 발생한다. 따라서 학습 파이프라인과 연동하여 모델 카드를 자동 생성하는 체계가 필요하다. 다음 코드는 모델 학습 완료 시 자동으로 모델 카드를 생성하는 시스템을 보여준다.
+
+\begin{lstlisting}[language=Python, caption={모델 카드 자동 생성기}, label={lst:model_card_auto}]
+import json
+import datetime
+from dataclasses import dataclass, field, asdict
+from typing import Dict, List, Optional
+
+@dataclass
+class ModelCardGenerator:
+    """모델 카드 자동 생성 시스템"""
+    model_name: str
+    model_version: str
+    developer: str
+    model_type: str
+    description: str
+    intended_use: str
+    out_of_scope_use: str
+    training_data_source: str
+    training_data_size: int
+    metrics: Dict[str, float] = field(default_factory=dict)
+    fairness_metrics: Dict[str, float] = field(
+        default_factory=dict
+    )
+    ethical_considerations: List[str] = field(
+        default_factory=list
+    )
+    limitations: List[str] = field(default_factory=list)
+    creation_date: str = field(
+        default_factory=lambda: datetime.date.today().isoformat()
+    )
+
+    def add_performance_metrics(
+        self, y_true, y_pred, y_prob=None
+    ):
+        """학습 결과에서 성능 지표를 자동 추출"""
+        from sklearn.metrics import (
+            accuracy_score, precision_score,
+            recall_score, f1_score, roc_auc_score
+        )
+        self.metrics["accuracy"] = round(
+            accuracy_score(y_true, y_pred), 4
+        )
+        self.metrics["precision"] = round(
+            precision_score(y_true, y_pred, average="weighted"), 4
+        )
+        self.metrics["recall"] = round(
+            recall_score(y_true, y_pred, average="weighted"), 4
+        )
+        self.metrics["f1_score"] = round(
+            f1_score(y_true, y_pred, average="weighted"), 4
+        )
+        if y_prob is not None:
+            self.metrics["auc"] = round(
+                roc_auc_score(y_true, y_prob), 4
+            )
+
+    def add_fairness_evaluation(
+        self, y_true, y_pred, sensitive_attr
+    ):
+        """민감 속성 기반 공정성 지표\cite{mehrabi2021survey} 자동 계산"""
+        import numpy as np
+        groups = np.unique(sensitive_attr)
+        group_rates = {}
+        for g in groups:
+            mask = sensitive_attr == g
+            group_rates[str(g)] = np.mean(y_pred[mask])
+        max_rate = max(group_rates.values())
+        min_rate = min(group_rates.values())
+        self.fairness_metrics["disparate_impact"] = round(
+            min_rate / max_rate if max_rate > 0 else 0, 4
+        )
+        self.fairness_metrics["group_rate_diff"] = round(
+            max_rate - min_rate, 4
+        )
+        self.fairness_metrics["group_rates"] = group_rates
+
+    def generate(self, output_path: str = None) -> dict:
+        """모델 카드를 JSON 형식으로 생성"""
+        card = {
+            "schema_version": "1.0",
+            "model_details": {
+                "name": self.model_name,
+                "version": self.model_version,
+                "developer": self.developer,
+                "type": self.model_type,
+                "description": self.description,
+                "creation_date": self.creation_date,
+            },
+            "intended_use": {
+                "primary_use": self.intended_use,
+                "out_of_scope": self.out_of_scope_use,
+            },
+            "training_data": {
+                "source": self.training_data_source,
+                "size": self.training_data_size,
+            },
+            "performance": self.metrics,
+            "fairness": self.fairness_metrics,
+            "ethical_considerations": self.ethical_considerations,
+            "limitations": self.limitations,
+        }
+        if output_path:
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(card, f, ensure_ascii=False, indent=2)
+        return card
+
+# 사용 예시
+generator = ModelCardGenerator(
+    model_name="CreditScoring-v2",
+    model_version="2.1.0",
+    developer="리스크모델링팀 김이박",
+    model_type="XGBoost Classifier",
+    description="소상공인 신용 대출 심사 보조 모델",
+    intended_use="소상공인 대출 신청의 신용 위험 평가",
+    out_of_scope_use="개인 가계 대출 심사에 사용 불가",
+    training_data_source="2024-2025 대출 이력 데이터",
+    training_data_size=100000,
+)
+card = generator.generate("model_card_credit_v2.json")
+print(f"모델 카드 생성 완료: {card['model_details']['name']}")
+\end{lstlisting}
+
+\subsection{데이터시트(Datasheets for Datasets) 작성 요구사항}
+\label{sec:10.1.3}
+
+\cite{gebru2021datasheets}가 제안한 데이터시트는 모델 카드의 ``데이터 버전''이라 할 수 있다. 데이터셋의 생성 동기, 수집 과정, 전처리 방법, 배포 조건 등을 체계적으로 문서화함으로써 데이터 투명성을 확보한다. 다음은 데이터시트에 반드시 포함해야 할 핵심 항목들이다.
+
+\begin{table}[htbp]
+\centering
+\caption{데이터시트 필수 작성 항목}
+\label{tab:datasheet_requirements}
+\begin{tabularx}{\textwidth}{p{3cm}X}
+\toprule
+\textbf{항목} & \textbf{상세 내용} \\
+\midrule
+동기(Motivation) & 데이터셋이 생성된 목적, 자금 지원 주체, 기존 데이터셋과의 차별점 \\
+\midrule
+구성(Composition) & 인스턴스 수, 데이터 유형(텍스트/이미지/정형), 레이블 존재 여부, 민감 정보 포함 여부, 결측값 비율 \\
+\midrule
+수집 과정(Collection) & 수집 메커니즘(API, 크롤링, 설문 등), 수집 기간, 수집 대상의 동의 획득 방식 \\
+\midrule
+전처리(Preprocessing) & 적용된 전처리 기법, 원본 데이터 보존 여부, 익명화 처리 방식 \\
+\midrule
+용도(Uses) & 권장 사용 용도, 부적절한 사용 사례, 향후 사용 시 주의사항 \\
+\midrule
+배포(Distribution) & 배포 라이선스, 접근 제한 조건, 저작권 정보 \\
+\midrule
+유지보수(Maintenance) & 관리 주체, 업데이트 주기, 오류 보고 채널 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+데이터시트 작성은 모델 개발 시작 전에 완료되어야 하며, 데이터 변경 시마다 갱신해야 한다. 특히 민감 정보 포함 여부, 동의 획득 방식, 대표성 분석 결과는 법무 검토 대상이 된다.
+
+\subsection{개발 환경 표준화}
+\label{sec:10.1.4}
+
+모델 개발 환경의 비표준화는 ``내 컴퓨터에서는 됩니다'' 문제의 원인이 된다. 거버넌스 관점에서 개발 환경 표준화는 재현성과 보안의 기반이다.
+
+\paragraph{컨테이너화(Containerization)}
+도커(Docker) 기반 컨테이너화는 개발 환경 표준화의 핵심이다. 모든 모델 개발 프로젝트는 다음을 포함하는 표준 도커 이미지를 기반으로 시작해야 한다.
+
+\begin{itemize}
+  \item 승인된 베이스 이미지 (보안팀 검증 완료)
+  \item 고정된 파이썬(Python) 버전 및 CUDA 버전
+  \item 의존성 패키지의 정확한 버전 명시 (\texttt{requirements.txt} 또는 \texttt{poetry.lock})
+  \item 보안 취약점 스캔 통과 확인
+\end{itemize}
+
+\paragraph{의존성 관리(Dependency Management)}
+ML 프로젝트의 의존성은 일반 소프트웨어보다 복잡하다. GPU 드라이버, CUDA 툴킷, 딥러닝 프레임워크 간의 호환성 매트릭스를 관리해야 한다.
+
+\begin{itemize}
+  \item \texttt{pip freeze} 또는 \texttt{conda list --export}를 통한 전체 의존성 스냅샷 저장
+  \item 내부 패키지 레지스트리(예: Artifactory, Nexus)를 통한 승인된 패키지만 사용
+  \item 주기적인 의존성 보안 취약점 스캔 (예: \texttt{pip-audit}, \texttt{safety check})
+\end{itemize}
+
+\subsection{코드 리뷰 및 피어 리뷰 체계}
+\label{sec:10.1.5}
+
+ML 코드는 일반 소프트웨어 코드와 다른 리뷰 관점이 필요하다. 데이터 전처리 로직의 올바름, 평가 지표 계산의 정확성, 데이터 누수(Data Leakage) 여부 등 ML 고유의 검증 포인트가 존재한다.
+
+\begin{table}[htbp]
+\centering
+\caption{ML 코드 리뷰 체크리스트}
+\label{tab:ml_code_review}
+\begin{tabularx}{\textwidth}{p{3cm}X}
+\toprule
+\textbf{검증 영역} & \textbf{체크 포인트} \\
+\midrule
+데이터 누수 & 학습 데이터와 테스트 데이터 간 정보 유출 없는지 확인. 시계열 데이터의 경우 미래 정보 사용 여부 확인 \\
+\midrule
+전처리 일관성 & 학습 시 전처리와 추론 시 전처리가 동일한 코드를 사용하는지 확인 \\
+\midrule
+재현성 & 랜덤 시드 고정 여부, 데이터 셔플링(Shuffling) 시드 일관성 \\
+\midrule
+하드코딩 & 데이터 경로, 하이퍼파라미터 등이 설정 파일로 분리되어 있는지 확인 \\
+\midrule
+평가 정확성 & 성능 지표 계산 로직이 올바른지, 클래스 불균형 고려 여부 \\
+\midrule
+리소스 관리 & GPU 메모리 해제, 대용량 데이터 배치 처리, 메모리 누수 여부 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+피어 리뷰는 최소 2인 이상이 참여해야 하며, 리뷰어 중 최소 1인은 해당 도메인 전문가여야 한다. 고위험 등급 모델의 경우 독립적인 제3자 리뷰를 추가로 수행한다.
+
+%----------------------------------------------------------
+\section{실험 관리와 재현성}
+\label{sec:10.2}
+%----------------------------------------------------------
+
+ML 모델 개발은 본질적으로 실험의 연속이다. 수십, 수백 번의 실험을 체계적으로 관리하지 않으면 ``어떤 설정이 최적이었는지'' 알 수 없게 된다. 재현성(Reproducibility)은 과학적 엄밀성의 기본이자, 규제 감사 대응의 핵심이다.
+
+\subsection{실험 추적 체계}
+\label{sec:10.2.1}
+
+실험 추적은 모든 실험의 입력(데이터, 하이퍼파라미터, 코드 버전), 과정(학습 로그), 출력(성능 지표, 모델 아티팩트)을 기록하고 비교할 수 있게 한다. 대표적인 도구로 MLflow와 W\&B(Weights \& Biases)가 있다.
+
+\paragraph{MLflow 연계} MLflow는 오픈소스 실험 관리 플랫폼으로, 실험 추적(Tracking), 모델 패키징(Projects), 모델 레지스트리(Registry) 기능을 제공한다. 거버넌스 관점에서 다음이 중요하다.
+\begin{itemize}
+  \item 모든 실험은 고유한 실행 ID(Run ID)로 추적
+  \item 하이퍼파라미터, 지표, 아티팩트가 자동으로 로깅
+  \item 모델 레지스트리를 통한 모델 버전 관리와 스테이지 전환(Staging → Production)
+  \item 태그(Tag)를 활용한 거버넌스 메타데이터 기록 (리뷰 상태, 승인자 등)
+\end{itemize}
+
+\paragraph{W\&B(Weights \& Biases) 연계} W\&B는 실험 시각화와 협업에 강점이 있다. 특히 다음 기능이 거버넌스에 유용하다.
+\begin{itemize}
+  \item 실시간 실험 대시보드 공유로 팀 전체의 가시성 확보
+  \item 데이터셋 버전 관리(Artifacts)와 계보(Lineage) 추적
+  \item 스윕(Sweeps)을 통한 하이퍼파라미터 탐색 기록
+  \item 리포트(Reports) 기능을 통한 실험 결과 문서화
+\end{itemize}
+
+\subsection{하이퍼파라미터 관리와 버전 관리}
+\label{sec:10.2.2}
+
+하이퍼파라미터(Hyperparameter)는 모델 성능에 직접적인 영향을 미치는 설정값이다. 이를 코드에 하드코딩하는 것은 재현성과 추적성을 모두 해치는 안티패턴(Anti-pattern)이다.
+
+\begin{itemize}
+  \item \textbf{설정 파일 분리}: YAML 또는 JSON 형식의 설정 파일로 하이퍼파라미터를 분리하고, 버전 관리 시스템(Git)으로 관리한다.
+  \item \textbf{설정 스키마 검증}: 설정 파일의 유효성을 자동 검증하여 잘못된 값 입력을 방지한다.
+  \item \textbf{탐색 이력 기록}: 그리드 서치(Grid Search), 베이지안 최적화(Bayesian Optimization) 등 하이퍼파라미터 탐색 과정의 전체 이력을 기록한다.
+\end{itemize}
+
+\subsection{재현성 보장을 위한 체크리스트}
+\label{sec:10.2.3}
+
+재현성은 ``동일한 입력과 설정으로 동일한 결과를 얻을 수 있는 능력''이다. ML 실험의 재현성을 보장하기 위해 다음 체크리스트를 적용한다.
+
+\begin{table}[htbp]
+\centering
+\caption{재현성 보장 체크리스트}
+\label{tab:reproducibility_checklist}
+\begin{tabularx}{\textwidth}{p{0.5cm}p{3.5cm}X}
+\toprule
+ & \textbf{항목} & \textbf{상세 요구사항} \\
+\midrule
+1 & 랜덤 시드 고정 & Python, NumPy, PyTorch/TensorFlow, CUDA의 모든 랜덤 시드를 고정하고 기록 \\
+\midrule
+2 & 환경 스냅샷 & 실행 시점의 전체 패키지 버전, OS 정보, GPU 드라이버 버전 기록 \\
+\midrule
+3 & 데이터 버전 관리 & DVC(Data Version Control) 등을 활용하여 데이터셋의 정확한 버전을 추적 \\
+\midrule
+4 & 코드 버전 관리 & 실험 실행 시점의 Git 커밋 해시를 기록 \\
+\midrule
+5 & 하이퍼파라미터 기록 & 모든 하이퍼파라미터를 설정 파일로 관리하고 실험에 연결 \\
+\midrule
+6 & 하드웨어 정보 & GPU 모델, CPU 코어 수, 메모리 크기 등 하드웨어 스펙 기록 \\
+\midrule
+7 & 비결정론적 연산 제어 & cuDNN 비결정론적 알고리즘 비활성화 여부 기록 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{재현성 보장 실험 관리자}
+\label{sec:10.2.4}
+
+다음 코드는 위 체크리스트의 핵심 항목들을 자동으로 적용하고 기록하는 실험 관리자 클래스를 보여준다.
+
+\begin{lstlisting}[language=Python, caption={재현성 보장 실험 관리자}, label={lst:reproducibility_manager}]
+import os
+import random
+import hashlib
+import json
+import subprocess
+import platform
+import datetime
+from typing import Dict, Any, Optional
+
+class ReproducibilityManager:
+    """ML 실험의 재현성을 보장하는 관리자"""
+
+    def __init__(self, seed: int = 42):
+        self.seed = seed
+        self.env_snapshot = {}
+        self.experiment_log = {}
+
+    def fix_all_seeds(self):
+        """모든 랜덤 시드를 고정"""
+        import numpy as np
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        os.environ["PYTHONHASHSEED"] = str(self.seed)
+
+        # PyTorch 시드 고정
+        try:
+            import torch
+            torch.manual_seed(self.seed)
+            torch.cuda.manual_seed_all(self.seed)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            self.env_snapshot["torch_version"] = torch.__version__
+            self.env_snapshot["cuda_available"] = (
+                torch.cuda.is_available()
+            )
+        except ImportError:
+            pass
+
+        # TensorFlow 시드 고정
+        try:
+            import tensorflow as tf
+            tf.random.set_seed(self.seed)
+            self.env_snapshot["tf_version"] = tf.__version__
+        except ImportError:
+            pass
+
+        self.experiment_log["seed"] = self.seed
+        print(f"모든 랜덤 시드가 {self.seed}로 고정되었습니다.")
+
+    def capture_environment(self) -> dict:
+        """실행 환경 스냅샷을 캡처"""
+        import sys
+        self.env_snapshot.update({
+            "python_version": sys.version,
+            "platform": platform.platform(),
+            "processor": platform.processor(),
+            "timestamp": datetime.datetime.now().isoformat(),
+        })
+        # pip freeze로 패키지 목록 캡처
+        try:
+            result = subprocess.run(
+                ["pip", "freeze"],
+                capture_output=True, text=True, timeout=30
+            )
+            self.env_snapshot["packages"] = (
+                result.stdout.strip().split("\n")
+            )
+        except Exception:
+            self.env_snapshot["packages"] = []
+        # Git 커밋 해시 기록
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True, text=True, timeout=10
+            )
+            self.env_snapshot["git_commit"] = result.stdout.strip()
+        except Exception:
+            self.env_snapshot["git_commit"] = "N/A"
+        return self.env_snapshot
+
+    def compute_data_hash(self, data_path: str) -> str:
+        """데이터 파일의 해시값을 계산하여 버전 식별"""
+        sha256 = hashlib.sha256()
+        with open(data_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                sha256.update(chunk)
+        data_hash = sha256.hexdigest()[:12]
+        self.experiment_log["data_hash"] = data_hash
+        return data_hash
+
+    def log_hyperparameters(self, params: Dict[str, Any]):
+        """하이퍼파라미터를 기록"""
+        self.experiment_log["hyperparameters"] = params
+
+    def log_metrics(self, metrics: Dict[str, float]):
+        """실험 결과 지표를 기록"""
+        self.experiment_log["metrics"] = metrics
+
+    def save_experiment_record(self, path: str):
+        """실험 기록을 JSON으로 저장"""
+        record = {
+            "environment": self.env_snapshot,
+            "experiment": self.experiment_log,
+        }
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(record, f, ensure_ascii=False, indent=2)
+        print(f"실험 기록 저장 완료: {path}")
+
+# 사용 예시
+manager = ReproducibilityManager(seed=42)
+manager.fix_all_seeds()
+manager.capture_environment()
+manager.log_hyperparameters({
+    "learning_rate": 0.001,
+    "batch_size": 64,
+    "epochs": 100,
+    "model_type": "XGBoost",
+})
+manager.log_metrics({
+    "accuracy": 0.8734,
+    "f1_score": 0.8651,
+    "auc": 0.9102,
+})
+manager.save_experiment_record("experiment_001.json")
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{공정성 검증}
+\label{sec:10.3}
+%----------------------------------------------------------
+
+AI 시스템이 특정 집단에 체계적으로 불리한 결과를 초래한다면, 이는 기술적 결함을 넘어 사회적, 법적 문제가 된다. 공정성(Fairness) 검증은 모델 개발 단계에서 반드시 수행해야 하는 핵심 거버넌스 활동이다.
+
+\subsection{공정성 지표 체계}
+\label{sec:10.3.1}
+
+공정성을 측정하는 단일한 지표는 존재하지 않는다. 상황과 맥락에 따라 적절한 지표를 선택해야 하며, 주요 공정성 지표는 다음과 같다.
+
+\paragraph{인구통계학적 동등성(Demographic Parity, DP)}
+각 민감 그룹이 동일한 비율로 긍정적 결과(예: 대출 승인)를 받아야 한다.
+\[
+P(\hat{Y}=1 | A=a) = P(\hat{Y}=1 | A=b), \quad \forall a, b
+\]
+여기서 $A$는 민감 속성(예: 성별), $\hat{Y}$는 모델의 예측 결과이다.
+
+\paragraph{균등 기회(Equalized Odds, EO)}
+실제 긍정 사례에서 각 그룹의 진양성률(True Positive Rate)이 동일하고, 실제 부정 사례에서 각 그룹의 위양성률(False Positive Rate)이 동일해야 한다.
+\[
+P(\hat{Y}=1 | Y=y, A=a) = P(\hat{Y}=1 | Y=y, A=b), \quad \forall y, a, b
+\]
+
+\paragraph{보정(Calibration)}
+각 그룹에서 모델이 예측한 확률이 실제 발생 확률과 일치해야 한다. 예를 들어, 모델이 70\% 확률로 부도를 예측한 경우, 남성 그룹과 여성 그룹 모두에서 실제로 약 70\%가 부도 나야 한다.
+
+\paragraph{개인 공정성(Individual Fairness)}
+유사한 특성을 가진 개인은 유사한 결과를 받아야 한다. 이는 ``비슷한 사람은 비슷하게 취급''이라는 직관에 기반한다.
+
+\begin{table}[htbp]
+\centering
+\caption{공정성 지표별 적용 시나리오}
+\label{tab:fairness_metrics}
+\begin{tabularx}{\textwidth}{p{2.8cm}p{3cm}X}
+\toprule
+\textbf{지표} & \textbf{적합 시나리오} & \textbf{한계점} \\
+\midrule
+인구통계학적 동등성(DP) & 채용, 광고 노출 등 결과의 균등 배분이 중요한 경우 & 기저율(Base Rate) 차이를 무시. 정확도를 크게 희생할 수 있음 \\
+\midrule
+균등 기회(EO) & 대출 심사, 형사 재범 예측 등 정확한 분류가 중요한 경우 & 긍정 결과와 부정 결과의 오류율을 동시에 맞추기 어려움 \\
+\midrule
+보정(Calibration) & 의료 진단, 리스크 스코어링 등 확률 추정이 중요한 경우 & 그룹 간 기저율이 다르면 DP, EO와 동시 충족 불가 \\
+\midrule
+개인 공정성 & 개인화된 서비스, 맞춤형 추천 등 개별 판단이 중요한 경우 & ``유사성'' 정의가 주관적이며 측정이 어려움 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{공정성-정확도 트레이드오프 관리}
+\label{sec:10.3.2}
+
+공정성 제약을 강화하면 전체 정확도가 하락하는 트레이드오프가 발생한다. 이는 수학적으로 불가피한 경우가 많다---Chouldechova(2017)가 증명했듯이, 기저율이 다른 그룹에서 보정, 양성 예측도, 위양성률을 동시에 동등하게 만드는 것은 불가능하다.
+
+거버넌스 관점에서 중요한 것은 이 트레이드오프를 투명하게 관리하는 것이다.
+
+\begin{itemize}
+  \item \textbf{트레이드오프 시각화}: 공정성 지표와 정확도 지표의 파레토 프런티어(Pareto Frontier)를 시각화하여 의사결정자에게 제시한다.
+  \item \textbf{허용 임계값 사전 결정}: 비즈니스 오너, 법무, 윤리 담당자가 합의하여 공정성 지표의 최소 기준과 정확도의 최소 기준을 사전에 정의한다.
+  \item \textbf{의사결정 기록}: 어떤 트레이드오프 지점을 선택했는지, 그 이유는 무엇인지를 문서화한다.
+\end{itemize}
+
+\subsection{편향 완화 기법}
+\label{sec:10.3.3}
+
+편향(Bias)은 모델 개발 파이프라인의 여러 단계에서 개입할 수 있으며, 각 단계에 맞는 완화 기법이 존재한다.
+
+\paragraph{전처리 기법(Pre-processing)}
+학습 데이터 자체의 편향을 제거하는 접근이다.
+\begin{itemize}
+  \item \textbf{리웨이팅(Reweighting)}: 소수 그룹의 샘플에 더 높은 가중치를 부여
+  \item \textbf{리샘플링(Resampling)}: 과소 대표 그룹을 오버샘플링하거나 과대 대표 그룹을 언더샘플링
+  \item \textbf{디스패럿 임팩트 리무버(Disparate Impact Remover)}: 민감 속성의 영향을 데이터에서 제거하면서 순위를 보존
+\end{itemize}
+
+\paragraph{중간처리 기법(In-processing)}
+학습 알고리즘 자체에 공정성 제약을 포함하는 접근이다.
+\begin{itemize}
+  \item \textbf{적대적 디바이어싱(Adversarial Debiasing)}: 적대적 네트워크를 사용하여 모델이 민감 속성을 추론하지 못하도록 학습
+  \item \textbf{제약 최적화(Constrained Optimization)}: 공정성 지표를 제약 조건으로 추가한 최적화 문제로 변환
+  \item \textbf{정규화(Regularization)}: 손실 함수에 공정성 패널티 항을 추가
+\end{itemize}
+
+\paragraph{후처리 기법(Post-processing)}
+학습된 모델의 출력을 조정하는 접근이다.
+\begin{itemize}
+  \item \textbf{임계값 조정(Threshold Adjustment)}: 각 그룹별로 최적의 분류 임계값을 다르게 설정
+  \item \textbf{보정된 균등 기회(Calibrated Equalized Odds)}: 예측 확률을 보정하여 균등 기회를 달성
+  \item \textbf{거부 옵션 분류(Reject Option Classification)}: 결정 경계 근처의 불확실한 예측에 대해 소수 그룹에 유리하게 판정
+\end{itemize}
+
+\subsection{공정성 자동 검증 파이프라인}
+\label{sec:10.3.4}
+
+다음 코드는 Fairlearn 라이브러리를 기반으로 공정성 지표를 자동으로 계산하고 보고하는 파이프라인을 보여준다.
+
+\begin{lstlisting}[language=Python, caption={Fairlearn 기반 공정성 자동 검증 파이프라인}, label={lst:fairness_pipeline}]
+import numpy as np
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple, Optional
+
+@dataclass
+class FairnessReport:
+    """공정성 검증 보고서"""
+    model_name: str
+    sensitive_feature_name: str
+    metrics: Dict[str, Dict] = field(default_factory=dict)
+    overall_pass: bool = False
+    violations: List[str] = field(default_factory=list)
+
+class FairnessValidationPipeline:
+    """공정성 자동 검증 파이프라인"""
+
+    def __init__(
+        self,
+        model_name: str,
+        dp_threshold: float = 0.8,
+        eo_threshold: float = 0.1,
+    ):
+        self.model_name = model_name
+        self.dp_threshold = dp_threshold  # 4/5 규칙
+        self.eo_threshold = eo_threshold
+        self.reports: List[FairnessReport] = []
+
+    def compute_demographic_parity(
+        self,
+        y_pred: np.ndarray,
+        sensitive: np.ndarray,
+    ) -> Dict:
+        """인구통계학적 동등성 계산"""
+        groups = np.unique(sensitive)
+        selection_rates = {}
+        for g in groups:
+            mask = sensitive == g
+            selection_rates[str(g)] = float(
+                np.mean(y_pred[mask])
+            )
+        rates = list(selection_rates.values())
+        max_rate = max(rates)
+        min_rate = min(rates)
+        ratio = min_rate / max_rate if max_rate > 0 else 0
+        return {
+            "selection_rates": selection_rates,
+            "ratio": round(ratio, 4),
+            "pass": ratio >= self.dp_threshold,
+        }
+
+    def compute_equalized_odds(
+        self,
+        y_true: np.ndarray,
+        y_pred: np.ndarray,
+        sensitive: np.ndarray,
+    ) -> Dict:
+        """균등 기회 계산"""
+        groups = np.unique(sensitive)
+        tpr_by_group = {}
+        fpr_by_group = {}
+        for g in groups:
+            mask = sensitive == g
+            pos_mask = mask & (y_true == 1)
+            neg_mask = mask & (y_true == 0)
+            tpr = (
+                np.mean(y_pred[pos_mask])
+                if pos_mask.sum() > 0 else 0
+            )
+            fpr = (
+                np.mean(y_pred[neg_mask])
+                if neg_mask.sum() > 0 else 0
+            )
+            tpr_by_group[str(g)] = round(float(tpr), 4)
+            fpr_by_group[str(g)] = round(float(fpr), 4)
+        tpr_diff = max(tpr_by_group.values()) - min(
+            tpr_by_group.values()
+        )
+        fpr_diff = max(fpr_by_group.values()) - min(
+            fpr_by_group.values()
+        )
+        return {
+            "tpr_by_group": tpr_by_group,
+            "fpr_by_group": fpr_by_group,
+            "tpr_difference": round(tpr_diff, 4),
+            "fpr_difference": round(fpr_diff, 4),
+            "pass": (
+                tpr_diff <= self.eo_threshold
+                and fpr_diff <= self.eo_threshold
+            ),
+        }
+
+    def validate(
+        self,
+        y_true: np.ndarray,
+        y_pred: np.ndarray,
+        sensitive_features: Dict[str, np.ndarray],
+    ) -> List[FairnessReport]:
+        """전체 공정성 검증 실행"""
+        self.reports = []
+        for feat_name, feat_values in sensitive_features.items():
+            report = FairnessReport(
+                model_name=self.model_name,
+                sensitive_feature_name=feat_name,
+            )
+            dp = self.compute_demographic_parity(
+                y_pred, feat_values
+            )
+            report.metrics["demographic_parity"] = dp
+            if not dp["pass"]:
+                report.violations.append(
+                    f"DP 위반: 비율 {dp['ratio']} "
+                    f"< 임계값 {self.dp_threshold}"
+                )
+            eo = self.compute_equalized_odds(
+                y_true, y_pred, feat_values
+            )
+            report.metrics["equalized_odds"] = eo
+            if not eo["pass"]:
+                report.violations.append(
+                    f"EO 위반: TPR 차이 {eo['tpr_difference']}"
+                    f", FPR 차이 {eo['fpr_difference']}"
+                )
+            report.overall_pass = len(report.violations) == 0
+            self.reports.append(report)
+
+        return self.reports
+
+    def print_summary(self):
+        """검증 결과 요약 출력"""
+        for report in self.reports:
+            status = "통과" if report.overall_pass else "실패"
+            print(f"\n=== {report.sensitive_feature_name} ===")
+            print(f"  상태: {status}")
+            for name, result in report.metrics.items():
+                pass_str = "통과" if result["pass"] else "실패"
+                print(f"  {name}: {pass_str}")
+            for v in report.violations:
+                print(f"  [위반] {v}")
+
+# 사용 예시
+pipeline = FairnessValidationPipeline(
+    model_name="CreditScoring-v2",
+    dp_threshold=0.8,
+    eo_threshold=0.1,
+)
+# 모의 데이터
+np.random.seed(42)
+y_true = np.random.randint(0, 2, 1000)
+y_pred = np.random.randint(0, 2, 1000)
+gender = np.random.choice(["M", "F"], 1000)
+age_group = np.random.choice(["young", "middle", "senior"], 1000)
+
+reports = pipeline.validate(
+    y_true, y_pred,
+    {"gender": gender, "age_group": age_group},
+)
+pipeline.print_summary()
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{강건성과 보안 테스트}
+\label{sec:10.4}
+%----------------------------------------------------------
+
+모델이 정상적인 입력에서만 잘 작동하는 것은 충분하지 않다. 악의적인 공격이나 예상치 못한 입력에 대해서도 안정적으로 동작하는 강건성(Robustness)은 프로덕션 배포의 필수 조건이다\cite{goodfellow2014explaining}.
+
+\subsection{적대적 공격 유형과 방어 기법}
+\label{sec:10.4.1}
+
+적대적 공격(Adversarial Attack)은 모델의 입력을 미세하게 조작하여 오분류를 유도하는 기법이다. \cite{goodfellow2014explaining}가 제안한 FGSM(Fast Gradient Sign Method)은 이 분야의 시초가 되었다.
+
+\begin{table}[htbp]
+\centering
+\caption{주요 적대적 공격 유형과 방어 기법}
+\label{tab:adversarial_attacks}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{3.5cm}X}
+\toprule
+\textbf{공격 유형} & \textbf{설명} & \textbf{방어 기법} \\
+\midrule
+FGSM & 그래디언트 방향으로 단일 스텝 섭동 추가. 빠르지만 간단한 공격 & 적대적 학습(Adversarial Training)으로 강건성 향상 \\
+\midrule
+PGD & 반복적 그래디언트 기반 공격. FGSM보다 강력한 공격 & 인증된 방어(Certified Defense), 무작위 평활화(Randomized Smoothing) \\
+\midrule
+C\&W & 최적화 기반 공격. 최소 섭동으로 최대 효과 & 방어 증류(Defensive Distillation), 입력 변환(Input Transformation) \\
+\midrule
+데이터 중독(Data Poisoning) & 학습 데이터에 악의적 샘플을 주입 & 데이터 검증, 이상치 탐지, 강건 통계 기법 \\
+\midrule
+백도어 공격(Backdoor Attack) & 특정 트리거 패턴 입력 시 오동작 유도 & 뉴런 가지치기(Neural Pruning), 미세조정(Fine-tuning) \\
+\midrule
+모델 역전(Model Inversion) & 모델 출력에서 학습 데이터 복원 시도 & 차분 프라이버시(Differential Privacy), 출력 제한 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{입력 검증과 이상치 탐지}
+\label{sec:10.4.2}
+
+프로덕션 환경에서 모델은 학습 시 보지 못한 다양한 입력을 받게 된다. 분포 외(Out-of-Distribution, OOD) 입력을 탐지하고 적절히 처리하는 메커니즘이 필요하다.
+
+\begin{itemize}
+  \item \textbf{입력 범위 검증}: 각 특성(Feature)의 유효 범위를 정의하고, 범위를 벗어난 입력을 감지
+  \item \textbf{통계적 이상치 탐지}: 학습 데이터의 분포와 비교하여 이상 입력을 식별 (예: 마할라노비스 거리(Mahalanobis Distance), 격리 숲(Isolation Forest))
+  \item \textbf{신뢰도 기반 거부}: 모델의 예측 신뢰도가 임계값 이하인 경우 자동 판단을 보류하고 사람의 검토를 요청
+  \item \textbf{입력 무결성 검증}: 입력 데이터의 형식, 타입, 필수 필드 존재 여부를 검증
+\end{itemize}
+
+\subsection{모델 추출 공격 방어}
+\label{sec:10.4.3}
+
+모델 추출 공격(Model Extraction Attack)은 공격자가 API를 통해 대량의 쿼리를 보내 모델을 복제하려는 시도이다. 이는 지적 재산 보호와 보안 모두에 위협이 된다.
+
+\begin{itemize}
+  \item \textbf{쿼리 제한(Rate Limiting)}: API 호출 빈도와 총량을 제한
+  \item \textbf{워터마킹(Watermarking)}: 모델 출력에 식별 가능한 패턴을 삽입하여 복제 모델을 추적
+  \item \textbf{출력 정밀도 제한}: 예측 확률의 소수점 자릿수를 제한하여 정보 노출을 최소화
+  \item \textbf{쿼리 패턴 모니터링}: 비정상적인 쿼리 패턴(예: 체계적인 입력 공간 탐색)을 탐지하여 차단
+\end{itemize}
+
+\subsection{적대적 강건성 테스트 프레임워크}
+\label{sec:10.4.4}
+
+다음 코드는 모델의 적대적 강건성을 체계적으로 테스트하는 프레임워크를 보여준다.
+
+\begin{lstlisting}[language=Python, caption={적대적 강건성 테스트 프레임워크}, label={lst:adversarial_test}]
+import numpy as np
+from dataclasses import dataclass, field
+from typing import Dict, List, Callable, Any, Optional
+
+@dataclass
+class RobustnessTestResult:
+    """강건성 테스트 결과"""
+    test_name: str
+    original_accuracy: float
+    perturbed_accuracy: float
+    robustness_score: float  # 0~1
+    passed: bool
+    details: Dict[str, Any] = field(default_factory=dict)
+
+class AdversarialRobustnessFramework:
+    """적대적 강건성 테스트 프레임워크"""
+
+    def __init__(
+        self,
+        model,
+        robustness_threshold: float = 0.8,
+    ):
+        self.model = model
+        self.threshold = robustness_threshold
+        self.results: List[RobustnessTestResult] = []
+
+    def _predict(self, X: np.ndarray) -> np.ndarray:
+        """모델 예측 래퍼"""
+        return self.model.predict(X)
+
+    def test_gaussian_noise(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        noise_levels: List[float] = None,
+    ) -> RobustnessTestResult:
+        """가우시안 노이즈에 대한 강건성 테스트"""
+        if noise_levels is None:
+            noise_levels = [0.01, 0.05, 0.1, 0.2]
+        original_pred = self._predict(X)
+        orig_acc = float(np.mean(original_pred == y))
+        noise_results = {}
+        for sigma in noise_levels:
+            noise = np.random.normal(0, sigma, X.shape)
+            X_noisy = X + noise
+            noisy_pred = self._predict(X_noisy)
+            noisy_acc = float(np.mean(noisy_pred == y))
+            noise_results[f"sigma_{sigma}"] = round(
+                noisy_acc, 4
+            )
+        worst_acc = min(noise_results.values())
+        robustness = worst_acc / orig_acc if orig_acc > 0 else 0
+        result = RobustnessTestResult(
+            test_name="가우시안 노이즈 테스트",
+            original_accuracy=round(orig_acc, 4),
+            perturbed_accuracy=round(worst_acc, 4),
+            robustness_score=round(robustness, 4),
+            passed=robustness >= self.threshold,
+            details=noise_results,
+        )
+        self.results.append(result)
+        return result
+
+    def test_feature_perturbation(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        feature_idx: int,
+        perturbation_pct: float = 0.1,
+    ) -> RobustnessTestResult:
+        """특정 특성 섭동에 대한 강건성 테스트"""
+        original_pred = self._predict(X)
+        orig_acc = float(np.mean(original_pred == y))
+        X_perturbed = X.copy()
+        feature_std = np.std(X[:, feature_idx])
+        perturbation = feature_std * perturbation_pct
+        X_perturbed[:, feature_idx] += perturbation
+        perturbed_pred = self._predict(X_perturbed)
+        pert_acc = float(np.mean(perturbed_pred == y))
+        robustness = pert_acc / orig_acc if orig_acc > 0 else 0
+        result = RobustnessTestResult(
+            test_name=f"특성[{feature_idx}] 섭동 테스트",
+            original_accuracy=round(orig_acc, 4),
+            perturbed_accuracy=round(pert_acc, 4),
+            robustness_score=round(robustness, 4),
+            passed=robustness >= self.threshold,
+            details={
+                "feature_index": feature_idx,
+                "perturbation_pct": perturbation_pct,
+            },
+        )
+        self.results.append(result)
+        return result
+
+    def test_input_validation(
+        self,
+        X: np.ndarray,
+        valid_ranges: Dict[int, tuple],
+    ) -> RobustnessTestResult:
+        """입력 범위 검증 테스트"""
+        violations = {}
+        total_checks = 0
+        total_violations = 0
+        for feat_idx, (low, high) in valid_ranges.items():
+            col = X[:, feat_idx]
+            out_of_range = np.sum(
+                (col < low) | (col > high)
+            )
+            total_checks += len(col)
+            total_violations += out_of_range
+            if out_of_range > 0:
+                violations[f"feature_{feat_idx}"] = int(
+                    out_of_range
+                )
+        violation_rate = (
+            total_violations / total_checks
+            if total_checks > 0 else 0
+        )
+        result = RobustnessTestResult(
+            test_name="입력 범위 검증",
+            original_accuracy=1.0,
+            perturbed_accuracy=round(1 - violation_rate, 4),
+            robustness_score=round(1 - violation_rate, 4),
+            passed=violation_rate < 0.01,  # 1% 미만
+            details={"violations": violations},
+        )
+        self.results.append(result)
+        return result
+
+    def generate_report(self) -> Dict:
+        """전체 강건성 테스트 보고서 생성"""
+        all_passed = all(r.passed for r in self.results)
+        report = {
+            "overall_status": "통과" if all_passed else "실패",
+            "total_tests": len(self.results),
+            "passed_tests": sum(
+                1 for r in self.results if r.passed
+            ),
+            "details": [],
+        }
+        for r in self.results:
+            report["details"].append({
+                "test": r.test_name,
+                "status": "통과" if r.passed else "실패",
+                "robustness_score": r.robustness_score,
+                "original_acc": r.original_accuracy,
+                "perturbed_acc": r.perturbed_accuracy,
+            })
+        return report
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{설명가능성(XAI) 구현}
+\label{sec:10.5}
+%----------------------------------------------------------
+
+``AI가 왜 대출을 거절했습니까?''라는 고객의 질문에 ``알고리즘이 결정했습니다''라고 답할 수는 없다. 특히 금융, 공공, 의료 등 고위험 분야에서는 설명 요구권(Right to Explanation)이 법적으로 보장되는 추세다. \cite{arrieta2020explainable}는 책임 있는 AI를 위해 설명가능한 AI(eXplainable AI, XAI)가 필수적임을 강조한다.
+
+\subsection{글로벌 vs 로컬 설명가능성}
+\label{sec:10.5.1}
+
+설명가능성은 그 범위에 따라 글로벌(Global)과 로컬(Local) 수준으로 나뉜다.
+
+\paragraph{글로벌 설명가능성}
+모델 전체의 행동 패턴을 설명한다. ``이 모델은 전반적으로 어떤 특성을 중요하게 여기는가?''에 답한다.
+\begin{itemize}
+  \item \textbf{특성 중요도(Feature Importance)}: 모델의 전반적 결정에 각 특성이 기여하는 정도
+  \item \textbf{SHAP\cite{lundberg2017unified} 요약 플롯(SHAP Summary Plot)}: 모든 샘플에 걸쳐 각 특성의 SHAP 값 분포를 시각화
+  \item \textbf{부분 의존도 플롯(Partial Dependence Plot, PDP)}: 특정 특성의 값 변화에 따른 모델 출력의 평균적 변화
+  \item \textbf{글로벌 대리 모델(Global Surrogate)}: 복잡한 모델을 해석 가능한 단순 모델(예: 결정 트리)로 근사
+\end{itemize}
+
+\paragraph{로컬 설명가능성}
+개별 예측에 대한 설명을 제공한다. ``이 특정 고객의 대출은 왜 거절되었는가?''에 답한다.
+\begin{itemize}
+  \item \textbf{LIME\cite{ribeiro2016why}(Local Interpretable Model-agnostic Explanations)}: 개별 예측 주변에서 해석 가능한 모델을 학습하여 설명 생성
+  \item \textbf{개별 SHAP 값(Individual SHAP Values)}: 특정 예측에 대한 각 특성의 기여도를 분해
+  \item \textbf{반사실적 설명(Counterfactual Explanation)}: ``어떤 입력이 달라졌다면 결과가 바뀌었을 것''이라는 형태의 설명
+  \item \textbf{Grad-CAM(Gradient-weighted Class Activation Mapping)}: 이미지 분류에서 모델이 주목한 영역을 시각화
+\end{itemize}
+
+\subsection{주요 설명 기법 비교}
+\label{sec:10.5.2}
+
+\begin{table}[htbp]
+\centering
+\caption{SHAP, LIME, Grad-CAM 비교}
+\label{tab:xai_comparison}
+\begin{tabularx}{\textwidth}{p{2cm}p{2.3cm}p{2.3cm}p{2.3cm}X}
+\toprule
+\textbf{기준} & \textbf{SHAP} & \textbf{LIME} & \textbf{Grad-CAM} & \textbf{반사실적 설명} \\
+\midrule
+범위 & 글로벌 + 로컬 & 로컬 & 로컬 & 로컬 \\
+\midrule
+모델 의존성 & 모델 비의존적 (KernelSHAP) 또는 모델 특화 (TreeSHAP) & 모델 비의존적 & CNN 특화 & 모델 비의존적 \\
+\midrule
+데이터 유형 & 정형, 텍스트, 이미지 & 정형, 텍스트, 이미지 & 이미지 & 정형 \\
+\midrule
+계산 비용 & 중간\textasciitilde{}높음 & 중간 & 낮음 & 높음 \\
+\midrule
+이론적 기반 & 샤플리 값(게임 이론) & 지역 선형 근사 & 그래디언트 기반 활성화 & 인과 추론 \\
+\midrule
+장점 & 수학적 보장, 일관된 특성 기여도 & 직관적, 빠른 구현 & 시각적으로 명확 & 사용자 친화적 설명 \\
+\midrule
+단점 & 높은 계산 비용 (KernelSHAP) & 불안정성(같은 입력에 다른 설명 가능) & CNN에만 적용 & 유효한 반사실 생성이 어려움 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{반사실적 설명 구현}
+\label{sec:10.5.3}
+
+반사실적 설명(Counterfactual Explanation)은 ``연 소득이 10\%만 더 높았다면 대출이 승인되었을 것입니다''와 같은 형태로, 사용자에게 가장 직관적이고 실행 가능한 피드백을 제공한다.
+
+효과적인 반사실적 설명은 다음 조건을 만족해야 한다.
+\begin{itemize}
+  \item \textbf{유효성(Validity)}: 반사실적 입력이 실제로 다른 결과를 이끌어내야 한다.
+  \item \textbf{근접성(Proximity)}: 원본 입력과 최소한의 차이만 가져야 한다.
+  \item \textbf{실현가능성(Plausibility)}: 제안된 변경이 현실적으로 가능해야 한다 (예: ``나이를 10살 줄이세요''는 비현실적).
+  \item \textbf{희소성(Sparsity)}: 가능한 적은 수의 특성만 변경해야 한다.
+\end{itemize}
+
+\subsection{설명가능성 수준 결정 프레임워크}
+\label{sec:10.5.4}
+
+모든 모델에 동일한 수준의 설명가능성을 요구하는 것은 비효율적이다. 리스크 등급에 따라 요구 수준을 차등 적용한다.
+
+\begin{table}[htbp]
+\centering
+\caption{리스크 등급별 설명가능성 요구 수준}
+\label{tab:xai_levels}
+\begin{tabularx}{\textwidth}{p{2cm}p{3cm}X}
+\toprule
+\textbf{리스크 등급} & \textbf{요구 수준} & \textbf{상세 요구사항} \\
+\midrule
+고위험 & 완전한 설명 & 글로벌 + 로컬 설명 필수. 반사실적 설명 제공. 설명의 정확도 검증. 비전문가도 이해 가능한 자연어 설명. 규제 감사 대응 문서화 \\
+\midrule
+중위험 & 표준 설명 & 글로벌 특성 중요도 + 요청 시 로컬 설명 제공. SHAP 또는 LIME 기반 기여도 분석. 내부 감사 대응 수준 문서화 \\
+\midrule
+저위험 & 기본 설명 & 글로벌 특성 중요도 제공. 이상 탐지 시 로컬 설명 생성. 기술 문서 수준 기록 \\
+\midrule
+최저위험 & 모니터링 & 모델 성능 대시보드. 문제 발생 시 사후 분석 가능한 로깅 체계 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{통합 설명가능성 보고서 생성기}
+\label{sec:10.5.5}
+
+다음 코드는 여러 XAI 기법을 통합하여 하나의 설명가능성 보고서를 자동 생성하는 시스템을 보여준다.
+
+\begin{lstlisting}[language=Python, caption={통합 설명가능성 보고서 생성기}, label={lst:xai_report}]
+import json
+import numpy as np
+from dataclasses import dataclass, field
+from typing import Dict, List, Any, Optional
+
+@dataclass
+class ExplanationResult:
+    """단일 설명 결과"""
+    method: str
+    scope: str  # "global" or "local"
+    feature_contributions: Dict[str, float]
+    description: str = ""
+
+@dataclass
+class XAIReport:
+    """설명가능성 보고서"""
+    model_name: str
+    risk_level: str
+    explanations: List[ExplanationResult] = field(
+        default_factory=list
+    )
+    counterfactuals: List[Dict] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+class IntegratedXAIReportGenerator:
+    """통합 설명가능성 보고서 생성기"""
+
+    def __init__(
+        self,
+        model,
+        model_name: str,
+        risk_level: str = "high",
+        feature_names: List[str] = None,
+    ):
+        self.model = model
+        self.model_name = model_name
+        self.risk_level = risk_level
+        self.feature_names = feature_names or []
+        self.report = XAIReport(
+            model_name=model_name,
+            risk_level=risk_level,
+        )
+
+    def compute_permutation_importance(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        n_repeats: int = 10,
+    ) -> ExplanationResult:
+        """순열 중요도 기반 글로벌 설명"""
+        from sklearn.inspection import permutation_importance
+        result = permutation_importance(
+            self.model, X, y,
+            n_repeats=n_repeats, random_state=42,
+        )
+        contributions = {}
+        for i, imp in enumerate(result.importances_mean):
+            name = (
+                self.feature_names[i]
+                if i < len(self.feature_names)
+                else f"feature_{i}"
+            )
+            contributions[name] = round(float(imp), 4)
+        # 중요도 내림차순 정렬
+        contributions = dict(
+            sorted(
+                contributions.items(),
+                key=lambda x: abs(x[1]),
+                reverse=True,
+            )
+        )
+        explanation = ExplanationResult(
+            method="Permutation Importance",
+            scope="global",
+            feature_contributions=contributions,
+            description="순열 중요도 기반 글로벌 특성 기여도",
+        )
+        self.report.explanations.append(explanation)
+        return explanation
+
+    def compute_shap_local(
+        self,
+        X_instance: np.ndarray,
+        X_background: np.ndarray,
+    ) -> ExplanationResult:
+        """SHAP 기반 로컬 설명"""
+        try:
+            import shap
+            explainer = shap.KernelExplainer(
+                self.model.predict_proba, X_background[:100]
+            )
+            shap_values = explainer.shap_values(
+                X_instance.reshape(1, -1)
+            )
+            if isinstance(shap_values, list):
+                values = shap_values[1][0]
+            else:
+                values = shap_values[0]
+        except ImportError:
+            # SHAP 미설치 시 근사 계산
+            values = np.random.randn(len(X_instance)) * 0.1
+        contributions = {}
+        for i, val in enumerate(values):
+            name = (
+                self.feature_names[i]
+                if i < len(self.feature_names)
+                else f"feature_{i}"
+            )
+            contributions[name] = round(float(val), 4)
+        explanation = ExplanationResult(
+            method="SHAP",
+            scope="local",
+            feature_contributions=contributions,
+            description="SHAP 기반 개별 예측 기여도 분해",
+        )
+        self.report.explanations.append(explanation)
+        return explanation
+
+    def generate_counterfactual(
+        self,
+        X_instance: np.ndarray,
+        desired_outcome: int,
+        mutable_features: List[int] = None,
+        step_size: float = 0.1,
+        max_iter: int = 100,
+    ) -> Optional[Dict]:
+        """간단한 반사실적 설명 생성"""
+        if mutable_features is None:
+            mutable_features = list(range(len(X_instance)))
+        x_cf = X_instance.copy()
+        for iteration in range(max_iter):
+            pred = self.model.predict(x_cf.reshape(1, -1))[0]
+            if pred == desired_outcome:
+                changes = {}
+                for i in mutable_features:
+                    diff = x_cf[i] - X_instance[i]
+                    if abs(diff) > 1e-6:
+                        name = (
+                            self.feature_names[i]
+                            if i < len(self.feature_names)
+                            else f"feature_{i}"
+                        )
+                        changes[name] = {
+                            "original": round(
+                                float(X_instance[i]), 4
+                            ),
+                            "counterfactual": round(
+                                float(x_cf[i]), 4
+                            ),
+                            "change": round(float(diff), 4),
+                        }
+                cf_result = {
+                    "found": True,
+                    "iterations": iteration + 1,
+                    "changes": changes,
+                }
+                self.report.counterfactuals.append(cf_result)
+                return cf_result
+            # 랜덤 방향으로 탐색
+            for feat in mutable_features:
+                x_cf[feat] += np.random.choice(
+                    [-step_size, step_size]
+                ) * np.std(X_instance)
+        return {"found": False, "iterations": max_iter}
+
+    def generate_full_report(
+        self, output_path: str = None
+    ) -> Dict:
+        """전체 보고서를 생성하고 저장"""
+        report_dict = {
+            "model_name": self.report.model_name,
+            "risk_level": self.report.risk_level,
+            "explanations": [
+                {
+                    "method": e.method,
+                    "scope": e.scope,
+                    "description": e.description,
+                    "top_features": dict(
+                        list(e.feature_contributions.items())[:5]
+                    ),
+                }
+                for e in self.report.explanations
+            ],
+            "counterfactuals": self.report.counterfactuals,
+        }
+        if output_path:
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    report_dict, f, ensure_ascii=False, indent=2
+                )
+        return report_dict
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{모델 승인과 릴리스 관리}
+\label{sec:10.6}
+%----------------------------------------------------------
+
+개발과 검증이 끝난 모델이 실제 운영 환경(프로덕션(Production))으로 나가기 전, 마지막 관문(Gate)을 거쳐야 한다. 이 관문은 기술적 품질뿐만 아니라 윤리적, 법적, 보안적 측면을 종합적으로 검증하는 과정이다.
+
+\subsection{모델 승인 게이트(다단계 리뷰)}
+\label{sec:10.6.1}
+
+고위험 모델의 경우, 단일 승인이 아닌 다단계 리뷰 프로세스를 거쳐야 한다.
+
+\paragraph{1단계: 기술 리뷰(Technical Review)}
+데이터 사이언스 팀 내부에서 수행하는 기술적 검증이다.
+\begin{itemize}
+  \item 모델 성능이 사전 정의된 KPI를 달성하는지 확인
+  \item 코드 리뷰 완료 여부 확인
+  \item 재현성 테스트 통과 여부 확인
+  \item 단위 테스트 및 통합 테스트 통과 여부 확인
+\end{itemize}
+
+\paragraph{2단계: 공정성 및 윤리 리뷰(Fairness \& Ethics Review)}
+AI 윤리 담당자 또는 공정성 검증팀이 수행한다.
+\begin{itemize}
+  \item 공정성 지표가 사전 정의된 임계값을 충족하는지 확인
+  \item 편향 완화 조치의 적절성 평가
+  \item 설명가능성 수준이 리스크 등급에 맞는지 확인
+  \item 윤리적 영향 평가서(Ethical Impact Assessment) 검토
+\end{itemize}
+
+\paragraph{3단계: 법무 및 컴플라이언스 리뷰(Legal \& Compliance Review)}
+법무팀과 규제 대응팀이 수행한다.
+\begin{itemize}
+  \item 관련 법규(개인정보보호법, AI 기본법 등) 준수 여부 확인
+  \item 데이터 사용 동의 범위 적합성 확인
+  \item 설명 요구권 대응 가능 여부 확인
+  \item 필요한 고지 사항 확인
+\end{itemize}
+
+\paragraph{4단계: 보안 리뷰(Security Review)}
+정보보안팀이 수행한다.
+\begin{itemize}
+  \item 적대적 공격에 대한 강건성 테스트 결과 확인
+  \item 모델 파일 무결성 검증 체계 확인
+  \item API 보안 설정(인증, 권한, 암호화) 확인
+  \item 의존성 라이브러리 보안 취약점 스캔 결과 확인
+\end{itemize}
+
+\paragraph{5단계: 최종 승인(Final Approval)}
+배포 승인 위원회(Model Review Board)에서 각 단계의 리뷰 결과를 종합하여 최종 결정을 내린다.
+\begin{itemize}
+  \item \textbf{승인(Go)}: 배포 승인.
+  \item \textbf{반려(No-Go)}: 문제 발견으로 반려. 재학습 또는 수정 후 재상정.
+  \item \textbf{조건부 승인(Conditional Go)}: 배포하되, 초기 트래픽을 10\%로 제한(카나리(Canary) 배포)하고 모니터링을 강화하는 조건.
+\end{itemize}
+
+\subsection{배포 전 체크리스트}
+\label{sec:10.6.2}
+
+\begin{table}[htbp]
+\centering
+\caption{배포 전 종합 체크리스트}
+\label{tab:deployment_checklist}
+\begin{tabularx}{\textwidth}{p{2cm}p{4cm}X}
+\toprule
+\textbf{영역} & \textbf{체크 항목} & \textbf{검증 기준} \\
+\midrule
+\multirow{3}{*}{기술} & 성능 KPI 달성 & 사전 합의된 모든 성능 지표가 임계값 이상 \\
+\cmidrule{2-3}
+& 재현성 확인 & 동일 데이터/설정으로 결과 재현 가능 \\
+\cmidrule{2-3}
+& 추론 성능 & 지연시간(Latency), 처리량(Throughput) 요구사항 충족 \\
+\midrule
+\multirow{2}{*}{윤리} & 공정성 검증 통과 & 모든 민감 속성에 대해 공정성 임계값 충족 \\
+\cmidrule{2-3}
+& 설명가능성 구현 & 리스크 등급에 맞는 설명 기능 구현 완료 \\
+\midrule
+\multirow{2}{*}{법무} & 규제 준수 확인 & 관련 법규 요구사항 충족 확인서 \\
+\cmidrule{2-3}
+& 데이터 동의 확인 & 학습 데이터의 사용 동의 범위 적합 \\
+\midrule
+\multirow{2}{*}{보안} & 강건성 테스트 통과 & 적대적 공격 테스트 통과 \\
+\cmidrule{2-3}
+& 취약점 스캔 통과 & 의존성 보안 취약점 없음 확인 \\
+\midrule
+운영 & 모니터링 설정 완료 & 성능, 공정성, 드리프트 모니터링 대시보드 구축 \\
+\cmidrule{2-3}
+& 롤백 절차 수립 & 비상 시 롤백 절차 문서화 및 테스트 완료 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{카나리 배포와 A/B 테스트 거버넌스}
+\label{sec:10.6.3}
+
+모델 배포는 빅뱅(Big-bang) 방식이 아닌 점진적 방식을 권장한다.
+
+\paragraph{카나리 배포(Canary Deployment)}
+새 모델을 전체 트래픽의 일부(예: 5\textasciitilde{}10\%)에만 먼저 적용하고, 문제가 없음을 확인한 후 점진적으로 확대하는 방식이다.
+\begin{itemize}
+  \item 카나리 비율과 확대 일정을 사전에 정의
+  \item 카나리 기간 동안의 핵심 모니터링 지표(성능, 오류율, 지연시간) 정의
+  \item 자동 롤백 트리거 조건 설정 (예: 오류율이 기존 대비 2배 이상 증가 시)
+  \item 카나리 결과에 대한 승인 절차 (카나리 통과 시에만 전체 배포 진행)
+\end{itemize}
+
+\paragraph{A/B 테스트 거버넌스}
+기존 모델과 신규 모델을 동시에 운영하며 성능을 비교하는 A/B 테스트는 과학적인 모델 교체 의사결정의 기반이 된다.
+\begin{itemize}
+  \item 테스트 설계: 표본 크기, 테스트 기간, 통계적 유의수준을 사전 정의
+  \item 지표 정의: 주요 지표(Primary Metric)와 보조 지표(Guardrail Metric)를 구분하여 설정
+  \item 윤리적 고려: A/B 테스트 대상이 특정 그룹에 불이익을 주지 않는지 확인
+  \item 결과 해석: 통계적 유의성에 기반한 객관적 의사결정. p-해킹(p-hacking)이나 조기 중단(early stopping) 방지
+\end{itemize}
+
+\subsection{롤백 정책과 비상 절차}
+\label{sec:10.6.4}
+
+배포 후 심각한 문제가 발견될 경우, 신속하게 이전 버전으로 되돌릴 수 있어야 한다.
+
+\paragraph{롤백 트리거}
+다음 조건 중 하나라도 충족되면 즉시 롤백을 개시한다.
+\begin{itemize}
+  \item 핵심 성능 지표가 사전 정의된 임계값 아래로 하락
+  \item 공정성 지표 위반이 탐지됨
+  \item 보안 취약점이 발견됨
+  \item 예상치 못한 시스템 오류 발생률이 급증
+  \item 규제 기관의 시정 요구
+\end{itemize}
+
+\paragraph{롤백 절차}
+\begin{enumerate}
+  \item 이상 탐지 시 자동 알림 발송 (운영팀, 개발팀, 관리자)
+  \item 1차 대응: 트래픽을 이전 모델로 전환 (자동 또는 수동)
+  \item 영향 범위 분석: 롤백 전 기간 동안 영향받은 건수 파악
+  \item 원인 분석: 문제의 근본 원인을 식별
+  \item 사후 보고서(Post-mortem) 작성
+  \item 재배포 계획 수립 및 승인
+\end{enumerate}
+
+\subsection{배포 승인 자동화 시스템}
+\label{sec:10.6.5}
+
+다음 코드는 다단계 승인 프로세스를 자동화하여 모든 게이트를 통과한 모델만 배포할 수 있도록 하는 시스템을 보여준다.
+
+\begin{lstlisting}[language=Python, caption={배포 승인 자동화 시스템}, label={lst:deployment_approval}]
+import json
+import datetime
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from enum import Enum
+
+class ApprovalStatus(Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CONDITIONAL = "conditional"
+
+@dataclass
+class GateResult:
+    """단일 승인 게이트 결과"""
+    gate_name: str
+    status: ApprovalStatus
+    reviewer: str
+    timestamp: str
+    checks: Dict[str, bool] = field(default_factory=dict)
+    comments: str = ""
+    conditions: List[str] = field(default_factory=list)
+
+class DeploymentApprovalSystem:
+    """배포 승인 자동화 시스템"""
+
+    def __init__(self, model_name: str, model_version: str):
+        self.model_name = model_name
+        self.model_version = model_version
+        self.gates: List[GateResult] = []
+        self.final_status = ApprovalStatus.PENDING
+
+    def run_technical_gate(
+        self,
+        performance_metrics: Dict[str, float],
+        performance_thresholds: Dict[str, float],
+        reproducibility_passed: bool,
+        latency_ms: float,
+        latency_threshold: float,
+    ) -> GateResult:
+        """기술 게이트 자동 검증"""
+        checks = {}
+        for metric, value in performance_metrics.items():
+            threshold = performance_thresholds.get(metric, 0)
+            checks[f"성능_{metric}"] = value >= threshold
+        checks["재현성"] = reproducibility_passed
+        checks["지연시간"] = latency_ms <= latency_threshold
+        all_passed = all(checks.values())
+        result = GateResult(
+            gate_name="기술 리뷰",
+            status=(
+                ApprovalStatus.APPROVED
+                if all_passed
+                else ApprovalStatus.REJECTED
+            ),
+            reviewer="자동 검증 시스템",
+            timestamp=datetime.datetime.now().isoformat(),
+            checks=checks,
+        )
+        self.gates.append(result)
+        return result
+
+    def run_fairness_gate(
+        self,
+        fairness_results: Dict[str, Dict],
+    ) -> GateResult:
+        """공정성 게이트 자동 검증"""
+        checks = {}
+        for attr, result in fairness_results.items():
+            checks[f"공정성_{attr}_DP"] = result.get(
+                "dp_pass", False
+            )
+            checks[f"공정성_{attr}_EO"] = result.get(
+                "eo_pass", False
+            )
+        all_passed = all(checks.values())
+        result = GateResult(
+            gate_name="공정성 및 윤리 리뷰",
+            status=(
+                ApprovalStatus.APPROVED
+                if all_passed
+                else ApprovalStatus.REJECTED
+            ),
+            reviewer="공정성 검증 시스템",
+            timestamp=datetime.datetime.now().isoformat(),
+            checks=checks,
+        )
+        self.gates.append(result)
+        return result
+
+    def run_security_gate(
+        self,
+        robustness_passed: bool,
+        vulnerability_scan_passed: bool,
+        dependency_audit_passed: bool,
+    ) -> GateResult:
+        """보안 게이트 자동 검증"""
+        checks = {
+            "강건성_테스트": robustness_passed,
+            "취약점_스캔": vulnerability_scan_passed,
+            "의존성_감사": dependency_audit_passed,
+        }
+        all_passed = all(checks.values())
+        result = GateResult(
+            gate_name="보안 리뷰",
+            status=(
+                ApprovalStatus.APPROVED
+                if all_passed
+                else ApprovalStatus.REJECTED
+            ),
+            reviewer="보안 검증 시스템",
+            timestamp=datetime.datetime.now().isoformat(),
+            checks=checks,
+        )
+        self.gates.append(result)
+        return result
+
+    def add_manual_gate(
+        self,
+        gate_name: str,
+        reviewer: str,
+        status: ApprovalStatus,
+        comments: str = "",
+        conditions: List[str] = None,
+    ) -> GateResult:
+        """수동 승인 게이트 추가 (법무 등)"""
+        result = GateResult(
+            gate_name=gate_name,
+            status=status,
+            reviewer=reviewer,
+            timestamp=datetime.datetime.now().isoformat(),
+            comments=comments,
+            conditions=conditions or [],
+        )
+        self.gates.append(result)
+        return result
+
+    def compute_final_decision(self) -> ApprovalStatus:
+        """최종 배포 결정"""
+        if not self.gates:
+            return ApprovalStatus.PENDING
+        statuses = [g.status for g in self.gates]
+        if any(s == ApprovalStatus.REJECTED for s in statuses):
+            self.final_status = ApprovalStatus.REJECTED
+        elif any(
+            s == ApprovalStatus.CONDITIONAL for s in statuses
+        ):
+            self.final_status = ApprovalStatus.CONDITIONAL
+        elif all(
+            s == ApprovalStatus.APPROVED for s in statuses
+        ):
+            self.final_status = ApprovalStatus.APPROVED
+        else:
+            self.final_status = ApprovalStatus.PENDING
+        return self.final_status
+
+    def generate_approval_report(
+        self, output_path: str = None,
+    ) -> Dict:
+        """승인 보고서 생성"""
+        self.compute_final_decision()
+        report = {
+            "model_name": self.model_name,
+            "model_version": self.model_version,
+            "final_decision": self.final_status.value,
+            "timestamp": datetime.datetime.now().isoformat(),
+            "gates": [],
+        }
+        for gate in self.gates:
+            gate_info = {
+                "name": gate.gate_name,
+                "status": gate.status.value,
+                "reviewer": gate.reviewer,
+                "timestamp": gate.timestamp,
+                "checks": gate.checks,
+                "comments": gate.comments,
+            }
+            if gate.conditions:
+                gate_info["conditions"] = gate.conditions
+            report["gates"].append(gate_info)
+        if output_path:
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    report, f, ensure_ascii=False, indent=2
+                )
+        return report
+
+# 사용 예시
+system = DeploymentApprovalSystem(
+    model_name="CreditScoring",
+    model_version="2.1.0",
+)
+system.run_technical_gate(
+    performance_metrics={"auc": 0.87, "f1": 0.82},
+    performance_thresholds={"auc": 0.80, "f1": 0.75},
+    reproducibility_passed=True,
+    latency_ms=45.0,
+    latency_threshold=100.0,
+)
+system.run_fairness_gate({
+    "gender": {"dp_pass": True, "eo_pass": True},
+    "age": {"dp_pass": True, "eo_pass": False},
+})
+system.run_security_gate(
+    robustness_passed=True,
+    vulnerability_scan_passed=True,
+    dependency_audit_passed=True,
+)
+system.add_manual_gate(
+    gate_name="법무 리뷰",
+    reviewer="이법무 변호사",
+    status=ApprovalStatus.APPROVED,
+    comments="개인정보보호법 준수 확인 완료",
+)
+report = system.generate_approval_report(
+    "approval_report_credit_v2.json"
+)
+decision = system.compute_final_decision()
+print(f"최종 배포 결정: {decision.value}")
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{기술 부채 관리}
+\label{sec:10.7}
+%----------------------------------------------------------
+
+\cite{sculley2015hidden}가 경고했듯이, ML 시스템은 일반 소프트웨어보다 기술 부채(Technical Debt)가 훨씬 빠르게 축적된다. 실제 ML 코드는 전체 시스템의 극히 일부에 불과하며, 나머지는 데이터 수집, 특성 추출, 설정 관리, 모니터링 등의 ``배관 작업(Plumbing)''이 차지한다. 이 배관 작업에서 기술 부채가 주로 발생한다.
+
+\subsection{ML 기술 부채의 유형}
+\label{sec:10.7.1}
+
+\paragraph{접착 코드(Glue Code)}
+범용 ML 패키지를 실제 시스템에 통합하기 위해 작성하는 대량의 접착 코드는 유지보수의 악몽이 된다. 패키지 업데이트 시 호환성이 깨지기 쉽고, 테스트가 어렵다.
+
+\paragraph{파이프라인 정글(Pipeline Jungle)}
+데이터 전처리 파이프라인이 점점 복잡해지면서 스파게티 코드처럼 얽히는 현상이다. 새로운 데이터 소스가 추가될 때마다 임시 방편으로 코드가 덧붙여져 전체 구조를 파악하기 어려워진다.
+
+\paragraph{숨겨진 피드백 루프(Hidden Feedback Loops)}
+모델의 출력이 다시 입력 데이터에 영향을 미치는 순환 구조가 의도치 않게 형성되는 것이다. 예를 들어, 추천 시스템이 노출한 콘텐츠가 사용자 행동을 변화시키고, 이 변화된 행동 데이터가 다시 모델 학습에 사용된다.
+
+\paragraph{미사용 특성(Undeclared Consumers)}
+더 이상 유용하지 않은 특성이 제거되지 않고 남아 있거나, 어떤 시스템이 해당 특성에 의존하는지 파악되지 않는 상황이다.
+
+\paragraph{설정 부채(Configuration Debt)}
+하이퍼파라미터, 특성 선택, 데이터 경로 등의 설정이 체계적으로 관리되지 않아 ``어떤 설정이 현재 프로덕션에서 사용 중인지'' 알 수 없게 되는 상황이다.
+
+\subsection{기술 부채 측정과 관리 전략}
+\label{sec:10.7.2}
+
+기술 부채는 측정하지 않으면 관리할 수 없다. 다음과 같은 지표를 정기적으로 측정한다.
+
+\begin{itemize}
+  \item \textbf{코드 복잡도}: 순환 복잡도(Cyclomatic Complexity), 코드 라인 수 대비 테스트 커버리지
+  \item \textbf{의존성 건강도}: 오래된 의존성 패키지 비율, 알려진 취약점이 있는 패키지 수
+  \item \textbf{파이프라인 복잡도}: 데이터 파이프라인의 노드 수와 엣지 수, DAG의 깊이
+  \item \textbf{문서화 현행화율}: 코드 변경 대비 문서 업데이트 비율
+  \item \textbf{재학습 안정성}: 재학습 파이프라인의 실패율, 평균 복구 시간
+\end{itemize}
+
+관리 전략은 다음과 같다.
+\begin{itemize}
+  \item \textbf{부채 스프린트}: 정기적으로 기술 부채 해소를 위한 전담 스프린트를 배정 (예: 분기별 1주)
+  \item \textbf{부채 예산}: 새로운 기능 개발과 부채 해소의 비율을 사전에 합의 (예: 70:30)
+  \item \textbf{자동화된 부채 탐지}: 코드 품질 도구(SonarQube, pylint 등)를 CI/CD에 통합하여 자동 탐지
+  \item \textbf{아키텍처 리뷰}: 분기별 아키텍처 리뷰를 통해 구조적 부채를 식별하고 리팩토링 계획 수립
+\end{itemize}
+
+\subsection{기술 부채 유형별 영향과 해결 방안}
+\label{sec:10.7.3}
+
+\begin{table}[htbp]
+\centering
+\caption{ML 기술 부채 유형별 영향과 해결 방안}
+\label{tab:tech_debt}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{3cm}X}
+\toprule
+\textbf{부채 유형} & \textbf{영향} & \textbf{해결 방안} \\
+\midrule
+접착 코드 & 유지보수 비용 증가, 패키지 업그레이드 어려움 & 래퍼(Wrapper) 패턴으로 추상화 계층 구축. 인터페이스 표준화 \\
+\midrule
+파이프라인 정글 & 디버깅 어려움, 신규 인력 온보딩 지연 & 파이프라인 오케스트레이터(Airflow, Kubeflow) 도입. DAG 구조 정리 \\
+\midrule
+숨겨진 피드백 루프 & 예측 불가능한 모델 행동, 편향 증폭 & 피드백 루프 매핑 및 문서화. 오프라인 평가와 온라인 평가 분리 \\
+\midrule
+미사용 특성 & 불필요한 계산 비용, 유지보수 부담 & 특성 사용 추적 시스템 구축. 정기적 특성 감사(Feature Audit) \\
+\midrule
+설정 부채 & 설정 오류로 인한 장애, 재현 불가 & 설정 관리 시스템(예: Hydra, OmegaConf) 도입. 설정 스키마 검증 자동화 \\
+\midrule
+테스트 부채 & 회귀 버그 빈발, 배포 신뢰도 저하 & ML 전용 테스트 프레임워크 도입. 데이터 테스트, 모델 테스트, 인프라 테스트 구분 \\
+\midrule
+문서화 부채 & 지식 이전 실패, 규제 감사 대응 어려움 & 코드-문서 동기화 도구. 모델 카드 자동 생성. 변경 로그 자동화 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%----------------------------------------------------------
+\section{실무 도구}
+\label{sec:10.8}
+%----------------------------------------------------------
+
+\begin{practicaltool}{모델 개발 거버넌스 종합 체크리스트}
+다음 체크리스트는 모델 개발의 각 단계에서 거버넌스 요구사항을 빠짐없이 확인하기 위한 도구이다. 각 항목의 완료 여부를 체크하고, 미완료 항목에 대한 사유와 계획을 기록한다.
+
+\begin{tcolorbox}[colback=white, colframe=black!75!white, title=모델 개발 거버넌스 체크리스트]
+
+\textbf{1. 개발 준비 단계}
+\begin{itemize}
+  \item[$\square$] 모델 리스크 등급이 분류되었는가?
+  \item[$\square$] 데이터시트가 작성되고 검토되었는가?\cite{gebru2021datasheets}
+  \item[$\square$] 개발 환경이 표준 컨테이너 이미지 기반으로 설정되었는가?
+  \item[$\square$] 의존성 패키지가 승인된 레지스트리에서 설치되었는가?
+  \item[$\square$] 공정성 지표와 임계값이 사전 합의되었는가?
+\end{itemize}
+
+\textbf{2. 실험 및 개발 단계}
+\begin{itemize}
+  \item[$\square$] 실험 추적 시스템(MLflow 등)에 모든 실험이 기록되고 있는가?
+  \item[$\square$] 랜덤 시드가 고정되고 기록되었는가?
+  \item[$\square$] 하이퍼파라미터가 설정 파일로 관리되고 있는가?
+  \item[$\square$] 데이터 버전이 DVC 등으로 추적되고 있는가?
+  \item[$\square$] 코드 리뷰가 ML 전용 체크리스트에 따라 수행되었는가?
+\end{itemize}
+
+\textbf{3. 검증 단계}
+\begin{itemize}
+  \item[$\square$] 성능 지표가 KPI를 달성하였는가?
+  \item[$\square$] 공정성 검증이 모든 민감 속성에 대해 수행되었는가?
+  \item[$\square$] 적대적 강건성 테스트가 수행되었는가?\cite{goodfellow2014explaining}
+  \item[$\square$] 설명가능성이 리스크 등급에 맞게 구현되었는가?\cite{arrieta2020explainable}
+  \item[$\square$] 입력 검증 및 이상치 탐지 로직이 구현되었는가?
+\end{itemize}
+
+\textbf{4. 승인 및 배포 단계}
+\begin{itemize}
+  \item[$\square$] 모델 카드가 작성되고 최신 상태인가?\cite{mitchell2019model}
+  \item[$\square$] 다단계 리뷰(기술, 윤리, 법무, 보안)를 모두 통과하였는가?
+  \item[$\square$] 카나리 배포 계획이 수립되었는가?
+  \item[$\square$] 롤백 절차가 문서화되고 테스트되었는가?
+  \item[$\square$] 모니터링 대시보드가 구축되었는가?
+\end{itemize}
+
+\textbf{5. 지속 관리}
+\begin{itemize}
+  \item[$\square$] 기술 부채 현황이 파악되고 해소 계획이 있는가?\cite{sculley2015hidden}
+  \item[$\square$] 문서화가 코드 변경과 동기화되고 있는가?
+  \item[$\square$] 재학습 파이프라인이 자동화되어 있는가?
+\end{itemize}
+\end{tcolorbox}
+\end{practicaltool}
+
+\begin{practicaltool}{모델 카드 템플릿 (확장판)}
+\begin{tcolorbox}[colback=white, colframe=black!75!white, title=Model Card for {[모델명]}]
+
+\textbf{1. 모델 개요}
+\begin{itemize}
+  \item 모델명 / 버전: Credit-Scoring-Alpha / v2.1.0
+  \item 개발자: 김이박 (리스크 모델링팀)
+  \item 모델 날짜: 2026-01-20
+  \item 모델 유형: XGBoost Classifier
+  \item 프레임워크: XGBoost 1.7.6, Python 3.10
+  \item 파라미터 수: 약 2,300개 리프 노드
+  \item 라이선스: 내부 전용 (대외 배포 불가)
+\end{itemize}
+
+\textbf{2. 의도된 용도}
+\begin{itemize}
+  \item 주 용도: 소상공인 대상 신용대출 심사 보조 (최종 결정은 심사역이 수행)
+  \item 대상 사용자: 여신 심사팀 심사역
+  \item 제한 사항: 개인(가계) 대출 심사에는 사용 불가. 자동 결정(무심사) 용도로 사용 불가
+\end{itemize}
+
+\textbf{3. 학습 데이터}
+\begin{itemize}
+  \item 데이터셋: 2024-2025 소상공인 대출 이력 데이터
+  \item 데이터 크기: 학습 80,000건 / 검증 10,000건 / 테스트 10,000건
+  \item 데이터 출처: 내부 여신 시스템 (데이터시트 ID: DS-2025-0142)
+  \item 전처리: 결측값 중위수 대체, 범주형 원핫 인코딩, 표준화
+  \item 데이터 버전: DVC 해시 a3f7b2c
+\end{itemize}
+
+\textbf{4. 성능 평가}
+\begin{itemize}
+  \item 평가 데이터셋: 2025 하반기 대출 이력 (테스트 셋 10,000건)
+  \item 주요 성능 지표:
+  \begin{itemize}
+    \item AUC: 0.87 (목표: 0.80 이상)
+    \item KS 통계량: 0.48 (목표: 0.40 이상)
+    \item F1 점수: 0.82 (목표: 0.75 이상)
+  \end{itemize}
+  \item 신뢰 구간: AUC 95\% CI [0.85, 0.89]
+\end{itemize}
+
+\textbf{5. 공정성 평가}
+\begin{itemize}
+  \item 성별: 승인율 차이 2.8\%p (허용범위 5\%p 이내 충족)
+  \item 연령대: 20대 대비 60대 승인율 비 0.88 (4/5 규칙 충족)
+  \item 업종: 요식업 그룹의 정밀도 저하 확인 (후속 조치 필요)
+  \item 검증 도구: FairnessValidationPipeline v1.2
+\end{itemize}
+
+\textbf{6. 설명가능성}
+\begin{itemize}
+  \item 글로벌: SHAP Summary Plot 제공, 상위 10개 특성 중요도 공개
+  \item 로컬: 개별 심사 건에 대한 SHAP Waterfall Plot 제공
+  \item 반사실적 설명: ``어떤 조건이 달라졌다면 결과가 바뀌는지'' 안내 기능 제공
+\end{itemize}
+
+\textbf{7. 강건성 및 보안}
+\begin{itemize}
+  \item 가우시안 노이즈 테스트: 통과 (강건성 점수 0.94)
+  \item 입력 범위 검증: 구현 완료 (범위 외 입력 자동 거부)
+  \item 의존성 취약점 스캔: 0건 (2026-01-18 기준)
+\end{itemize}
+
+\textbf{8. 윤리적 고려 및 제약사항}
+\begin{itemize}
+  \item 알려진 편향: 특정 업종(요식업)에 대한 데이터 부족으로 예측 불안정 가능성
+  \item 완화 조치: 요식업종 신청 건은 심사역 수동 리뷰 필수화
+  \item 모니터링 계획: 월 1회 공정성 지표 모니터링, 분기별 전체 재검증
+\end{itemize}
+
+\textbf{9. 승인 이력}
+\begin{itemize}
+  \item 기술 리뷰: 2026-01-22 통과 (리뷰어: 박데이터)
+  \item 공정성 리뷰: 2026-01-23 조건부 통과 (요식업 모니터링 조건)
+  \item 법무 리뷰: 2026-01-24 통과 (리뷰어: 이법무)
+  \item 보안 리뷰: 2026-01-24 통과 (리뷰어: 정보안)
+  \item 최종 승인: 2026-01-25 조건부 승인 (카나리 배포 10\%로 시작)
+\end{itemize}
+\end{tcolorbox}
+\end{practicaltool}
+
+%----------------------------------------------------------
+\subsection*{제10장 요약}
+%----------------------------------------------------------
+
+모델 개발 단계의 거버넌스는 창의적인 모델 개발 활동과 책임 있는 AI 구현 사이의 균형을 잡는 것이 핵심이다. 본 장에서 다룬 내용을 요약하면 다음과 같다.
+
+\begin{enumerate}
+  \item \textbf{표준화된 문서화}: 모델 카드\cite{mitchell2019model}와 데이터시트\cite{gebru2021datasheets}를 자동화된 체계로 작성하여 투명성을 확보하고, 개발 환경을 컨테이너 기반으로 표준화하여 재현성의 기반을 마련한다.
+
+  \item \textbf{실험 관리와 재현성}: MLflow, W\&B 등의 실험 추적 도구를 활용하여 모든 실험을 기록하고, 랜덤 시드 고정, 환경 스냅샷, 데이터 버전 관리를 통해 재현성을 보장한다.
+
+  \item \textbf{공정성 검증}: 인구통계학적 동등성, 균등 기회, 보정, 개인 공정성 등 다양한 지표를 상황에 맞게 적용하고, 전처리/중간처리/후처리 기법으로 편향을 완화하며, 공정성-정확도 트레이드오프를 투명하게 관리한다.
+
+  \item \textbf{강건성과 보안}: 적대적 공격(FGSM, PGD 등)\cite{goodfellow2014explaining}에 대한 방어 체계를 구축하고, 입력 검증, 이상치 탐지, 모델 추출 공격 방어 등 다층적 보안 체계를 갖춘다.
+
+  \item \textbf{설명가능성 구현}: 리스크 등급에 따라 글로벌/로컬 설명가능성 수준을 차등 적용하고\cite{arrieta2020explainable}, SHAP, LIME, 반사실적 설명 등을 통합한 보고서를 자동 생성한다.
+
+  \item \textbf{승인과 릴리스 관리}: 기술, 윤리, 법무, 보안의 다단계 승인 게이트를 거치고, 카나리 배포와 A/B 테스트를 통한 점진적 배포를 수행하며, 비상 시 롤백 절차를 수립한다.
+
+  \item \textbf{기술 부채 관리}: 접착 코드, 파이프라인 정글, 숨겨진 피드백 루프 등 ML 고유의 기술 부채\cite{sculley2015hidden}를 식별하고, 체계적으로 측정하며 관리한다.
+\end{enumerate}
+
+이러한 거버넌스 체계는 일회성 프로젝트가 아니라 조직의 문화로 내재화되어야 한다. 모델 개발자가 거버넌스를 ``추가적인 부담''이 아닌 ``품질 높은 모델을 만들기 위한 당연한 과정''으로 인식할 때, 비로소 책임 있는 AI가 실현된다.

@@ -1,0 +1,1615 @@
+%----------------------------------------------------------
+% 제8장. AI 유스케이스\cite{ransbotham2017reshaping} 발굴과 사전 승인
+%----------------------------------------------------------
+
+\chapter{AI 유스케이스 발굴과 사전 승인}
+\label{ch:usecase_discovery}
+
+AI 거버넌스의 첫 번째 관문은 ``우리가 어떤 AI를 개발할 것인가?''를 결정하는 단계이다. 무분별한 AI 도입은 리소스(Resource) 낭비와 리스크(Risk)의 제어 불능을 초래한다. \cite{davenport2018advantage}는 비즈니스 가치\cite{enholm2022artificial}와 기술적 실현 가능성을 동시에 고려한 체계적인 AI 포트폴리오\cite{iansiti2020competing} 관리가 기업 AI 성공의 핵심이라고 강조한다.
+
+본 장에서는 적합한 AI 유스케이스를 발굴하고, 이를 제안·심의하며, 우선순위를 결정하는 거버넌스 프로세스를 다룬다. 특히 현업 부서의 무분별한 AI 도입인 \textbf{그림자 AI(Shadow AI)} \cite{gartner2023shadow} 대응 방안과 더불어, 알고리즘의 책임성 공백을 기획 단계부터 방지하기 위한 체계를 제시한다.\cite{raji2020closing}
+
+나아가, EU AI Act\cite{eu2024aiact}와 한국 AI 기본법\cite{cset2025korea_ai_act}에 따른 사전 영향평가(Pre-deployment Impact Assessment) 절차를 유스케이스 발굴 단계에 통합함으로써, 고위험(High-Risk) AI 시스템이 적절한 거버넌스 통제 없이 개발에 착수되는 것을 원천적으로 방지하는 프레임워크를 제시한다. \cite{nist2023airmf}에서 권고하는 AI 리스크 관리 프레임워크(AI Risk Management Framework)의 GOVERN, MAP 기능을 유스케이스 발굴 단계에 구체적으로 매핑하여, 조직이 실무적으로 활용할 수 있는 도구(Tool)와 프로세스를 제공한다.
+
+%----------------------------------------------------------
+\section{AI 적합성 평가 심화}
+\label{sec:8.1}
+
+모든 문제가 AI로 해결되는 것은 아니다. ``AI First'' 이전에 ``AI Suitable''한지를 먼저 평가해야 한다. 적합성 평가는 단순한 기술적 판단을 넘어, ROI(투자수익률) 분석, 데이터 준비도\cite{sambasivan2021everyone}(Data Readiness), 조직 준비도\cite{fountaine2019building}(Organizational Readiness)를 포괄하는 다차원적 프레임워크로 수행되어야 한다.
+
+\subsection{ROI 분석 프레임워크}
+\label{sec:8.1.1}
+
+AI 프로젝트의 ROI 분석은 전통적인 IT 프로젝트와 근본적으로 다르다. AI 모델(Model)의 성능은 사전에 확정할 수 없으며, 데이터 품질과 양에 따라 결과가 크게 달라진다. 따라서 AI ROI 분석에는 불확실성을 반영한 시나리오 기반(Scenario-based) 접근이 필요하다.
+
+\begin{table}[htbp]
+\centering
+\caption{AI 프로젝트 ROI 분석 프레임워크}
+\label{tab:roi_framework}
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{4cm}}
+\toprule
+\textbf{구분} & \textbf{항목} & \textbf{산정 방법} \\
+\midrule
+직접 비용 & 인프라 구축 비용 (GPU, 클라우드) & 벤더 견적 기반 산정 \\
+& 인건비 (데이터 사이언티스트, ML 엔지니어) & 투입 인원 $\times$ 기간 $\times$ 단가 \\
+& 데이터 수집·가공 비용 & 라벨링 단가 $\times$ 데이터 건수 \\
+& 외부 솔루션 라이선스 비용 & 벤더 계약 조건 기반 \\
+\midrule
+간접 비용 & 현업 부서 협업 시간 & 인터뷰·검증 시간 환산 \\
+& 거버넌스 프로세스 비용 & 심의·감사 소요 시간 \\
+& 기회비용 & 대안 프로젝트 대비 평가 \\
+\midrule
+기대 효익 & 비용 절감 (자동화) & 현행 프로세스 비용 $-$ AI 운영 비용 \\
+& 매출 증대 & 전환율·고객가치 개선 추정 \\
+& 리스크 감소 & 사고·오류 비용 절감 추정 \\
+& 무형 가치 & 브랜드 가치, 직원 만족도 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+ROI 산정 시에는 반드시 세 가지 시나리오(낙관·기본·비관)를 설정하고, 각 시나리오별 확률을 부여하여 기대 ROI를 산출해야 한다. 특히 AI 프로젝트는 초기 PoC(개념검증, Proof of Concept) 단계에서 모델 성능이 목표치에 미달할 가능성이 높으므로, 단계별 투자 결정(Stage-Gate) 방식을 채택하여 매몰 비용(Sunk Cost)을 최소화해야 한다.
+
+\subsection{기술적 실현가능성 평가}
+\label{sec:8.1.2}
+
+기술적 실현가능성은 문제 유형, 알고리즘 성숙도, 데이터 가용성, 인프라 수준의 네 가지 축으로 평가한다.
+
+\begin{table}[htbp]
+\centering
+\caption{기술적 실현가능성 평가 기준 상세}
+\label{tab:tech_feasibility}
+\begin{tabularx}{\textwidth}{p{2.2cm}p{3cm}Xp{2cm}}
+\toprule
+\textbf{평가 축} & \textbf{평가 항목} & \textbf{설명} & \textbf{배점} \\
+\midrule
+문제 유형 & 구조화 수준 & 입출력이 명확히 정의 가능한가 & 0--25 \\
+& 정답 존재 여부 & 학습 데이터의 레이블(Label) 확보 가능성 & 0--25 \\
+\midrule
+알고리즘 성숙도 & SOTA 존재 여부 & 해당 문제에 검증된 알고리즘이 있는가 & 0--25 \\
+& 설명가능성 & 모델 판단 근거 제시 가능 여부 & 0--25 \\
+\midrule
+데이터 가용성 & 데이터 양 & 학습에 충분한 샘플 수 확보 여부 & 0--25 \\
+& 데이터 품질 & 결측·이상·편향 수준 & 0--25 \\
+\midrule
+인프라 수준 & 연산 자원 & GPU/TPU 가용성 및 확장 가능성 & 0--25 \\
+& 배포 환경 & 실시간 추론, API 서빙 환경 준비도 & 0--25 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{데이터 준비도 평가}
+\label{sec:8.1.3}
+
+데이터 준비도(Data Readiness Level, DRL)는 AI 프로젝트의 성패를 좌우하는 핵심 요소이다. 영국 국방부의 데이터 준비도 수준 프레임워크를 참고하여, 조직의 데이터 준비 상태를 체계적으로 진단한다.
+
+\begin{table}[htbp]
+\centering
+\caption{데이터 준비도 수준(Data Readiness Level) 평가}
+\label{tab:data_readiness}
+\begin{tabularx}{\textwidth}{p{1.5cm}p{2.5cm}Xp{2.5cm}}
+\toprule
+\textbf{수준} & \textbf{단계} & \textbf{설명} & \textbf{핵심 활동} \\
+\midrule
+DRL-A & 접근 가능 & 데이터가 존재하고 접근 권한이 확보됨 & 데이터 카탈로그 등록 \\
+DRL-B & 정제 완료 & 결측치 처리, 이상치 제거, 형식 통일 완료 & ETL 파이프라인 구축 \\
+DRL-C & 분석 가능 & 탐색적 데이터 분석(EDA) 완료, 특성 파악 & 통계 프로파일링 \\
+DRL-D & 학습 가능 & 피처 엔지니어링(Feature Engineering), 레이블링 완료 & 학습 데이터셋 구성 \\
+DRL-E & 운영 가능 & 실시간 데이터 파이프라인 운영, 모니터링 체계 확보 & MLOps 파이프라인 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{조직 준비도 평가}
+\label{sec:8.1.4}
+
+기술적으로 완벽한 AI 시스템(System)이라도 조직이 이를 수용할 준비가 되어 있지 않으면 도입에 실패한다. 조직 준비도는 인력, 프로세스, 문화, 리더십의 네 가지 차원에서 평가한다.
+
+\begin{table}[htbp]
+\centering
+\caption{조직 준비도 평가 매트릭스}
+\label{tab:org_readiness}
+\begin{tabularx}{\textwidth}{p{2cm}p{3cm}Xp{2cm}}
+\toprule
+\textbf{차원} & \textbf{평가 항목} & \textbf{평가 기준} & \textbf{가중치} \\
+\midrule
+인력 & AI 전문 인력 보유 & 데이터 사이언티스트, ML 엔지니어 확보 수준 & 30\% \\
+& 현업 AI 리터러시 & 현업 부서의 AI 이해도 및 활용 역량 & 20\% \\
+\midrule
+프로세스 & 데이터 거버넌스 & 데이터 품질 관리 체계 운영 여부 & 15\% \\
+& 변화 관리 체계 & 신기술 도입 시 변화 관리(Change Management) 프로세스 유무 & 10\% \\
+\midrule
+문화 & 데이터 기반 의사결정 & 데이터 기반(Data-driven) 의사결정 문화 성숙도 & 10\% \\
+& 실험 문화 & 실패를 허용하는 조직 문화 수준 & 5\% \\
+\midrule
+리더십 & 경영진 지원 & C-레벨의 AI 전략 이해도 및 지원 의지 & 10\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Python: 종합 적합성 점수 산출 엔진}
+\label{sec:8.1.5}
+
+\begin{lstlisting}[language=Python, caption={AI 종합 적합성 점수 산출 엔진(Suitability Assessment Engine)}, label={lst:suitability_eval}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+from enum import Enum
+
+class Decision(Enum):
+    GO = "GO"
+    CONDITIONAL_GO = "CONDITIONAL_GO"
+    HOLD = "HOLD"
+    NO_GO = "NO_GO"
+
+@dataclass
+class AssessmentDimension:
+    """Individual assessment dimension with score and findings."""
+    name: str
+    score: float  # 0-100
+    weight: float
+    findings: List[str] = field(default_factory=list)
+    blockers: List[str] = field(default_factory=list)
+
+@dataclass
+class SuitabilityResult:
+    """Comprehensive suitability assessment result."""
+    overall_score: float
+    decision: Decision
+    dimensions: List[AssessmentDimension]
+    roi_estimate: Dict[str, float]
+    recommendations: List[str]
+    risk_flags: List[str]
+
+class AISuitabilityAssessment:
+    """AI suitability assessment engine.
+    Evaluates use cases across five dimensions:
+    technical feasibility, business value, data readiness,
+    organizational readiness, and governance risk.
+    """
+    WEIGHTS = {
+        'technical': 0.30, 'business': 0.30,
+        'data_readiness': 0.20, 'org_readiness': 0.10,
+        'governance': 0.10
+    }
+    THRESHOLDS = {
+        Decision.GO: 75, Decision.CONDITIONAL_GO: 60,
+        Decision.HOLD: 40
+    }
+
+    def assess(self, use_case: Dict) -> SuitabilityResult:
+        dims = [
+            self._assess_technical(use_case),
+            self._assess_business(use_case),
+            self._assess_data_readiness(use_case),
+            self._assess_org_readiness(use_case),
+            self._assess_governance(use_case),
+        ]
+        overall = sum(d.score * d.weight for d in dims)
+        blockers = [b for d in dims for b in d.blockers]
+
+        if blockers:
+            decision = Decision.NO_GO
+        elif overall >= self.THRESHOLDS[Decision.GO]:
+            decision = Decision.GO
+        elif overall >= self.THRESHOLDS[Decision.CONDITIONAL_GO]:
+            decision = Decision.CONDITIONAL_GO
+        elif overall >= self.THRESHOLDS[Decision.HOLD]:
+            decision = Decision.HOLD
+        else:
+            decision = Decision.NO_GO
+
+        roi = self._estimate_roi(use_case)
+        recs = self._generate_recommendations(dims)
+        return SuitabilityResult(
+            round(overall, 1), decision, dims,
+            roi, recs, blockers
+        )
+
+    def _assess_technical(self, uc: Dict) -> AssessmentDimension:
+        scores, findings, blockers = [], [], []
+        ptype = uc.get('problem_type', 'unknown')
+        if ptype in ['classification', 'regression']:
+            scores.append(25)
+        elif ptype in ['generation', 'reasoning']:
+            scores.append(15)
+            findings.append("Generative AI requires additional governance")
+        else:
+            scores.append(5)
+        scores.append(min(uc.get('algorithm_maturity', 0), 25))
+        scores.append(min(uc.get('data_volume_score', 0), 25))
+        scores.append(min(uc.get('infrastructure_score', 0), 25))
+        total = sum(scores)
+        if total < 20:
+            blockers.append("BLOCKER: Technical feasibility critically low")
+        return AssessmentDimension(
+            'technical', total, self.WEIGHTS['technical'],
+            findings, blockers
+        )
+
+    def _assess_business(self, uc: Dict) -> AssessmentDimension:
+        score = (uc.get('strategic_alignment', 0) * 0.4
+                 + uc.get('urgency_score', 0) * 0.3
+                 + uc.get('business_impact', 0) * 0.3)
+        findings = []
+        if score < 50:
+            findings.append("Low business value - consider deprioritizing")
+        return AssessmentDimension(
+            'business', min(score, 100),
+            self.WEIGHTS['business'], findings
+        )
+
+    def _assess_data_readiness(self, uc: Dict) -> AssessmentDimension:
+        drl_map = {'A': 20, 'B': 40, 'C': 60, 'D': 80, 'E': 100}
+        score = drl_map.get(uc.get('data_readiness_level', 'A'), 0)
+        blockers = []
+        if uc.get('has_pii') and not uc.get('pii_consent'):
+            blockers.append("BLOCKER: PII without consent framework")
+        return AssessmentDimension(
+            'data_readiness', score,
+            self.WEIGHTS['data_readiness'], [], blockers
+        )
+
+    def _assess_org_readiness(self, uc: Dict) -> AssessmentDimension:
+        score = (uc.get('ai_talent_score', 0) * 0.3
+                 + uc.get('process_maturity', 0) * 0.25
+                 + uc.get('data_culture', 0) * 0.25
+                 + uc.get('leadership_support', 0) * 0.2)
+        return AssessmentDimension(
+            'org_readiness', min(score, 100),
+            self.WEIGHTS['org_readiness']
+        )
+
+    def _assess_governance(self, uc: Dict) -> AssessmentDimension:
+        gov_score = 100 - uc.get('risk_level', 50)
+        blockers = []
+        if uc.get('prohibited_use'):
+            blockers.append("BLOCKER: Prohibited AI category")
+        if uc.get('high_risk') and not uc.get('impact_assessment_done'):
+            blockers.append("BLOCKER: High-risk without impact assessment")
+        return AssessmentDimension(
+            'governance', gov_score,
+            self.WEIGHTS['governance'], [], blockers
+        )
+
+    def _estimate_roi(self, uc: Dict) -> Dict[str, float]:
+        benefit = uc.get('estimated_annual_benefit', 0)
+        cost = uc.get('estimated_total_cost', 1)
+        return {
+            'optimistic': round((benefit * 1.3 - cost) / cost * 100, 1),
+            'base': round((benefit - cost) / cost * 100, 1),
+            'pessimistic': round((benefit * 0.5 - cost) / cost * 100, 1)
+        }
+
+    def _generate_recommendations(
+        self, dims: List[AssessmentDimension]
+    ) -> List[str]:
+        recs = []
+        for d in dims:
+            if d.score < 40:
+                recs.append(
+                    f"[{d.name}] Significant improvement needed"
+                )
+            elif d.score < 60:
+                recs.append(
+                    f"[{d.name}] Moderate gaps - create remediation plan"
+                )
+        return recs
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{유스케이스 제안 및 사전 스크리닝}
+\label{sec:8.2}
+
+\subsection{유스케이스 제안서 표준 양식}
+\label{sec:8.2.1}
+
+모든 AI 과제는 표준화된 제안서 양식을 통해 등록되어야 한다. 표준 양식은 심의위원회가 일관된 기준으로 과제를 평가할 수 있도록 하며, 제안자가 사전에 충분한 검토를 수행하도록 유도하는 역할을 한다.
+
+\begin{practicaltool}{AI 유스케이스 제안서 표준 템플릿}
+제안서는 다음 항목을 필수적으로 포함해야 한다.
+
+\textbf{AI 유스케이스 제안서 필수 항목}
+
+\begin{tabularx}{\textwidth}{p{0.5cm}p{3cm}Xp{2cm}}
+\toprule
+\textbf{No.} & \textbf{항목} & \textbf{내용} & \textbf{필수 여부} \\
+\midrule
+1 & 과제명 & AI 유스케이스의 명칭 & 필수 \\
+2 & 제안 부서/담당자 & 제안 부서명, 담당자 연락처 & 필수 \\
+3 & 과제 배경 & 현재 업무의 문제점(Pain Point) 및 개선 필요성 & 필수 \\
+4 & 목표 및 기대효과 & 정량적 성과 목표(KPI) 및 비용 절감 효과 & 필수 \\
+5 & AI 기술 유형 & 예측, 분류, 생성형(Generative), NLP 등 & 필수 \\
+6 & 데이터 소스 & 사용 예정 데이터, 개인정보 포함 여부 & 필수 \\
+7 & 대상 사용자 & AI 시스템의 최종 사용자 및 영향 대상자 & 필수 \\
+8 & 예상 일정 및 예산 & PoC, 개발, 운영 단계별 일정과 소요 예산 & 필수 \\
+9 & 리스크 자체 평가 & 윤리·법률·기술 리스크에 대한 자체 식별 & 필수 \\
+10 & 대안 분석 & AI 외 대안(규칙 기반, 수작업 등) 검토 결과 & 권장 \\
+11 & 이해관계자 목록 & 영향을 받는 내외부 이해관계자 식별 & 권장 \\
+12 & 성공 기준 & PoC 단계 및 운영 단계의 성공 판단 기준 & 필수 \\
+\bottomrule
+\end{tabularx}
+\end{practicaltool}
+
+\subsection{AI 과제 등급 분류 체계}
+\label{sec:8.2.2}
+
+제안된 AI 유스케이스는 위험도에 따라 4개 등급으로 분류된다. 등급에 따라 심의 수준과 거버넌스 요구사항이 차등 적용되며, 이는 EU AI Act의 리스크 기반(Risk-based) 접근법과 한국 AI 기본법의 고위험 AI 분류 기준을 반영한 것이다.
+
+\begin{table}[htbp]
+\centering
+\caption{AI 과제 위험도 기반 4등급 분류 체계}
+\label{tab:risk_grades}
+\begin{tabularx}{\textwidth}{p{1.5cm}p{2cm}Xp{3.5cm}}
+\toprule
+\textbf{등급} & \textbf{리스크 수준} & \textbf{설명 및 예시} & \textbf{거버넌스 요구사항} \\
+\midrule
+1등급 & 금지(Prohibited) & 사회적 신용 평가(Social Scoring), 실시간 원격 생체인식 감시 등 & 개발 자체 금지, 법무 검토 필수 \\
+\midrule
+2등급 & 고위험(High) & 채용 AI, 신용 평가, 의료 진단, 자율주행 등 개인의 권리·안전에 중대한 영향 & 전체 영향평가, 위원회 심의, 외부 감사, 지속적 모니터링 필수 \\
+\midrule
+3등급 & 제한(Limited) & 챗봇, 감정 인식, 딥페이크(Deepfake) 탐지 등 투명성\cite{arrieta2020explainable} 의무 대상 & 사용자 고지 의무, 위원회 서면 심의, 투명성 보고서 \\
+\midrule
+4등급 & 최소(Minimal) & 스팸 필터, 추천 시스템, 내부 업무 자동화(Automation) 등 & 자체 리스크 점검, 등록만으로 진행 가능 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+등급 분류의 핵심 판단 기준은 다음과 같다:
+
+\begin{itemize}
+    \item \textbf{영향 대상}: AI 의사결정이 자연인(Natural Person)의 권리, 안전, 생계에 직접적 영향을 미치는가?
+    \item \textbf{자율성 수준}: AI가 인간의 개입 없이 최종 의사결정을 수행하는가(Human-in-the-loop vs. Human-out-of-the-loop)?
+    \item \textbf{되돌림 가능성}: AI 의사결정의 결과를 사후에 되돌리거나 보정할 수 있는가(Reversibility)?
+    \item \textbf{취약 계층}: 아동, 장애인, 고령자 등 취약 계층에 대한 영향이 있는가?
+    \item \textbf{규모}: 영향을 받는 대상의 수와 범위(Scale)가 어느 정도인가?
+\end{itemize}
+
+\subsection{사전 윤리 스크리닝 체크리스트}
+\label{sec:8.2.3}
+
+1차 리스크 분류 이후, 모든 2등급 이상의 과제는 사전 윤리 스크리닝(Pre-ethics Screening)을 통과해야 한다. 이 체크리스트는 제안자가 직접 작성하며, 거버넌스 조직이 검증한다.
+
+\begin{practicaltool}{사전 윤리 스크리닝 체크리스트}
+각 항목에 대해 ``해당 없음 / 확인 완료 / 미확인 / 해당되나 대응책 없음'' 중 하나를 선택한다.
+\begin{enumerate}
+    \item \textbf{공정성(Fairness)}: 특정 인종, 성별, 연령, 장애 여부 등에 따른 차별적 결과가 발생할 가능성이 있는가?
+    \item \textbf{투명성(Transparency)}: 사용자에게 AI 시스템 사용 사실을 고지할 계획이 있는가?
+    \item \textbf{프라이버시(Privacy)}: 개인정보 처리가 수반되는가? 수반된다면 정보주체의 동의 또는 법적 근거가 확보되었는가?
+    \item \textbf{안전성(Safety)}: AI 오류 발생 시 인명 피해나 재산 손실 가능성이 있는가?
+    \item \textbf{책임성(Accountability)}: AI 의사결정에 대한 최종 책임자가 지정되어 있는가?
+    \item \textbf{설명가능성(Explainability)}: AI 판단의 근거를 이해관계자에게 설명할 수 있는가?
+    \item \textbf{환경 영향(Environmental Impact)}: 대규모 모델 학습으로 인한 탄소 배출이 우려되는가?
+    \item \textbf{이중 용도(Dual Use)}: 군사적 또는 감시 목적으로 전용될 가능성이 있는가?
+\end{enumerate}
+``미확인'' 또는 ``해당되나 대응책 없음''이 1건이라도 있는 경우, 윤리 담당 부서의 추가 검토가 필요하다.
+\end{practicaltool}
+
+\subsection{Python: 유스케이스 등록 및 관리 시스템}
+\label{sec:8.2.4}
+
+\begin{lstlisting}[language=Python, caption={유스케이스 등록 및 관리 시스템(Use Case Registry)}, label={lst:usecase_registry}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from enum import Enum
+from datetime import datetime
+import uuid
+
+class RiskGrade(Enum):
+    PROHIBITED = 1  # 금지
+    HIGH = 2        # 고위험
+    LIMITED = 3     # 제한
+    MINIMAL = 4     # 최소
+
+class ProposalStatus(Enum):
+    DRAFT = "DRAFT"
+    SUBMITTED = "SUBMITTED"
+    SCREENING = "SCREENING"
+    COMMITTEE_REVIEW = "COMMITTEE_REVIEW"
+    APPROVED = "APPROVED"
+    CONDITIONAL = "CONDITIONAL"
+    REJECTED = "REJECTED"
+    ON_HOLD = "ON_HOLD"
+
+@dataclass
+class EthicsScreening:
+    fairness: str = "unchecked"     # n/a, confirmed, unchecked, no_mitigation
+    transparency: str = "unchecked"
+    privacy: str = "unchecked"
+    safety: str = "unchecked"
+    accountability: str = "unchecked"
+    explainability: str = "unchecked"
+    environmental: str = "unchecked"
+    dual_use: str = "unchecked"
+
+    def has_blockers(self) -> bool:
+        vals = [
+            self.fairness, self.transparency, self.privacy,
+            self.safety, self.accountability, self.explainability,
+            self.environmental, self.dual_use
+        ]
+        return any(v in ("unchecked", "no_mitigation") for v in vals)
+
+@dataclass
+class UseCaseProposal:
+    id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    title: str = ""
+    department: str = ""
+    proposer: str = ""
+    background: str = ""
+    objectives: str = ""
+    ai_type: str = ""
+    data_sources: List[str] = field(default_factory=list)
+    target_users: str = ""
+    estimated_budget: float = 0.0
+    timeline_months: int = 0
+    is_generative: bool = False
+    status: ProposalStatus = ProposalStatus.DRAFT
+    risk_grade: Optional[RiskGrade] = None
+    ethics_screening: Optional[EthicsScreening] = None
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
+
+class RiskClassifier:
+    """Automated risk classification based on EU AI Act and Korean AI Basic Act."""
+
+    PROHIBITED_KEYWORDS = [
+        "social_scoring", "subliminal_manipulation",
+        "real_time_biometric_surveillance",
+        "emotion_exploitation_vulnerable"
+    ]
+    HIGH_RISK_KEYWORDS = [
+        "hiring", "credit_scoring", "medical_diagnosis",
+        "criminal_justice", "education_scoring",
+        "border_control", "critical_infrastructure",
+        "law_enforcement", "autonomous_driving"
+    ]
+    LIMITED_KEYWORDS = [
+        "chatbot", "emotion_recognition", "deepfake",
+        "biometric_categorization"
+    ]
+
+    def classify(self, proposal: UseCaseProposal) -> RiskGrade:
+        tags = set(proposal.data_sources + [proposal.ai_type])
+        if any(k in tags for k in self.PROHIBITED_KEYWORDS):
+            return RiskGrade.PROHIBITED
+        if any(k in tags for k in self.HIGH_RISK_KEYWORDS):
+            return RiskGrade.HIGH
+        if proposal.is_generative:
+            return RiskGrade.LIMITED
+        if any(k in tags for k in self.LIMITED_KEYWORDS):
+            return RiskGrade.LIMITED
+        return RiskGrade.MINIMAL
+
+class UseCaseRegistry:
+    """Central registry for all AI use case proposals."""
+
+    def __init__(self):
+        self._proposals: Dict[str, UseCaseProposal] = {}
+        self._classifier = RiskClassifier()
+
+    def submit(self, proposal: UseCaseProposal) -> UseCaseProposal:
+        proposal.risk_grade = self._classifier.classify(proposal)
+        proposal.status = ProposalStatus.SUBMITTED
+        proposal.updated_at = datetime.now()
+        self._proposals[proposal.id] = proposal
+
+        if proposal.risk_grade == RiskGrade.PROHIBITED:
+            proposal.status = ProposalStatus.REJECTED
+        elif proposal.risk_grade in (RiskGrade.HIGH, RiskGrade.LIMITED):
+            proposal.status = ProposalStatus.SCREENING
+        else:
+            proposal.status = ProposalStatus.APPROVED
+        return proposal
+
+    def screen_ethics(
+        self, proposal_id: str, screening: EthicsScreening
+    ) -> UseCaseProposal:
+        p = self._proposals[proposal_id]
+        p.ethics_screening = screening
+        if screening.has_blockers():
+            p.status = ProposalStatus.ON_HOLD
+        else:
+            p.status = ProposalStatus.COMMITTEE_REVIEW
+        p.updated_at = datetime.now()
+        return p
+
+    def get_by_status(self, status: ProposalStatus) -> List[UseCaseProposal]:
+        return [p for p in self._proposals.values() if p.status == status]
+
+    def get_dashboard_stats(self) -> Dict[str, int]:
+        stats = {}
+        for s in ProposalStatus:
+            stats[s.value] = len(self.get_by_status(s))
+        return stats
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{AI 영향평가 사전 심사}
+\label{sec:8.3}
+
+AI 유스케이스가 개발 단계에 진입하기 전, 해당 시스템이 개인의 권리와 사회에 미치는 잠재적 영향을 사전에 평가하는 절차가 필수적이다. 이는 EU AI Act 제27조의 기본권 영향평가(Fundamental Rights Impact Assessment)와 한국 AI 기본법의 고위험 AI 사전 평가 요건에 대응하는 거버넌스 절차이다.
+
+\subsection{EU AI Act 기반 리스크 분류}
+\label{sec:8.3.1}
+
+EU AI Act는 AI 시스템을 리스크 수준에 따라 네 가지 범주로 분류한다. 각 범주별 의무사항이 상이하므로, 유스케이스 발굴 단계에서 정확한 분류가 이루어져야 한다.
+
+\begin{table}[htbp]
+\centering
+\caption{EU AI Act 리스크 분류 체계와 의무사항}
+\label{tab:eu_ai_act_risk}
+\begin{tabularx}{\textwidth}{p{2cm}p{3.5cm}Xp{3cm}}
+\toprule
+\textbf{분류} & \textbf{대상} & \textbf{주요 예시} & \textbf{핵심 의무} \\
+\midrule
+금지 AI & 수용 불가능한 리스크 & 사회적 점수 부여, 잠재의식 조작, 실시간 원격 생체인식 & 전면 금지 \\
+\midrule
+고위험 AI & Annex III 열거 영역 & 채용·인사 관리, 신용 평가, 사법 보조, 교육 평가, 핵심 인프라 관리 & 적합성 평가, 리스크 관리 시스템, 데이터 거버넌스, 기술 문서화, 인적 감독 \\
+\midrule
+제한 리스크 AI & 투명성 의무 대상 & 챗봇, 감정 인식, 딥페이크 생성 & 사용자 고지, 콘텐츠 표시 \\
+\midrule
+최소 리스크 AI & 기타 모든 AI & 스팸 필터, 게임 AI, 재고 최적화 & 자율 규제 권장 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{한국 AI 기본법 고위험 AI 분류 기준}
+\label{sec:8.3.2}
+
+한국 AI 기본법은 ``고영향 AI''라는 개념을 도입하여, 국민의 생명·신체·안전 및 기본권에 중대한 영향을 미칠 수 있는 AI 시스템에 대한 특별 관리 체계를 요구한다.
+
+\begin{table}[htbp]
+\centering
+\caption{한국 AI 기본법 고위험 AI 분류 기준 및 영역별 예시}
+\label{tab:korean_ai_act_highrisk}
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{4cm}}
+\toprule
+\textbf{영역} & \textbf{고위험 AI 유형} & \textbf{구체적 예시} \\
+\midrule
+고용·노동 & 채용·승진·해고 의사결정 지원 AI & 이력서 자동 스크리닝, 면접 평가 AI \\
+금융·보험 & 신용 평가·보험 심사 AI & 대출 심사 자동화, 보험료 산정 AI \\
+의료·건강 & 진단·치료 보조 AI & 의료 영상 판독 AI, 질병 예측 모델 \\
+교육 & 학습 평가·입학 심사 AI & 자동 채점 시스템, 입시 서류 평가 \\
+사법·치안 & 범죄 예측·재범 평가 AI & 예측 치안(Predictive Policing), 양형 보조 \\
+공공 서비스 & 복지 수급·행정 심사 AI & 사회보장 급여 자격 판정 AI \\
+안전·인프라 & 핵심 인프라 관리 AI & 전력망 관리, 교통 제어 시스템 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{사전 영향 스크리닝 프로세스}
+\label{sec:8.3.3}
+
+사전 영향 스크리닝은 3단계로 진행된다. 1단계에서 리스크 범주를 결정하고, 2단계에서 해당 범주에 맞는 심층 평가를 수행하며, 3단계에서 완화 조치(Mitigation Measures)를 수립한다.
+
+\begin{enumerate}
+    \item \textbf{1단계 -- 리스크 범주 결정(Risk Categorization)}:
+    \begin{itemize}
+        \item AI 시스템의 목적, 대상, 의사결정 자율성 수준을 기반으로 EU AI Act 및 한국 AI 기본법상의 리스크 범주를 결정한다.
+        \item 금지 범주에 해당하는 경우 즉시 과제를 중단(Stop)한다.
+    \end{itemize}
+    \item \textbf{2단계 -- 심층 영향 평가(Deep Impact Assessment)}:
+    \begin{itemize}
+        \item 고위험으로 분류된 과제에 대해 기본권 영향평가를 수행한다.
+        \item 평가 영역: 비차별, 프라이버시, 표현의 자유, 아동 보호, 노동권, 사회보장 접근성 등.
+        \item 영향의 심각도(Severity)와 발생 가능성(Likelihood)을 매트릭스로 평가한다.
+    \end{itemize}
+    \item \textbf{3단계 -- 완화 조치 수립(Mitigation Planning)}:
+    \begin{itemize}
+        \item 식별된 각 리스크에 대한 구체적 완화 조치를 수립한다.
+        \item 완화 조치의 효과성을 사전에 검증할 수 있는 테스트 계획을 포함한다.
+        \item 잔여 리스크(Residual Risk)가 수용 가능한 수준인지를 최종 판단한다.
+    \end{itemize}
+\end{enumerate}
+
+%----------------------------------------------------------
+\section{심의위원회 운영 심화}
+\label{sec:8.4}
+
+\subsection{심의 기준 및 평가 항목}
+\label{sec:8.4.1}
+
+AI 유스케이스 심의위원회는 기술, 비즈니스, 윤리, 법무의 네 가지 관점에서 과제를 종합적으로 평가한다. 각 관점별 세부 평가 항목과 배점은 다음과 같다.
+
+\begin{table}[htbp]
+\centering
+\caption{심의위원회 평가 항목 및 배점 체계}
+\label{tab:committee_eval_criteria}
+\begin{tabularx}{\textwidth}{p{2cm}p{3.5cm}Xp{1.5cm}}
+\toprule
+\textbf{관점} & \textbf{평가 항목} & \textbf{평가 내용} & \textbf{배점} \\
+\midrule
+기술 & 기술적 실현가능성 & 알고리즘, 데이터, 인프라 준비도 종합 & 15 \\
+& 확장성(Scalability) & 전사 확대 적용 가능성 & 10 \\
+& 유지보수 용이성 & 모델 재학습, 모니터링 체계 & 5 \\
+\midrule
+비즈니스 & ROI 및 비용 효율성 & 투자 대비 기대 수익 & 20 \\
+& 전략적 정합성 & 기업 전략·디지털 전환 목표와의 부합도 & 10 \\
+& 시급성 & 경쟁 대응, 규제 준수 등 시간적 제약 & 5 \\
+\midrule
+윤리 & 공정성·편향 리스크 & 차별적 결과 발생 가능성 및 완화 조치 & 10 \\
+& 투명성·설명가능성 & 의사결정 근거 설명 가능 여부 & 5 \\
+& 프라이버시 보호 & 개인정보 처리의 적정성 & 5 \\
+\midrule
+법무 & 법규 준수(Compliance) & AI Act, AI 기본법, 개인정보보호법 등 & 10 \\
+& 계약·지적재산권 & 데이터 사용권, 모델 라이선스 & 3 \\
+& 소송 리스크 & 법적 분쟁 가능성 & 2 \\
+\midrule
+\multicolumn{3}{l}{\textbf{합계}} & \textbf{100} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{심의위원회 구성 및 운영}
+\label{sec:8.4.2}
+
+\begin{table}[htbp]
+\centering
+\caption{AI 유스케이스 심의 위원회 운영 안}
+\label{tab:steering_committee}
+\begin{tabularx}{\textwidth}{p{3cm}XX}
+\toprule
+\textbf{구분} & \textbf{구성 및 역할} & \textbf{주요 심의 내용} \\
+\midrule
+위원회 구성 & CDO(의장), CAIO, 법무, HR, 도메인(Domain) 전문가 & 과제 승인/반려, 예산 배분 결정 \\
+심의 주기 & 매월 마지막 주 수요일 정기 심의 & 긴급 과제는 수시 서면 심의 병행 \\
+의결 조건 & 과반수 출석 및 2/3 이상 찬성 & 위험도가 ``HIGH''인 경우 법무 승인 필수 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{RACI 매트릭스}
+\label{sec:8.4.3}
+
+심의 프로세스의 각 단계별 역할과 책임을 RACI(Responsible, Accountable, Consulted, Informed) 매트릭스로 명확히 정의한다.
+
+\begin{table}[htbp]
+\centering
+\caption{AI 유스케이스 심의 RACI 매트릭스}
+\label{tab:raci_matrix}
+\begin{tabularx}{\textwidth}{Xp{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}}
+\toprule
+\textbf{활동} & \textbf{제안 부서} & \textbf{AI CoE} & \textbf{법무} & \textbf{윤리 위원} & \textbf{CDO} & \textbf{CISO} \\
+\midrule
+유스케이스 제안 & R & C & I & I & I & I \\
+1차 리스크 분류 & I & R & C & C & A & I \\
+윤리 스크리닝 & C & R & C & R & A & I \\
+영향평가 수행 & C & R & R & C & A & C \\
+위원회 심의 & I & R & R & R & A & C \\
+최종 승인 & I & I & C & I & R/A & I \\
+이의제기 처리 & R & C & C & C & A & I \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent \textbf{범례}: R = Responsible(실행 책임), A = Accountable(최종 책임), C = Consulted(자문), I = Informed(통보)
+
+\subsection{심의 결과 유형 및 후속 절차}
+\label{sec:8.4.4}
+
+심의위원회의 심의 결과는 네 가지 유형으로 분류되며, 각 유형별로 명확한 후속 절차가 정의된다.
+
+\begin{table}[htbp]
+\centering
+\caption{심의 결과 유형 및 후속 절차}
+\label{tab:review_outcomes}
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{4cm}}
+\toprule
+\textbf{결과 유형} & \textbf{정의} & \textbf{후속 절차} \\
+\midrule
+승인(Approved) & 모든 평가 기준 충족, 즉시 개발 착수 가능 & 프로젝트 킥오프(Kick-off), 리소스 배정 \\
+\midrule
+조건부 승인(Conditional) & 일부 조건 충족 시 개발 착수 가능 & 조건 이행 계획서 제출 후 재심의 없이 착수 \\
+\midrule
+반려(Rejected) & 심각한 리스크 또는 낮은 가치로 개발 부적합 & 제안 부서에 사유 통보, 이의제기 가능 \\
+\midrule
+보류(On Hold) & 추가 정보·분석 필요, 현 시점 판단 불가 & 보완 후 차기 심의에서 재상정 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{반려 시 이의제기 절차}
+\label{sec:8.4.5}
+
+제안 부서는 심의 결과에 대해 공식적인 이의를 제기할 수 있다. 이의제기 절차는 거버넌스의 투명성과 공정성을 보장하는 핵심 메커니즘이다.
+
+\begin{enumerate}
+    \item \textbf{이의제기 기한}: 심의 결과 통보 후 10영업일 이내에 서면으로 제출한다.
+    \item \textbf{이의제기 근거}: 절차적 하자, 평가 기준 오적용, 새로운 정보 제시 중 하나 이상의 근거를 명시해야 한다.
+    \item \textbf{재심의 구성}: 기존 심의에 참여하지 않은 위원 2인 이상을 포함한 재심 패널을 구성한다.
+    \item \textbf{재심의 기간}: 이의제기 접수 후 15영업일 이내에 재심의를 완료한다.
+    \item \textbf{최종 결정}: 재심의 결과는 최종적이며, 동일 건에 대한 추가 이의제기는 불가하다.
+\end{enumerate}
+
+\subsection{심의 워크플로우}
+\label{sec:8.4.6}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    wfstep/.style={rectangle, draw, rounded corners, minimum width=2.5cm, minimum height=1cm, align=center, font=\small},
+    arrow/.style={->, thick},
+]
+\node[wfstep, fill=blue!10] (p1) {1. 유스케이스 제안};
+\node[wfstep, fill=blue!10, right=of p1] (p2) {2. 1차 리스크\\스크리닝};
+\node[wfstep, fill=green!10, right=of p2] (p3) {3. 영향평가\\(6장 연계)};
+\node[wfstep, fill=orange!10, right=of p3] (p4) {4. 위원회\\최종 심의};
+
+\draw[arrow] (p1) -- (p2); \draw[arrow] (p2) -- (p3); \draw[arrow] (p3) -- (p4);
+\end{tikzpicture}
+}
+\caption{AI 유스케이스 발굴 및 승인 워크플로우(Workflow)}
+\label{fig:usecase_workflow}
+\end{figure}
+
+\subsection{Python: 심의 프로세스 자동화}
+\label{sec:8.4.7}
+
+\begin{lstlisting}[language=Python, caption={심의 프로세스 자동화 시스템(Committee Review Automation)}, label={lst:committee_review}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from enum import Enum
+from datetime import datetime, timedelta
+
+class ReviewOutcome(Enum):
+    APPROVED = "APPROVED"
+    CONDITIONAL = "CONDITIONAL"
+    REJECTED = "REJECTED"
+    ON_HOLD = "ON_HOLD"
+
+class AppealStatus(Enum):
+    NONE = "NONE"
+    FILED = "FILED"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    UPHELD = "UPHELD"       # original decision maintained
+    OVERTURNED = "OVERTURNED"
+
+@dataclass
+class ReviewScore:
+    technical: float = 0.0      # max 30
+    business: float = 0.0       # max 35
+    ethics: float = 0.0         # max 20
+    legal: float = 0.0          # max 15
+
+    @property
+    def total(self) -> float:
+        return self.technical + self.business + self.ethics + self.legal
+
+@dataclass
+class CommitteeReview:
+    proposal_id: str
+    reviewer_scores: Dict[str, ReviewScore] = field(default_factory=dict)
+    outcome: Optional[ReviewOutcome] = None
+    conditions: List[str] = field(default_factory=list)
+    rejection_reasons: List[str] = field(default_factory=list)
+    appeal_status: AppealStatus = AppealStatus.NONE
+    review_date: Optional[datetime] = None
+    appeal_deadline: Optional[datetime] = None
+
+class CommitteeReviewEngine:
+    """Automates committee review scoring and decision logic."""
+
+    APPROVAL_THRESHOLD = 70
+    CONDITIONAL_THRESHOLD = 55
+    QUORUM_RATIO = 0.5
+    SUPERMAJORITY_RATIO = 2 / 3
+    APPEAL_WINDOW_DAYS = 10
+    APPEAL_REVIEW_DAYS = 15
+
+    def __init__(self, total_members: int = 7):
+        self.total_members = total_members
+        self._reviews: Dict[str, CommitteeReview] = {}
+
+    def submit_score(
+        self, proposal_id: str, reviewer_id: str, score: ReviewScore
+    ) -> None:
+        if proposal_id not in self._reviews:
+            self._reviews[proposal_id] = CommitteeReview(
+                proposal_id=proposal_id
+            )
+        self._reviews[proposal_id].reviewer_scores[reviewer_id] = score
+
+    def finalize_review(self, proposal_id: str) -> CommitteeReview:
+        review = self._reviews[proposal_id]
+        scores = review.reviewer_scores
+
+        # Check quorum
+        if len(scores) < self.total_members * self.QUORUM_RATIO:
+            review.outcome = ReviewOutcome.ON_HOLD
+            review.conditions.append("Quorum not met - reschedule")
+            return review
+
+        # Calculate average score
+        avg = sum(s.total for s in scores.values()) / len(scores)
+
+        # Count approval votes (score >= CONDITIONAL_THRESHOLD)
+        approvals = sum(
+            1 for s in scores.values()
+            if s.total >= self.CONDITIONAL_THRESHOLD
+        )
+        approval_rate = approvals / len(scores)
+
+        # Check legal blocker
+        legal_avg = sum(s.legal for s in scores.values()) / len(scores)
+        has_legal_block = legal_avg < 5  # out of 15
+
+        review.review_date = datetime.now()
+        review.appeal_deadline = (
+            datetime.now() + timedelta(days=self.APPEAL_WINDOW_DAYS)
+        )
+
+        if has_legal_block:
+            review.outcome = ReviewOutcome.REJECTED
+            review.rejection_reasons.append("Legal compliance score below minimum")
+        elif avg >= self.APPROVAL_THRESHOLD and approval_rate >= self.SUPERMAJORITY_RATIO:
+            review.outcome = ReviewOutcome.APPROVED
+        elif avg >= self.CONDITIONAL_THRESHOLD:
+            review.outcome = ReviewOutcome.CONDITIONAL
+            review.conditions.append("Address identified gaps within 30 days")
+        else:
+            review.outcome = ReviewOutcome.REJECTED
+            review.rejection_reasons.append(
+                f"Average score {avg:.1f} below threshold"
+            )
+
+        return review
+
+    def file_appeal(
+        self, proposal_id: str, grounds: str
+    ) -> CommitteeReview:
+        review = self._reviews[proposal_id]
+        if review.outcome != ReviewOutcome.REJECTED:
+            raise ValueError("Appeals only for rejected proposals")
+        if datetime.now() > review.appeal_deadline:
+            raise ValueError("Appeal window has closed")
+        review.appeal_status = AppealStatus.FILED
+        return review
+
+    def resolve_appeal(
+        self, proposal_id: str, overturn: bool
+    ) -> CommitteeReview:
+        review = self._reviews[proposal_id]
+        if overturn:
+            review.appeal_status = AppealStatus.OVERTURNED
+            review.outcome = ReviewOutcome.CONDITIONAL
+        else:
+            review.appeal_status = AppealStatus.UPHELD
+        return review
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{AI 프로젝트 포트폴리오 관리 심화}
+\label{sec:8.5}
+
+로드맵상의 과제들과 발굴된 유스케이스는 비즈니스 가치와 구현 용이성을 기준으로 우선순위가 관리된다. 단순한 2$\times$2 매트릭스를 넘어, 다기준 의사결정\cite{barbosa2023mcdm}(MCDA, Multi-Criteria Decision Analysis) 프레임워크와 리소스 최적화 기법을 적용하여 포트폴리오를 체계적으로 관리해야 한다.
+
+\subsection{포트폴리오 우선순위 매트릭스}
+\label{sec:8.5.1}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.8]
+\draw[thick,->] (0,0) -- (6,0) node[right] {구현 가능성};
+\draw[thick,->] (0,0) -- (0,6) node[above] {비즈니스 가치};
+\node[draw, fill=green!20, minimum width=2cm, minimum height=2cm] at (4,4) {Quick Wins};
+\node[draw, fill=blue!20, minimum width=2cm, minimum height=2cm] at (1.5,4) {Big Bets};
+\node[draw, fill=yellow!20, minimum width=2cm, minimum height=2cm] at (4,1.5) {Low Hanging Fruits};
+\node[draw, fill=gray!20, minimum width=2cm, minimum height=2cm] at (1.5,1.5) {Drop / 후순위};
+\end{tikzpicture}
+\caption{AI 포트폴리오 우선순위 결정 매트릭스}
+\label{fig:portfolio_matrix}
+\end{figure}
+
+\subsection{다기준 의사결정(MCDA) 프레임워크}
+\label{sec:8.5.2}
+
+포트폴리오 우선순위 결정에는 다기준 의사결정 분석(MCDA)을 적용한다. MCDA는 상충하는 여러 기준을 동시에 고려하여 최적의 의사결정을 도출하는 체계적 방법론이다.
+
+\begin{table}[htbp]
+\centering
+\caption{MCDA 기반 포트폴리오 평가 기준}
+\label{tab:mcda_criteria}
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{2cm}p{2cm}}
+\toprule
+\textbf{기준} & \textbf{설명} & \textbf{가중치} & \textbf{측정 방법} \\
+\midrule
+비즈니스 가치 & ROI, 매출 기여도, 비용 절감 효과 & 25\% & 재무 분석 \\
+전략 정합성 & 기업 전략 목표와의 부합도 & 20\% & 전략 매핑 \\
+기술 실현성 & 데이터·알고리즘·인프라 준비도 & 20\% & 기술 평가 \\
+리스크 수준 & 윤리·법률·운영 리스크 & 15\% & 리스크 평가 \\
+시급성 & 시장 경쟁, 규제 대응 등 시간 제약 & 10\% & 전문가 판단 \\
+시너지 효과 & 기존 프로젝트·인프라와의 연계성 & 10\% & 연계 분석 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{리소스 배분 최적화}
+\label{sec:8.5.3}
+
+한정된 리소스(인력, 예산, 인프라) 하에서 최대의 포트폴리오 가치를 달성하기 위한 리소스 배분 원칙을 수립한다.
+
+\begin{itemize}
+    \item \textbf{70-20-10 원칙}: 전체 AI 예산의 70\%는 검증된 핵심 과제(Core), 20\%는 인접 영역 확장(Adjacent), 10\%는 혁신적 실험(Transformational)에 배분한다.
+    \item \textbf{리소스 풀(Resource Pool) 운영}: AI 전문 인력을 프로젝트별로 고정 배치하지 않고, 유연한 풀(Pool) 형태로 운영하여 과제 간 유동적 배분을 가능하게 한다.
+    \item \textbf{단계별 예산 집행}: PoC 단계에서 전체 예산의 10--15\%만 집행하고, 성과 검증 후 본개발 예산을 집행하는 Stage-Gate 방식을 적용한다.
+\end{itemize}
+
+\subsection{프로젝트 진행 상태 모니터링}
+\label{sec:8.5.4}
+
+포트폴리오에 포함된 AI 프로젝트의 진행 상태를 실시간으로 모니터링하기 위한 체계를 구축한다. 각 프로젝트는 다음의 상태(Status) 중 하나로 관리된다.
+
+\begin{table}[htbp]
+\centering
+\caption{AI 프로젝트 상태 관리 체계}
+\label{tab:project_status}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{2cm}Xp{2.5cm}}
+\toprule
+\textbf{단계} & \textbf{상태} & \textbf{설명} & \textbf{게이트 조건} \\
+\midrule
+기획 & Ideation & 유스케이스 제안 및 심의 진행 중 & 위원회 승인 \\
+PoC & Validation & 개념검증 수행 중 & 목표 성능 달성 \\
+개발 & Development & 본격 모델 개발 및 시스템 통합 중 & 테스트 통과 \\
+배포 & Deployment & 운영 환경 배포 및 안정화 & 운영 승인 \\
+운영 & Production & 실서비스 운영 중 & 정기 리뷰 통과 \\
+종료 & Retired & 서비스 종료 또는 대체 & 퇴역 승인 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{AI 자산 인벤토리 관리}
+\label{sec:8.5.5}
+
+\cite{iso42001}에서 요구하는 AI 시스템 인벤토리(AI System Inventory)는 포트폴리오 관리의 기반이 된다. 모든 AI 자산은 중앙 인벤토리에 등록되어 생애주기(Lifecycle) 전반에 걸쳐 추적 관리되어야 한다.
+
+인벤토리에 포함되어야 하는 핵심 정보는 다음과 같다:
+
+\begin{itemize}
+    \item \textbf{기본 정보}: 시스템명, 버전, 소유 부서, 담당자, 개발 일자
+    \item \textbf{기술 정보}: 모델 유형, 학습 데이터 소스, 성능 지표, 인프라 사양
+    \item \textbf{거버넌스 정보}: 리스크 등급, 영향평가 결과, 승인 이력, 감사 이력
+    \item \textbf{운영 정보}: 배포 환경, 사용량 통계, 장애 이력, SLA(서비스 수준 협약) 준수율
+    \item \textbf{데이터 정보}: 사용 데이터셋, 개인정보 포함 여부, 데이터 보존 기간
+\end{itemize}
+
+\subsection{Python: 포트폴리오 최적화 엔진}
+\label{sec:8.5.6}
+
+\begin{lstlisting}[language=Python, caption={AI 포트폴리오 최적화 엔진(Portfolio Optimization Engine)}, label={lst:portfolio_optimizer}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
+from enum import Enum
+
+class ProjectPhase(Enum):
+    IDEATION = "IDEATION"
+    POC = "POC"
+    DEVELOPMENT = "DEVELOPMENT"
+    DEPLOYMENT = "DEPLOYMENT"
+    PRODUCTION = "PRODUCTION"
+    RETIRED = "RETIRED"
+
+class InvestmentCategory(Enum):
+    CORE = "CORE"               # 70% budget
+    ADJACENT = "ADJACENT"       # 20% budget
+    TRANSFORMATIONAL = "TRANSFORMATIONAL"  # 10% budget
+
+@dataclass
+class AIProject:
+    id: str
+    title: str
+    phase: ProjectPhase
+    category: InvestmentCategory
+    business_value: float       # 0-100
+    strategic_fit: float        # 0-100
+    technical_feasibility: float  # 0-100
+    risk_level: float           # 0-100
+    urgency: float              # 0-100
+    synergy: float              # 0-100
+    required_budget: float      # in currency units
+    required_headcount: float   # FTE
+    current_roi: float = 0.0
+
+@dataclass
+class PortfolioConstraints:
+    total_budget: float
+    total_headcount: float
+    max_high_risk_projects: int = 3
+    budget_allocation: Dict[str, float] = field(default_factory=lambda: {
+        'CORE': 0.70, 'ADJACENT': 0.20, 'TRANSFORMATIONAL': 0.10
+    })
+
+@dataclass
+class AIAssetInventory:
+    """Central inventory for all AI assets."""
+    asset_id: str
+    system_name: str
+    version: str
+    owner_department: str
+    risk_grade: int  # 1-4
+    model_type: str
+    data_sources: List[str]
+    has_pii: bool
+    deployment_env: str
+    performance_metrics: Dict[str, float]
+    last_audit_date: str
+    next_review_date: str
+
+class PortfolioOptimizer:
+    """MCDA-based portfolio optimization with resource constraints."""
+
+    WEIGHTS = {
+        'business_value': 0.25,
+        'strategic_fit': 0.20,
+        'technical_feasibility': 0.20,
+        'risk_level': 0.15,
+        'urgency': 0.10,
+        'synergy': 0.10,
+    }
+
+    def __init__(self, constraints: PortfolioConstraints):
+        self.constraints = constraints
+
+    def calculate_mcda_score(self, project: AIProject) -> float:
+        """Calculate weighted MCDA score for a project."""
+        risk_inverted = 100 - project.risk_level
+        raw = (
+            project.business_value * self.WEIGHTS['business_value']
+            + project.strategic_fit * self.WEIGHTS['strategic_fit']
+            + project.technical_feasibility * self.WEIGHTS['technical_feasibility']
+            + risk_inverted * self.WEIGHTS['risk_level']
+            + project.urgency * self.WEIGHTS['urgency']
+            + project.synergy * self.WEIGHTS['synergy']
+        )
+        return round(raw, 2)
+
+    def optimize(
+        self, projects: List[AIProject]
+    ) -> Tuple[List[AIProject], Dict]:
+        """Select optimal portfolio under resource constraints."""
+        # Score all projects
+        scored = [
+            (self.calculate_mcda_score(p), p) for p in projects
+        ]
+        scored.sort(key=lambda x: x[0], reverse=True)
+
+        selected = []
+        remaining_budget = self.constraints.total_budget
+        remaining_headcount = self.constraints.total_headcount
+        category_budgets = {
+            k: self.constraints.total_budget * v
+            for k, v in self.constraints.budget_allocation.items()
+        }
+        high_risk_count = 0
+
+        for score, project in scored:
+            cat = project.category.value
+            # Check constraints
+            if project.required_budget > remaining_budget:
+                continue
+            if project.required_budget > category_budgets.get(cat, 0):
+                continue
+            if project.required_headcount > remaining_headcount:
+                continue
+            if project.risk_level > 70:
+                if high_risk_count >= self.constraints.max_high_risk_projects:
+                    continue
+                high_risk_count += 1
+
+            selected.append(project)
+            remaining_budget -= project.required_budget
+            remaining_headcount -= project.required_headcount
+            category_budgets[cat] -= project.required_budget
+
+        summary = {
+            'total_selected': len(selected),
+            'budget_utilized': self.constraints.total_budget - remaining_budget,
+            'budget_remaining': remaining_budget,
+            'headcount_utilized': self.constraints.total_headcount - remaining_headcount,
+            'avg_mcda_score': (
+                sum(self.calculate_mcda_score(p) for p in selected)
+                / max(len(selected), 1)
+            ),
+        }
+        return selected, summary
+
+    def get_quadrant(self, project: AIProject) -> str:
+        """Classify project into portfolio quadrant."""
+        high_value = project.business_value >= 60
+        high_feasibility = project.technical_feasibility >= 60
+        if high_value and high_feasibility:
+            return "Quick Wins"
+        elif high_value and not high_feasibility:
+            return "Big Bets"
+        elif not high_value and high_feasibility:
+            return "Low Hanging Fruits"
+        else:
+            return "Drop"
+
+    def generate_status_report(
+        self, projects: List[AIProject]
+    ) -> Dict[str, List[str]]:
+        """Generate portfolio status report by phase."""
+        report: Dict[str, List[str]] = {}
+        for p in projects:
+            phase = p.phase.value
+            if phase not in report:
+                report[phase] = []
+            report[phase].append(
+                f"{p.id}: {p.title} (MCDA={self.calculate_mcda_score(p)})"
+            )
+        return report
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{거버넌스 성숙도 진단 심화}
+\label{sec:8.6}
+
+AI 거버넌스는 조직의 성숙도와 함께 진화하는 여정(Journey)이다. 진단(평가)을 통해 현재 위치를 파악하고, 그 결과에 근거하여 단계적 로드맵을 수립해야 한다.
+
+\subsection{5단계 성숙도 상세 설명}
+\label{sec:8.6.1}
+
+조직은 5단계 성숙도 모델(Maturity Model)을 기반으로 현재 수준을 진단한다. 각 단계별 특성과 핵심 활동은 다음과 같다.
+
+\begin{table}[htbp]
+\centering
+\caption{AI 거버넌스 성숙도 5단계 상세}
+\label{tab:maturity_detail}
+\begin{tabularx}{\textwidth}{p{1cm}p{2cm}Xp{3.5cm}}
+\toprule
+\textbf{Level} & \textbf{단계명} & \textbf{특성} & \textbf{핵심 활동} \\
+\midrule
+1 & 초기(Initial) & 정책 부재, 임기응변식 대응. AI 프로젝트가 산발적으로 진행되며, 중앙 집중적 관리가 없음 & AI 인벤토리 구축 착수, 기본 윤리 원칙 선언 \\
+\midrule
+2 & 반복(Repeatable) & 기본 윤리 원칙이 존재하나 일부 고위험 프로젝트에만 적용. 핵심 인력 의존도 높음 & 고위험 AI 식별 기준 수립, 심의위원회 시범 운영 \\
+\midrule
+3 & 정의(Defined) & 전사 표준 프로세스가 정립되고, 명확한 역할과 책임(R\&R)이 RACI로 정의됨 & 전사 가이드라인 공표, 교육 프로그램 운영, 도구(Tool) 도입 \\
+\midrule
+4 & 관리(Managed) & 지표(Metrics) 기반 상시 모니터링 및 자동화. 데이터 기반 의사결정이 정착됨 & KPI 대시보드 운영, 자동화 파이프라인 구축, 정기 감사 \\
+\midrule
+5 & 최적화(Optimized) & 선제적 리스크 예측 및 지속적 개선 문화 내재화. 외부 벤치마킹 및 인증 획득 & ISO 42001 인증, 외부 감사, 업계 리더십 활동 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{자가진단 도구}
+\label{sec:8.6.2}
+
+거버넌스 성숙도 자가진단은 6개 영역, 총 30개 문항으로 구성된다. 각 문항은 1점(전혀 그렇지 않다)부터 5점(매우 그렇다)까지 리커트 척도(Likert Scale)로 평가한다.
+
+\begin{practicaltool}{거버넌스 성숙도 자가진단 도구(Self-Assessment Tool)}
+\textbf{영역 1: 전략 및 리더십} (5문항)
+\begin{enumerate}
+    \item 경영진이 AI 거버넌스의 중요성을 인식하고 자원을 배분하고 있다.
+    \item AI 거버넌스 전략이 기업 전략과 연계되어 수립되어 있다.
+    \item AI 거버넌스 전담 조직(또는 담당자)이 지정되어 있다.
+    \item AI 거버넌스 관련 예산이 별도로 편성되어 있다.
+    \item AI 거버넌스 성과를 정기적으로 경영진에게 보고하고 있다.
+\end{enumerate}
+
+\textbf{영역 2: 정책 및 프로세스} (5문항)
+\begin{enumerate}
+    \item AI 윤리 원칙 및 가이드라인이 문서화되어 전사에 공유되어 있다.
+    \item AI 유스케이스 제안·심의·승인 프로세스가 표준화되어 운영 중이다.
+    \item AI 리스크 분류 기준이 명확히 정의되어 있다.
+    \item AI 프로젝트 생애주기(Lifecycle) 전반에 걸친 거버넌스 게이트(Gate)가 설정되어 있다.
+    \item AI 시스템 퇴역(Decommission) 절차가 정의되어 있다.
+\end{enumerate}
+
+\textbf{영역 3: 조직 및 인력} (5문항)
+\begin{enumerate}
+    \item AI 거버넌스 심의위원회가 구성되어 정기적으로 운영되고 있다.
+    \item AI 윤리·법률 전문가가 거버넌스 프로세스에 참여하고 있다.
+    \item 현업 부서의 AI 리터러시(Literacy) 교육이 정기적으로 실시되고 있다.
+    \item AI 관련 역할과 책임이 RACI 매트릭스로 정의되어 있다.
+    \item AI 거버넌스 관련 인센티브·제재 체계가 운영되고 있다.
+\end{enumerate}
+
+\textbf{영역 4: 기술 및 도구} (5문항)
+\begin{enumerate}
+    \item AI 시스템 인벤토리가 중앙에서 관리되고 있다.
+    \item 모델 성능 모니터링 도구가 운영 중이다.
+    \item 편향(Bias) 탐지·완화 도구가 개발 파이프라인에 통합되어 있다.
+    \item AI 시스템 감사 추적(Audit Trail)이 자동으로 기록되고 있다.
+    \item 그림자 AI(Shadow AI) 탐지 체계가 운영되고 있다.
+\end{enumerate}
+
+\textbf{영역 5: 리스크 관리} (5문항)
+\begin{enumerate}
+    \item AI 리스크 레지스터(Risk Register)가 운영되고 있다.
+    \item 고위험 AI에 대한 사전 영향평가가 의무적으로 수행되고 있다.
+    \item AI 사고(Incident) 대응 계획이 수립되어 있다.
+    \item AI 모델의 드리프트(Drift) 탐지 및 대응 체계가 운영되고 있다.
+    \item 외부 규제 변화에 대한 모니터링 및 대응 체계가 있다.
+\end{enumerate}
+
+\textbf{영역 6: 외부 소통 및 투명성} (5문항)
+\begin{enumerate}
+    \item AI 시스템 사용에 대한 외부 이해관계자 고지 체계가 있다.
+    \item AI 투명성 보고서를 정기적으로 발간하고 있다.
+    \item 외부 전문가의 AI 감사(Audit)를 수용하고 있다.
+    \item AI 관련 민원·이의제기 처리 절차가 운영되고 있다.
+    \item 업계 AI 거버넌스 표준화 활동에 참여하고 있다.
+\end{enumerate}
+
+\textbf{점수 해석}:
+\begin{itemize}
+    \item 30--60점: Level 1 (초기)
+    \item 61--80점: Level 2 (반복)
+    \item 81--110점: Level 3 (정의)
+    \item 111--130점: Level 4 (관리)
+    \item 131--150점: Level 5 (최적화)
+\end{itemize}
+\end{practicaltool}
+
+\subsection{벤치마킹 데이터 활용}
+\label{sec:8.6.3}
+
+자가진단 결과의 해석과 개선 방향 도출을 위해, 동종 업계 벤치마킹 데이터를 활용한다.
+
+\begin{itemize}
+    \item \textbf{업종별 평균 성숙도}: 금융(Level 3.2), 의료(Level 2.8), 제조(Level 2.3), 공공(Level 2.5) 등 업종별 평균 수준과 비교한다.
+    \item \textbf{영역별 강약점 분석}: 6개 영역 중 상대적으로 취약한 영역을 식별하여 우선 개선 대상으로 선정한다.
+    \item \textbf{연도별 추이 분석}: 매년 동일한 진단 도구(Tool)를 적용하여 개선 추이를 추적한다.
+\end{itemize}
+
+\subsection{로드맵 수립 프로세스}
+\label{sec:8.6.4}
+
+진단 결과에 따라 15--18개월 규모의 단계적 실행 로드맵을 수립한다.
+
+\begin{enumerate}
+    \item \textbf{Foundation (1--6개월)}: 인벤토리 구축, 위원회 발족, AI 가이드라인 공표. 이 단계에서는 조직의 현재 AI 활용 현황을 파악하고, 기본적인 거버넌스 구조를 수립하는 데 집중한다. 핵심 산출물로는 AI 인벤토리 목록, 거버넌스 정책 문서, 위원회 운영 규정이 포함된다.
+
+    \item \textbf{Expansion (6--12개월)}: 게이트 리뷰(Gate Review) 의무화, 도구 및 플랫폼 도입. 이 단계에서는 표준화된 프로세스를 전사적으로 확산하고, 자동화 도구를 도입하여 거버넌스 효율성을 높인다. 편향 탐지 도구, 모델 모니터링 플랫폼, 감사 추적 시스템 등을 구축한다.
+
+    \item \textbf{최적화 (12개월 이후)}: 모니터링 자동화, 외부 인증(\cite{iso42001}) 획득. 이 단계에서는 데이터 기반의 지속적 개선 문화를 내재화하고, 외부 인증을 통해 거버넌스 수준을 객관적으로 검증받는다. 선제적 리스크 예측 모델을 도입하여 사후 대응에서 사전 예방으로 전환한다.
+\end{enumerate}
+
+%----------------------------------------------------------
+\section{그림자 AI 관리 체계}
+\label{sec:8.7}
+
+현업 부서에서 거버넌스 조직의 승인 없이 외부 AI 모델(ChatGPT 등)이나 자체 개발 모델을 사용하는 \textbf{그림자 AI(Shadow AI)}는 심각한 데이터 유출 리스크와 거버넌스 공백을 초래한다. \cite{gartner2023shadow}에 따르면, 2025년까지 기업 AI 활용의 50\% 이상이 공식 거버넌스 체계 밖에서 이루어질 것으로 예측된다.
+
+\subsection{Shadow AI의 유형과 리스크}
+\label{sec:8.7.1}
+
+\begin{table}[htbp]
+\centering
+\caption{Shadow AI 유형 분류 및 리스크}
+\label{tab:shadow_ai_types}
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{4cm}}
+\toprule
+\textbf{유형} & \textbf{설명} & \textbf{주요 리스크} \\
+\midrule
+외부 SaaS AI & 직원이 개인적으로 ChatGPT, Copilot 등 외부 생성형 AI 서비스에 업무 데이터 입력 & 기밀 정보 유출, 지적재산권 침해, 규제 위반 \\
+\midrule
+비공인 API 연동 & 현업 부서가 승인 없이 외부 AI API를 업무 시스템에 연동 & 보안 취약점, 서비스 의존성, 비용 통제 불능 \\
+\midrule
+자체 개발 모델 & 현업 담당자가 개인적으로 학습시킨 ML 모델을 의사결정에 활용 & 검증 부재, 편향 리스크, 책임 소재 불명확 \\
+\midrule
+RPA+AI 결합 & 기존 RPA(Robotic Process Automation)에 비공인 AI 기능을 추가 & 프로세스 불투명화, 오류 전파, 감사 추적 불가 \\
+\midrule
+스프레드시트 ML & Excel 매크로나 스프레드시트 내 ML 모델(회귀 분석 등) 활용 & 모델 관리 부재, 버전 관리 불가, 단일 장애점 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{탐지 기법}
+\label{sec:8.7.2}
+
+Shadow AI를 효과적으로 탐지하기 위해서는 기술적 수단과 조직적 수단을 병행해야 한다.
+
+\begin{itemize}
+    \item \textbf{네트워크 모니터링(Network Monitoring)}: 기업 네트워크에서 알려진 AI 서비스 도메인(api.openai.com, bard.google.com 등)으로의 트래픽을 모니터링한다. 비인가 접근 시 경고를 발생시킨다.
+    \item \textbf{API 사용 추적(API Usage Tracking)}: 외부 API 호출 패턴을 분석하여 비공인 AI 서비스 연동을 탐지한다. API 게이트웨이(Gateway)를 통한 중앙 집중식 관리를 적용한다.
+    \item \textbf{데이터 유출 방지(DLP, Data Loss Prevention)}: DLP 솔루션을 통해 민감 데이터가 외부 AI 서비스로 전송되는 것을 차단한다.
+    \item \textbf{자산 스캔(Asset Scanning)}: 정기적으로 업무 PC와 서버를 스캔하여 비공인 AI 관련 라이브러리(TensorFlow, PyTorch 등) 설치 여부를 확인한다.
+    \item \textbf{직원 설문·인터뷰}: 익명 설문을 통해 비공식 AI 활용 현황을 파악한다. 처벌이 아닌 양성화를 목적으로 함을 명시하여 솔직한 응답을 유도한다.
+\end{itemize}
+
+\subsection{양성화 프로세스}
+\label{sec:8.7.3}
+
+탐지된 Shadow AI를 무조건 금지하는 것은 현실적이지 않다. 비즈니스 가치가 확인된 Shadow AI는 공식 거버넌스 체계로 편입시키는 양성화(Formalization) 프로세스를 운영한다.
+
+\begin{enumerate}
+    \item \textbf{현황 파악}: 탐지된 Shadow AI의 목적, 사용 범위, 데이터 처리 현황을 조사한다.
+    \item \textbf{가치 평가}: 해당 AI 활용이 실제 비즈니스 가치를 제공하고 있는지 평가한다.
+    \item \textbf{리스크 평가}: 데이터 보안, 프라이버시, 윤리, 법률 리스크를 점검한다.
+    \item \textbf{공식 등록}: 가치가 확인되면 유스케이스 제안서를 작성하여 공식 등록한다.
+    \item \textbf{거버넌스 적용}: 해당 리스크 등급에 맞는 거버넌스 요구사항을 적용한다.
+    \item \textbf{전환 지원}: 비공인 서비스에서 공인 서비스로의 전환을 기술적으로 지원한다.
+\end{enumerate}
+
+\subsection{예방 정책}
+\label{sec:8.7.4}
+
+Shadow AI의 근본적 원인은 공식 AI 도입 절차가 지나치게 복잡하거나 느린 데 있다. 따라서 예방 정책은 통제와 지원의 균형을 맞추어야 한다.
+
+\begin{itemize}
+    \item \textbf{셀프 서비스 AI 플랫폼}: 승인된 AI 도구와 API를 현업 부서가 즉시 사용할 수 있는 셀프 서비스(Self-service) 플랫폼을 제공한다.
+    \item \textbf{패스트 트랙(Fast Track) 심의}: 최소 리스크(4등급) 유스케이스에 대해서는 자동 승인 또는 간소화된 심의 절차를 적용한다.
+    \item \textbf{AI 리터러시 교육}: 전 직원 대상 AI 활용 교육을 통해 거버넌스의 필요성을 인식시킨다.
+    \item \textbf{명확한 허용 범위}: ``이것은 해도 된다 / 이것은 금지된다''를 명확히 공지하는 AI 사용 정책(Acceptable Use Policy)을 수립한다.
+    \item \textbf{비처벌적 보고 문화}: Shadow AI 사용을 자발적으로 보고하면 처벌하지 않는 문화를 조성한다.
+\end{itemize}
+
+\subsection{Python: Shadow AI 탐지 시스템}
+\label{sec:8.7.5}
+
+\begin{lstlisting}[language=Python, caption={Shadow AI 탐지 시스템(Shadow AI Detection System)}, label={lst:shadow_ai_detection}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Set, Optional
+from datetime import datetime
+from enum import Enum
+
+class ShadowAIType(Enum):
+    EXTERNAL_SAAS = "EXTERNAL_SAAS"
+    UNAUTHORIZED_API = "UNAUTHORIZED_API"
+    SELF_BUILT_MODEL = "SELF_BUILT_MODEL"
+    RPA_AI_HYBRID = "RPA_AI_HYBRID"
+    SPREADSHEET_ML = "SPREADSHEET_ML"
+
+class DetectionSeverity(Enum):
+    CRITICAL = "CRITICAL"   # PII or confidential data exposure
+    HIGH = "HIGH"           # Unauthorized API integration
+    MEDIUM = "MEDIUM"       # External SaaS usage
+    LOW = "LOW"             # Spreadsheet-level ML
+
+class FormalizationStatus(Enum):
+    DETECTED = "DETECTED"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    APPROVED_FOR_FORMALIZATION = "APPROVED"
+    BLOCKED = "BLOCKED"
+    FORMALIZED = "FORMALIZED"
+
+@dataclass
+class ShadowAIIncident:
+    id: str
+    detected_at: datetime
+    ai_type: ShadowAIType
+    severity: DetectionSeverity
+    department: str
+    description: str
+    data_exposure_risk: bool = False
+    formalization_status: FormalizationStatus = FormalizationStatus.DETECTED
+    detection_method: str = ""
+
+class ShadowAIDetector:
+    """Enterprise Shadow AI detection and management system."""
+
+    # Known AI service domains to monitor
+    KNOWN_AI_DOMAINS: Set[str] = {
+        "api.openai.com", "chat.openai.com",
+        "bard.google.com", "generativelanguage.googleapis.com",
+        "api.anthropic.com", "api.cohere.ai",
+        "huggingface.co", "api.replicate.com",
+    }
+
+    # ML libraries that indicate self-built models
+    ML_LIBRARIES: Set[str] = {
+        "tensorflow", "pytorch", "torch",
+        "scikit-learn", "sklearn", "xgboost",
+        "lightgbm", "keras", "transformers",
+    }
+
+    def __init__(self):
+        self._incidents: List[ShadowAIIncident] = []
+        self._whitelisted_domains: Set[str] = set()
+        self._incident_counter = 0
+
+    def whitelist_domain(self, domain: str) -> None:
+        """Add an approved AI service domain."""
+        self._whitelisted_domains.add(domain)
+
+    def scan_network_logs(
+        self, dns_logs: List[Dict]
+    ) -> List[ShadowAIIncident]:
+        """Scan DNS/network logs for unauthorized AI service access."""
+        incidents = []
+        for log in dns_logs:
+            domain = log.get('destination_domain', '')
+            if (domain in self.KNOWN_AI_DOMAINS
+                    and domain not in self._whitelisted_domains):
+                self._incident_counter += 1
+                incident = ShadowAIIncident(
+                    id=f"SAI-{self._incident_counter:04d}",
+                    detected_at=datetime.now(),
+                    ai_type=ShadowAIType.EXTERNAL_SAAS,
+                    severity=DetectionSeverity.MEDIUM,
+                    department=log.get('source_department', 'Unknown'),
+                    description=f"Unauthorized access to {domain}",
+                    detection_method="network_monitoring",
+                )
+                # Escalate if data upload detected
+                if log.get('bytes_uploaded', 0) > 1_000_000:
+                    incident.severity = DetectionSeverity.HIGH
+                    incident.data_exposure_risk = True
+                incidents.append(incident)
+                self._incidents.append(incident)
+        return incidents
+
+    def scan_api_gateway(
+        self, api_logs: List[Dict]
+    ) -> List[ShadowAIIncident]:
+        """Scan API gateway logs for unauthorized AI API integrations."""
+        incidents = []
+        for log in api_logs:
+            endpoint = log.get('endpoint', '')
+            if any(d in endpoint for d in self.KNOWN_AI_DOMAINS):
+                if endpoint not in self._whitelisted_domains:
+                    self._incident_counter += 1
+                    incident = ShadowAIIncident(
+                        id=f"SAI-{self._incident_counter:04d}",
+                        detected_at=datetime.now(),
+                        ai_type=ShadowAIType.UNAUTHORIZED_API,
+                        severity=DetectionSeverity.HIGH,
+                        department=log.get('department', 'Unknown'),
+                        description=f"Unauthorized API call to {endpoint}",
+                        detection_method="api_gateway",
+                    )
+                    incidents.append(incident)
+                    self._incidents.append(incident)
+        return incidents
+
+    def scan_installed_packages(
+        self, host_packages: Dict[str, List[str]]
+    ) -> List[ShadowAIIncident]:
+        """Scan hosts for unauthorized ML library installations."""
+        incidents = []
+        for host, packages in host_packages.items():
+            found_ml = [p for p in packages if p in self.ML_LIBRARIES]
+            if found_ml:
+                self._incident_counter += 1
+                incident = ShadowAIIncident(
+                    id=f"SAI-{self._incident_counter:04d}",
+                    detected_at=datetime.now(),
+                    ai_type=ShadowAIType.SELF_BUILT_MODEL,
+                    severity=DetectionSeverity.MEDIUM,
+                    department="Unknown",
+                    description=(
+                        f"ML libraries on {host}: {', '.join(found_ml)}"
+                    ),
+                    detection_method="asset_scan",
+                )
+                incidents.append(incident)
+                self._incidents.append(incident)
+        return incidents
+
+    def get_dashboard(self) -> Dict:
+        """Generate Shadow AI monitoring dashboard data."""
+        by_severity = {}
+        by_type = {}
+        by_dept = {}
+        for inc in self._incidents:
+            sev = inc.severity.value
+            by_severity[sev] = by_severity.get(sev, 0) + 1
+            typ = inc.ai_type.value
+            by_type[typ] = by_type.get(typ, 0) + 1
+            dept = inc.department
+            by_dept[dept] = by_dept.get(dept, 0) + 1
+        return {
+            'total_incidents': len(self._incidents),
+            'by_severity': by_severity,
+            'by_type': by_type,
+            'by_department': by_dept,
+            'data_exposure_count': sum(
+                1 for i in self._incidents if i.data_exposure_risk
+            ),
+        }
+
+    def initiate_formalization(
+        self, incident_id: str
+    ) -> Optional[ShadowAIIncident]:
+        """Begin formalization process for a Shadow AI incident."""
+        for inc in self._incidents:
+            if inc.id == incident_id:
+                inc.formalization_status = (
+                    FormalizationStatus.UNDER_REVIEW
+                )
+                return inc
+        return None
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{실무 도구 모음}
+\label{sec:8.8}
+
+본 절에서는 앞서 다룬 거버넌스 프로세스를 현업에서 즉시 활용할 수 있도록 실무 도구(Practical Tool)를 정리한다.
+
+\begin{practicaltool}{AI 유스케이스 사전 스크리닝 체크리스트}
+제안된 AI 유스케이스가 심의 단계에 진입하기 전, 다음 항목을 모두 확인한다.
+
+\textbf{[필수 확인 항목]}
+\begin{enumerate}
+    \item 유스케이스 제안서 표준 양식이 모든 필수 항목을 포함하여 작성되었는가?
+    \item AI가 아닌 대안(규칙 기반(Rule-based), 통계적 방법 등)을 검토하였는가?
+    \item 사용 예정 데이터의 소유권과 사용 권한이 확보되었는가?
+    \item 개인정보 포함 시 정보주체 동의 또는 법적 근거가 확보되었는가?
+    \item 리스크 등급(1--4등급)이 자체 평가되었는가?
+    \item 사전 윤리 스크리닝 체크리스트가 작성 완료되었는가?
+    \item 예상 ROI가 세 가지 시나리오(낙관·기본·비관)로 산출되었는가?
+    \item 성공 기준(PoC 단계 및 운영 단계)이 정량적으로 정의되었는가?
+    \item 이해관계자 목록이 작성되고, 주요 이해관계자의 사전 동의가 확보되었는가?
+    \item PoC 실패 시 철수 기준(Exit Criteria)이 정의되었는가?
+\end{enumerate}
+\end{practicaltool}
+
+\begin{practicaltool}{AI 프로젝트 킥오프 체크리스트}
+심의위원회에서 승인된 AI 프로젝트의 킥오프 시 확인 사항이다.
+
+\textbf{[거버넌스 설정 항목]}
+\begin{enumerate}
+    \item 프로젝트가 AI 자산 인벤토리에 등록되었는가?
+    \item 프로젝트 책임자(Accountable Owner)가 지정되었는가?
+    \item 리스크 등급에 맞는 거버넌스 요구사항이 프로젝트 계획에 반영되었는가?
+    \item 데이터 거버넌스 요구사항(데이터 품질, 보안, 프라이버시)이 정의되었는가?
+    \item 모델 개발 표준(코딩 규약, 실험 추적, 버전 관리)이 합의되었는가?
+    \item 편향 탐지 및 공정성 테스트 계획이 수립되었는가?
+    \item 설명가능성(Explainability) 요구 수준이 정의되었는가?
+    \item 모니터링 지표(모델 성능, 드리프트, 공정성)가 사전 정의되었는가?
+    \item 인적 감독(Human Oversight) 메커니즘이 설계되었는가?
+    \item 사고 대응(Incident Response) 계획이 수립되었는가?
+\end{enumerate}
+\end{practicaltool}
+
+\begin{practicaltool}{고위험 AI 사전 영향평가 요약 템플릿}
+2등급(고위험) 이상의 AI 프로젝트에 대해 작성하는 사전 영향평가 요약서이다.
+
+\textbf{1. 기본 정보}
+\begin{itemize}
+    \item 프로젝트명:
+    \item 리스크 등급:
+    \item 제안 부서:
+    \item 평가 일자:
+    \item 평가 담당자:
+\end{itemize}
+
+\textbf{2. 영향 대상 분석}
+\begin{itemize}
+    \item 직접 영향 대상자(Primary Stakeholders):
+    \item 간접 영향 대상자(Secondary Stakeholders):
+    \item 취약 계층 포함 여부:
+    \item 영향 규모(예상 대상자 수):
+\end{itemize}
+
+\textbf{3. 기본권 영향 평가}
+\begin{itemize}
+    \item 비차별(Non-discrimination): [영향도: 상/중/하] -- 완화 조치:
+    \item 프라이버시(Privacy): [영향도: 상/중/하] -- 완화 조치:
+    \item 표현의 자유(Freedom of Expression): [영향도: 상/중/하] -- 완화 조치:
+    \item 노동권(Labor Rights): [영향도: 상/중/하] -- 완화 조치:
+    \item 사회보장 접근(Social Security Access): [영향도: 상/중/하] -- 완화 조치:
+\end{itemize}
+
+\textbf{4. 잔여 리스크 판단}
+\begin{itemize}
+    \item 완화 조치 이후 잔여 리스크 수준: [수용 가능 / 조건부 수용 / 수용 불가]
+    \item 잔여 리스크에 대한 모니터링 계획:
+\end{itemize}
+\end{practicaltool}
+
+%----------------------------------------------------------
+\subsection*{제8장 요약}
+
+본 장에서는 AI 유스케이스 발굴부터 사전 승인에 이르는 통합 거버넌스 체계를 다루었다. 핵심 내용을 정리하면 다음과 같다.
+
+\begin{itemize}
+    \item \textbf{적합성 평가}: ROI 분석, 기술적 실현가능성, 데이터 준비도, 조직 준비도를 포괄하는 다차원 평가 프레임워크를 통해 AI 도입의 적합성을 체계적으로 판단한다.
+
+    \item \textbf{유스케이스 제안}: 표준화된 제안서 양식, 위험도 기반 4등급 분류 체계, 사전 윤리 스크리닝을 통해 거버넌스 통제가 기획 단계부터 작동하도록 한다.
+
+    \item \textbf{영향평가}: EU AI Act와 한국 AI 기본법의 리스크 분류 기준을 적용하여, 고위험 AI 시스템에 대한 사전 영향평가를 의무화한다.
+
+    \item \textbf{심의위원회}: 기술·비즈니스·윤리·법무 관점의 종합 심의, RACI 기반 역할 분담, 이의제기 절차를 통해 투명하고 공정한 의사결정을 보장한다.
+
+    \item \textbf{포트폴리오 관리}: MCDA 프레임워크, 리소스 배분 최적화, AI 자산 인벤토리를 통해 전사 차원의 AI 투자를 체계적으로 관리한다.
+
+    \item \textbf{성숙도 진단}: 5단계 성숙도 모델과 자가진단 도구를 활용하여 현재 수준을 파악하고, 단계적 개선 로드맵을 수립한다.
+
+    \item \textbf{그림자 AI 관리}: 탐지·양성화·예방의 3단계 접근법으로, 통제와 혁신의 균형을 추구한다.
+\end{itemize}
+
+무분별한 AI 도입을 지양하고, 조직의 역량에 맞는 단계적 접근을 취하는 것이 거버넌스 성공의 핵심이다. 모든 AI 과제는 전용 포털(Portal)을 통해 제안되어야 하며, 리스크 수준에 비례하는 거버넌스 통제가 적용되어야 한다.

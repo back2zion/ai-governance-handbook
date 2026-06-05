@@ -1,0 +1,1475 @@
+%----------------------------------------------------------
+% 제17장. 금융 AI 거버넌스
+%----------------------------------------------------------
+
+\chapter{금융 AI 거버넌스}
+\label{ch:finance_governance}
+
+금융 산업은 AI 기술이 가장 광범위하게 도입\cite{enholm2022artificial}되면서 동시에 가장 엄격한 규제를 받는 영역이다. 신용평가\cite{oecd2021ai}, 이상거래탐지\cite{cao2022ai}, 자산운용, 고객 상담 등 금융의 핵심 기능에 AI가 깊숙이 침투하면서, '알고리즘의 공정성\cite{barocas2016big}', '의사결정 설명가능성\cite{bracke2019machine}', '시스템 리스크 관리'라는 새로운 거버넌스 과제가 등장했다.
+
+금융 AI 거버넌스의 특수성은 세 가지 차원에서 발현된다. 첫째, \textbf{이중 규제 구조}이다. 금융 AI는 일반 AI 규제(AI 기본법, EU\cite{eba2020big} AI Act)와 금융 고유 규제(신용정보법, 자본시장법, 전자금융거래법)를 동시에 준수해야 한다. 둘째, \textbf{소비자 보호의 직접성\cite{angwin2016machine}}이다. AI의 결정이 대출 거절, 보험료 할증, 투자 손실 등 개인의 경제적 이해에 즉각적 영향을 미친다. 셋째, \textbf{시스템적 리스크}이다. 개별 금융기관의 AI 오류가 연쇄적으로\cite{novelli2023taking} 시장 전체의 불안정성을 야기할 수 있으며, 이는 정교한 거버넌스 체계를 통한 사회적 기술 리스크 관리를 요구한다.\cite{falco2021governing}
+
+본 장에서는 금융권 AI 규제 프레임워크를 체계적으로 분석하고, 모델 리스크 관리(MRM)의 실무적 구현 방안을 제시하며, 신용평가, FDS, 로보어드바이저\cite{dixon2020machine} 등 핵심 금융 AI 시스템의 거버넌스 사례를 심층적으로 다룬다. 특히 핀테크\cite{philippon2020fintech}와 레그테크(RegTech)의 결합\cite{lins2021artificial}을 통한 거버넌스 효율화 방안을 함께 모색한다.\cite{arner2017fintech}
+
+%----------------------------------------------------------
+\section{금융권 AI 규제 프레임워크}
+\label{sec:17.1}
+
+\subsection{국내 금융 AI 규제 체계}
+\label{sec:17.1.1}
+
+\paragraph{금융위원회 AI 활용 가이드라인}
+
+금융위원회는 2021년 '금융분야 AI 가이드라인'을 발표하고, 2024년 개정판을 통해 생성형 AI까지 규제 범위를 확장했다 \cite{fsc2024ai}. 이 가이드라인은 법적 구속력은 없으나, 금융감독원 검사 시 실질적인 결정 기준으로 활용된다.
+
+\begin{table}[htbp]
+\centering
+\caption{금융위원회 AI 가이드라인 핵심 원칙}
+\label{tab:17_1}
+\begin{tabularx}{\textwidth}{p{2cm}Xp{5cm}}
+\toprule
+\textbf{원칙} & \textbf{내용} & \textbf{실무 요구사항} \\
+\midrule
+정확성 & AI 모델의 예측 정확도 및 신뢰성 확보 & 정기적 성능 모니터링, 백테스팅\cite{klaise2021monitoring} \\
+안전성 & 시스템 장애 및 사이버 공격 대응 & 비상 대응 체계, 수동 전환 절차 \\
+투명성 & 의사결정 근거 설명 가능 & 설명가능한 AI(XAI) 적용, 고객 설명 의무 \\
+공정성 & 차별적 결과 방지 & 편향\cite{fuster2022predictably}성 점검, 민감 변수 관리 \\
+책임성 & 최종 책임 주체 명확화 & 인간 개입 체계, 책임 귀속 규정 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{금융위 가이드라인 세부 이행 체계}
+
+금융위원회 가이드라인의 실효성을 높이기 위해 금융감독원은 2024년 하반기 '금융 AI 감독 매뉴얼'을 별도로 발간하였다. 이 매뉴얼은 각 원칙에 대해 구체적인 점검 항목과 증빙 자료 요구사항을 명시하여, 금융기관이 검사에 대응할 수 있는 실질적 지침을 제공한다.
+
+\begin{table}[htbp]
+\centering
+\caption{금융위 AI 가이드라인 이행 점검 매트릭스}
+\label{tab:17_1b}
+\begin{tabularx}{\textwidth}{p{1.8cm}p{3cm}Xp{3cm}}
+\toprule
+\textbf{원칙} & \textbf{점검 항목} & \textbf{증빙 자료} & \textbf{점검 주기} \\
+\midrule
+정확성 & 모델 성능 지표 관리 & AUC/KS/PSI 추이 보고서 & 월간 \\
+정확성 & 백테스팅 수행 여부 & 백테스팅 결과 보고서 & 분기별 \\
+안전성 & 비상 전환 절차 존재 & 비상 대응 매뉴얼, 훈련 기록 & 반기별 \\
+안전성 & 사이버 보안 점검 & 취약점 진단 보고서 & 연간 \\
+투명성 & XAI 구현 현황 & SHAP/LIME 적용 기술 문서 & 모델 배포 시 \\
+투명성 & 고객 설명 체계 & 설명 템플릿, 고객 민원 분석 & 분기별 \\
+공정성 & 편향성 정기 점검 & 공정성 지표 리포트 & 분기별 \\
+공정성 & 대리 변수 관리 & 변수 상관 분석 보고서 & 모델 변경 시 \\
+책임성 & 인간 개입 체계 & 의사결정 에스컬레이션 절차서 & 연간 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{신용정보법과 AI}
+
+'신용정보의 이용 및 보호에 관한 법률'(신용정보법)은 AI 기반 신용평가에 직접적인 규제를 가한다. 특히 2020년 데이터 3법 개정과 2023년 후속 개정을 통해 제36조의2(자동화된 평가 결과에 대한 설명 및 이의제기 등)가 강화되었다.
+
+이 조항은 EU GDPR 제22조의 '자동화된 의사결정에 대한 설명 요구권'과 유사하나, 금융 영역에 특화되어 있다. 실무적으로 이는 모든 신용평가 AI 시스템이 개별 고객에게 '왜 이러한 평가를 받았는지'를 설명할 수 있어야 함을 의미한다.
+
+\begin{lstlisting}[language=Python, caption={Compliance with Article 36-2: SHAP-based Automated Assessment Explanation System}, label={lst:credit_explain}]
+import shap
+import numpy as np
+import pandas as pd
+from dataclasses import dataclass
+from datetime import datetime
+
+@dataclass
+class CreditExplanation:
+ customer_id: str; score: int; decision: str
+ positive_factors: list; negative_factors: list
+ counterfactual: str = ""
+
+class CreditExplanationService:
+ """Compliance service for Article 36-2 of the Credit Information Act"""
+ def __init__(self, model, feature_names):
+ self.explainer = shap.TreeExplainer(model)
+ self.feature_names = feature_names
+
+ def explain_to_customer(self, customer_id, x_input, score, decision):
+ # Calculate SHAP values
+ shap_values = self.explainer.shap_values(x_input)
+
+ # Extract top features (converted to customer-friendly terms)
+ factors = sorted(zip(self.feature_names, shap_values), key=lambda x: abs(x[1]), reverse=True)
+ pos = [f[0] for f in factors if f[1] > 0][:3]
+ neg = [f[0] for f in factors if f[1] < 0][:3]
+
+ return CreditExplanation(
+ customer_id=customer_id, score=score, decision=decision,
+ positive_factors=pos, negative_factors=neg,
+ counterfactual="Reducing your debt-to-income ratio by 5% will increase approval probability."
+ )
+\end{lstlisting}
+
+\paragraph{한국 AI 기본법과 금융 AI의 교차}
+
+2024년 제정된 'AI 기본법'은 금융 AI에 대해 추가적인 규제 계층을 형성한다. 특히 '고위험 AI'로 분류되는 신용평가, 보험 심사, 자산운용 AI는 영향평가 의무, 인간 개입 보장, 투명성 공시 등의 의무를 추가로 부담한다.
+
+\begin{table}[htbp]
+\centering
+\caption{금융 AI에 적용되는 다중 규제 계층 구조}
+\label{tab:17_multilayer}
+\begin{tabularx}{\textwidth}{p{3cm}p{3.5cm}X}
+\toprule
+\textbf{규제 계층} & \textbf{관련 법규} & \textbf{금융 AI 주요 의무} \\
+\midrule
+일반 AI 규제 & AI 기본법 & 고위험 AI 영향평가, 투명성 공시, 인간 개입 보장 \\
+개인정보 보호 & 개인정보보호법, 신용정보법 & 자동화 평가 설명, 이의제기권, 가명처리 \\
+금융업 규제 & 자본시장법, 보험업법 & 적합성 원칙, 건전성 규제, 내부 제어 \\
+전자금융 규제 & 전자금융거래법 & 접근통제, 망분리, 재해복구 \\
+소비자 보호 & 금융소비자보호법 & 적합성/적정성 평가, 설명 의무 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{글로벌 금융 AI 규제 동향}
+\label{sec:17.1.2}
+
+\paragraph{미국: SR 11-7과 모델 리스크 관리}
+
+미국 통화감독청(OCC)의 SR 11-7 "Guidance on Model Risk Management"는 금융 AI 거버넌스의 글로벌 표준으로 자리잡았다 \cite{occ2011sr117}. 이 지침은 모델 리스크 관리를 위해 독립 검증, 지속 모니터링, 강력한 거버넌스 체계를 요구한다.
+
+SR 11-7은 모델 리스크를 체계적으로 관리하기 위한 4단계 라이프사이클(Lifecycle)을 규정한다. 이 라이프사이클은 모델 개발(Model Development), 모델 검증(Model Validation), 모델 사용(Model Use), 그리고 모델 감사(Model Audit)의 순환 구조로 이루어진다.
+
+\begin{table}[htbp]
+\centering
+\caption{SR 11-7 모델 리스크 관리 라이프사이클 상세}
+\label{tab:17_sr117_lifecycle}
+\begin{tabularx}{\textwidth}{p{2cm}p{3cm}Xp{3cm}}
+\toprule
+\textbf{단계} & \textbf{핵심 활동} & \textbf{산출물} & \textbf{책임 주체} \\
+\midrule
+모델 개발 & 데이터 수집, 변수 선택, 모델 설계, 학습 & 모델 개발 문서(MDD), 소스 코드 & 1선(현업 개발팀) \\
+모델 검증 & 개념 건전성, 결과 분석, 벤치마킹 & 모델 검증 보고서(MVR) & 2선(독립 검증팀) \\
+모델 사용 & 배포, 모니터링, 한계 관리 & 성능 모니터링 대시보드 & 1선(운영팀) \\
+모델 감사 & 프로세스 적정성, 규정 준수 확인 & 감사 보고서 & 3선(내부감사) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{SR 11-7 모델 개발 단계 상세}
+
+모델 개발 단계에서는 데이터 품질 확보가 최우선 과제이다. 학습 데이터의 대표성(Representativeness), 시의성(Timeliness), 정확성(Accuracy)을 체계적으로 검증해야 하며, 변수 선택 과정에서 민감 변수(Protected Attributes)와 대리 변수(Proxy Variables)에 대한 사전 스크리닝이 필수적이다. 모델 설계 시에는 비즈니스 목적과 모델 복잡도 간의 적정 균형을 유지해야 하며, 지나치게 복잡한 모델은 설명가능성 요구와 충돌할 수 있음을 인지해야 한다.
+
+모델 개발 문서(Model Development Document, MDD)에는 최소한 다음 요소가 포함되어야 한다: (1) 모델의 비즈니스 목적과 사용 범위, (2) 이론적 근거와 가정, (3) 데이터 소스 및 전처리 방법, (4) 변수 선택 근거, (5) 모델 아키텍처와 하이퍼파라미터, (6) 성능 평가 결과, (7) 한계점과 사용 제한 사항.
+
+\paragraph{SR 11-7 모델 검증 3단계}
+
+모델 검증은 SR 11-7의 핵심이며, 독립적인 2선 조직이 수행해야 한다. 검증은 세 단계로 구성된다.
+
+\textbf{1단계: 개념 건전성 검증(Conceptual Soundness Review)}은 모델의 이론적 기반과 방법론이 적절한지 평가한다. AI/ML 모델의 경우 알고리즘 선택의 적절성, 손실 함수의 비즈니스 정합성, 과적합 방지 전략, 학습 데이터의 대표성을 검토한다.
+
+\textbf{2단계: 결과 분석(Outcomes Analysis)}은 모델 출력의 정확성과 안정성을 정량적으로 평가한다. 시계열 성능 추이, 세그먼트별 성능 편차, 극단 상황 스트레스 테스트 결과를 포함한다.
+
+\textbf{3단계: 벤치마킹(Benchmarking)}은 챌린저 모델(Challenger Model)과의 비교를 통해 현행 모델의 상대적 우위를 확인한다. 단순 모델(로지스틱 회귀)부터 대안 ML 모델까지 다양한 비교 대상을 설정한다.
+
+\begin{lstlisting}[language=Python, caption={SR 11-7 Model Validation Three-Stage Framework Implementation}, label={lst:sr117_validation}]
+import numpy as np
+import pandas as pd
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from sklearn.metrics import roc_auc_score, brier_score_loss
+from scipy import stats
+
+@dataclass
+class ValidationResult:
+    stage: str
+    test_name: str
+    passed: bool
+    score: float
+    threshold: float
+    details: str
+    timestamp: datetime = field(default_factory=datetime.now)
+
+class SR117ModelValidator:
+    """SR 11-7 compliant three-stage model validation framework"""
+
+    def __init__(self, model, challenger_models: Dict = None):
+        self.model = model
+        self.challengers = challenger_models or {}
+        self.results: List[ValidationResult] = []
+
+    # ---- Stage 1: Conceptual Soundness ----
+    def stage1_conceptual_soundness(self, X_train, y_train, X_test, y_test):
+        """Conceptual soundness review: overfitting, feature stability"""
+        results = []
+
+        # Overfitting check: train vs test performance gap
+        train_pred = self.model.predict_proba(X_train)[:, 1]
+        test_pred = self.model.predict_proba(X_test)[:, 1]
+        train_auc = roc_auc_score(y_train, train_pred)
+        test_auc = roc_auc_score(y_test, test_pred)
+        overfit_gap = train_auc - test_auc
+
+        results.append(ValidationResult(
+            stage="Conceptual Soundness",
+            test_name="Overfitting Check",
+            passed=overfit_gap < 0.05,
+            score=overfit_gap,
+            threshold=0.05,
+            details=f"Train AUC: {train_auc:.4f}, Test AUC: {test_auc:.4f}"
+        ))
+
+        # Feature importance stability (bootstrap)
+        importances = []
+        for i in range(100):
+            idx = np.random.choice(len(X_train), len(X_train), replace=True)
+            boot_model = type(self.model)(**self.model.get_params())
+            boot_model.fit(X_train[idx], y_train[idx])
+            importances.append(boot_model.feature_importances_)
+
+        cv_importance = np.std(importances, axis=0) / (np.mean(importances, axis=0) + 1e-8)
+        max_cv = np.max(cv_importance)
+
+        results.append(ValidationResult(
+            stage="Conceptual Soundness",
+            test_name="Feature Stability (Bootstrap CV)",
+            passed=max_cv < 0.5,
+            score=max_cv,
+            threshold=0.5,
+            details=f"Max feature importance CV: {max_cv:.4f}"
+        ))
+
+        self.results.extend(results)
+        return results
+
+    # ---- Stage 2: Outcomes Analysis ----
+    def stage2_outcomes_analysis(self, X_test, y_test, segments: Dict[str, np.ndarray]):
+        """Outcomes analysis: accuracy, calibration, segment performance"""
+        results = []
+
+        # Overall discriminatory power
+        predictions = self.model.predict_proba(X_test)[:, 1]
+        auc = roc_auc_score(y_test, predictions)
+        results.append(ValidationResult(
+            stage="Outcomes Analysis",
+            test_name="Discriminatory Power (AUC)",
+            passed=auc >= 0.70,
+            score=auc,
+            threshold=0.70,
+            details=f"Model AUC: {auc:.4f}"
+        ))
+
+        # Calibration (Brier Score)
+        brier = brier_score_loss(y_test, predictions)
+        results.append(ValidationResult(
+            stage="Outcomes Analysis",
+            test_name="Calibration (Brier Score)",
+            passed=brier < 0.15,
+            score=brier,
+            threshold=0.15,
+            details=f"Brier Score: {brier:.4f}"
+        ))
+
+        # Segment-level performance analysis
+        for seg_name, seg_mask in segments.items():
+            seg_auc = roc_auc_score(y_test[seg_mask], predictions[seg_mask])
+            results.append(ValidationResult(
+                stage="Outcomes Analysis",
+                test_name=f"Segment AUC - {seg_name}",
+                passed=seg_auc >= 0.65,
+                score=seg_auc,
+                threshold=0.65,
+                details=f"Segment '{seg_name}' AUC: {seg_auc:.4f}"
+            ))
+
+        self.results.extend(results)
+        return results
+
+    # ---- Stage 3: Benchmarking ----
+    def stage3_benchmarking(self, X_test, y_test):
+        """Benchmarking against challenger models"""
+        results = []
+        champion_pred = self.model.predict_proba(X_test)[:, 1]
+        champion_auc = roc_auc_score(y_test, champion_pred)
+
+        for name, challenger in self.challengers.items():
+            challenger_pred = challenger.predict_proba(X_test)[:, 1]
+            challenger_auc = roc_auc_score(y_test, challenger_pred)
+            margin = champion_auc - challenger_auc
+
+            results.append(ValidationResult(
+                stage="Benchmarking",
+                test_name=f"vs {name}",
+                passed=margin >= -0.02,
+                score=margin,
+                threshold=-0.02,
+                details=f"Champion: {champion_auc:.4f}, "
+                        f"Challenger({name}): {challenger_auc:.4f}"
+            ))
+
+        self.results.extend(results)
+        return results
+
+    def generate_validation_report(self) -> Dict:
+        """Generate comprehensive validation report (MVR)"""
+        total = len(self.results)
+        passed = sum(1 for r in self.results if r.passed)
+
+        report = {
+            "report_date": datetime.now().isoformat(),
+            "overall_status": "APPROVED" if passed == total else "CONDITIONAL" if passed / total > 0.8 else "REJECTED",
+            "total_tests": total,
+            "passed_tests": passed,
+            "failed_tests": [
+                {"stage": r.stage, "test": r.test_name, "score": r.score, "threshold": r.threshold}
+                for r in self.results if not r.passed
+            ],
+            "stages": {
+                stage: {
+                    "passed": sum(1 for r in self.results if r.stage == stage and r.passed),
+                    "total": sum(1 for r in self.results if r.stage == stage)
+                }
+                for stage in ["Conceptual Soundness", "Outcomes Analysis", "Benchmarking"]
+            }
+        }
+        return report
+\end{lstlisting}
+
+\paragraph{EU: AI Act의 금융 조항}
+
+EU AI Act는 금융 분야 AI를 '고위험(High-risk)'으로 분류한다. 특히 자연인의 신용도 평가, 생명/건강보험 리스크 평가 시스템은 적합성 평가(Conformity Assessment)와 사후 시장 모니터링 의무를 엄격하게 적용받는다 \cite{eu2024aiact}.
+
+\paragraph{바젤 위원회 AI 가이드라인}
+
+바젤은행감독위원회(BCBS)는 2024년 'Principles for the sound management of operational risk associated with AI/ML'을 통해 은행권 AI 리스크 관리 원칙을 제시하였다. 이 원칙은 기존 바젤 III 프레임워크의 운영리스크 관리 체계 위에 AI 특유의 리스크 요소를 추가한 것으로, 금융 AI 거버넌스의 국제 표준으로서 의의가 크다.
+
+\begin{table}[htbp]
+\centering
+\caption{바젤 위원회 AI/ML 리스크 관리 핵심 원칙}
+\label{tab:17_basel}
+\begin{tabularx}{\textwidth}{p{0.8cm}p{3cm}X}
+\toprule
+\textbf{번호} & \textbf{원칙} & \textbf{세부 내용} \\
+\midrule
+1 & 거버넌스 체계 & 이사회 수준의 AI 리스크 감독 체계 구축, AI 전담 위원회 설치 \\
+2 & 데이터 품질 & AI/ML 모델 학습 데이터의 대표성, 완전성, 적시성 확보 \\
+3 & 모델 개발 & 방법론 선택 근거 문서화, 과적합 방지, 해석가능성 확보 \\
+4 & 독립 검증 & 개발자와 독립된 검증 조직의 정기적 모델 검증 수행 \\
+5 & 지속 모니터링 & 모델 드리프트, 성능 저하, 환경 변화 실시간 감시 \\
+6 & 결과 설명 & 규제 당국 및 고객에 대한 의사결정 설명 체계 구축 \\
+7 & 아웃소싱 관리 & 제3자 AI 모델/서비스 사용 시 리스크 관리 책임 유지 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+바젤 위원회는 특히 AI 모델의 \textbf{모델 리스크 자본(Model Risk Capital)} 산정 방법론에 대해서도 논의를 진행하고 있다. 이는 AI 모델 오류로 인한 잠재적 손실을 자본으로 적립해야 한다는 개념으로, 향후 금융기관의 AI 도입 비용에 직접적 영향을 미칠 전망이다.
+
+\subsection{금융 AI의 설명가능성 요구사항}
+\label{sec:17.1.3}
+
+금융 AI에서 설명가능성은 단순한 기술적 선택이 아닌 법적 의무이다. 설명가능성의 수준은 의사결정 중대성 고객 영향도에 따라 차등 적용되어야 한다(표 \ref{tab:17_3}).
+
+\begin{table}[htbp]
+\centering
+\caption{금융 의사결정 유형별 설명가능성 요구 수준}
+\label{tab:17_3}
+\begin{tabularx}{\textwidth}{p{3cm}p{2cm}Xp{3.5cm}}
+\toprule
+\textbf{의사결정 유형} & \textbf{고객 영향도} & \textbf{요구 설명 수준} & \textbf{구현 방법} \\
+\midrule
+대출 심사 거절 & 매우 높음 & 개별 요인 기여도 + 개선 가이드 & SHAP, 반사실적 설명 \\
+신용등급 산출 & 높음 & 주요 영향 요인 상위 5개 & SHAP, 특성 중요도 \\
+보험료 할증 & 높음 & 할증 사유 및 근거 데이터 & 규칙 추출, 의사결정 트리 \\
+이상거래 탐지 & 중간 & 탐지 규칙 / 이상 패턴 & 규칙 기반 설명, 시각화 \\
+상품 추천 & 낮음 & 추천 이유 간략 제시 & 유사 고객/협업 필터링 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{금융 클라우드와 망분리 거버넌스}
+\label{sec:17.1.4}
+
+금융권 AI 도입의 가장 실질적인 장벽은 \textbf{망분리(Network Separation)} 규제이다. 혁신 금융 서비스의 경우 샌드박스를 통해 망분리 예외를 적용받기도 하지만, 궁극적으로는 데이터 패브릭이나 접근 제어 Gateway를 통해 내부망의 데이터 안전성을 유지하면서 클라우드 기반 AI 리소스를 활용하는 구조적 거버넌스가 필요하다.
+
+\paragraph{데이터 패브릭(Data Fabric) 기반 금융 AI 아키텍처}
+
+데이터 패브릭 아키텍처는 물리적 데이터 이동 없이 가상화 계층을 통해 내부망 데이터에 접근하는 구조이다. 이는 금융권 망분리 규제를 준수하면서도 클라우드 기반 AI 모델 학습과 추론을 가능하게 한다.
+
+\begin{table}[htbp]
+\centering
+\caption{금융 클라우드 AI 아키텍처 유형별 거버넌스 요건}
+\label{tab:17_cloud_arch}
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{3cm}p{2.5cm}}
+\toprule
+\textbf{아키텍처 유형} & \textbf{설명} & \textbf{적용 가능 업무} & \textbf{거버넌스 수준} \\
+\midrule
+온프레미스 전용 & 내부망에서 모델 학습/추론 & 신용평가, 핵심 FDS & 최고 (자체 통제) \\
+하이브리드 클라우드 & 학습은 클라우드, 추론은 내부 & 비실시간 분석, 리포팅 & 고 (데이터 암호화) \\
+가상화 게이트웨이 & 데이터 패브릭 경유 접근 & 마케팅 AI, 고객 분석 & 중 (접근 제어) \\
+완전 클라우드 & 샌드박스 예외 적용 서비스 & 혁신 서비스, 오픈뱅킹 & 별도 인가 필요 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={Financial Data Fabric Gateway: Secure AI Data Access Layer}, label={lst:data_fabric}]
+import hashlib
+import json
+from datetime import datetime
+from typing import Dict, List, Optional
+from enum import Enum
+
+class DataSensitivity(Enum):
+    PUBLIC = "public"
+    INTERNAL = "internal"
+    CONFIDENTIAL = "confidential"
+    RESTRICTED = "restricted"
+
+class AccessDecision(Enum):
+    ALLOW = "allow"
+    DENY = "deny"
+    ALLOW_MASKED = "allow_masked"
+    ALLOW_AGGREGATED = "allow_aggregated"
+
+class FinancialDataFabricGateway:
+    """Data Fabric Gateway for financial network separation compliance"""
+
+    def __init__(self, policy_config: Dict):
+        self.policies = policy_config
+        self.access_log: List[Dict] = []
+        self.data_catalog: Dict = {}
+
+    def register_dataset(self, dataset_id: str, sensitivity: DataSensitivity,
+                         columns: List[str], pii_columns: List[str]):
+        """Register dataset in the data catalog with metadata"""
+        self.data_catalog[dataset_id] = {
+            "sensitivity": sensitivity,
+            "columns": columns,
+            "pii_columns": pii_columns,
+            "registered_at": datetime.now().isoformat()
+        }
+
+    def request_access(self, requester: str, dataset_id: str,
+                       purpose: str, zone: str) -> AccessDecision:
+        """Evaluate data access request based on policy"""
+        dataset = self.data_catalog.get(dataset_id)
+        if not dataset:
+            return AccessDecision.DENY
+
+        sensitivity = dataset["sensitivity"]
+
+        # Network zone-based access control
+        if zone == "cloud" and sensitivity == DataSensitivity.RESTRICTED:
+            self._log_access(requester, dataset_id, AccessDecision.DENY,
+                           "Restricted data cannot leave internal network")
+            return AccessDecision.DENY
+
+        if zone == "cloud" and sensitivity == DataSensitivity.CONFIDENTIAL:
+            self._log_access(requester, dataset_id, AccessDecision.ALLOW_MASKED,
+                           "PII columns masked for cloud access")
+            return AccessDecision.ALLOW_MASKED
+
+        if zone == "cloud" and sensitivity == DataSensitivity.INTERNAL:
+            self._log_access(requester, dataset_id, AccessDecision.ALLOW_AGGREGATED,
+                           "Only aggregated statistics allowed")
+            return AccessDecision.ALLOW_AGGREGATED
+
+        self._log_access(requester, dataset_id, AccessDecision.ALLOW,
+                       f"Access granted in {zone} zone")
+        return AccessDecision.ALLOW
+
+    def _log_access(self, requester, dataset_id, decision, reason):
+        """Immutable access logging for audit trail"""
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            "requester": requester,
+            "dataset_id": dataset_id,
+            "decision": decision.value,
+            "reason": reason,
+            "hash": hashlib.sha256(
+                f"{requester}{dataset_id}{datetime.now()}".encode()
+            ).hexdigest()[:16]
+        }
+        self.access_log.append(entry)
+
+    def generate_audit_report(self) -> Dict:
+        """Generate access audit report for FSS inspection"""
+        total = len(self.access_log)
+        denied = sum(1 for e in self.access_log if e["decision"] == "deny")
+        masked = sum(1 for e in self.access_log if e["decision"] == "allow_masked")
+        return {
+            "report_period": datetime.now().strftime("%Y-%m"),
+            "total_requests": total,
+            "denied_requests": denied,
+            "masked_requests": masked,
+            "compliance_rate": (total - denied) / total if total > 0 else 1.0
+        }
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{금융 AI 특화 리스크 관리}
+\label{sec:17.2}
+
+\subsection{모델 리스크 관리(MRM) 체계}
+\label{sec:17.2.1}
+
+\paragraph{모델 리스크의 정의}
+
+SR 11-7은 모델 리스크를 ``모델 오류 또는 부적절한 사용으로 인해 발생하는 잠재적 부정적 결과''로 정의한다. AI 모델에서 리스크는 데이터 편향(개발), 파이프라인 오류(구현), 모델 드리프트(운영) 차원으로 확장된다.
+
+\paragraph{모델 리스크의 유형과 원인}
+
+금융 AI 모델 리스크는 크게 네 가지 유형으로 분류할 수 있다.
+
+\begin{table}[htbp]
+\centering
+\caption{금융 AI 모델 리스크 유형별 원인과 대응}
+\label{tab:17_risk_types}
+\begin{tabularx}{\textwidth}{p{2cm}p{3cm}Xp{3cm}}
+\toprule
+\textbf{리스크 유형} & \textbf{주요 원인} & \textbf{발현 사례} & \textbf{대응 방안} \\
+\midrule
+설계 리스크 & 부적절한 알고리즘 선택, 과적합 & 시장 급변 시 예측력 급락 & 개념 건전성 검증, 챌린저 모델 \\
+데이터 리스크 & 편향 데이터, 라벨 오류, 결측 & 특정 계층 차별적 평가 & 데이터 프로파일링, 편향 테스트 \\
+구현 리스크 & 코딩 오류, 파이프라인 장애 & 점수 산출 오류, 실시간 지연 & 코드 리뷰, 통합 테스트 \\
+운영 리스크 & 모델 드리프트, 환경 변화 & 성능 점진적 저하 & PSI 모니터링, 자동 재학습 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={PSI-based Model Stability Monitoring}, label={lst:psi_calc}]
+def calculate_psi(expected, actual, buckets=10):
+ """Calculate PSI (Population Stability Index): retraining needed if >= 0.25"""
+ def scale_range(input, min, max):
+ return (input - min) / (max - min)
+
+ expected_percents = np.histogram(expected, buckets)[0] / len(expected)
+ actual_percents = np.histogram(actual, buckets)[0] / len(actual)
+
+ # Prevent zero variance
+ expected_percents = np.clip(expected_percents, 0.0001, 1)
+ actual_percents = np.clip(actual_percents, 0.0001, 1)
+
+ psi = np.sum((actual_percents - expected_percents) * np.log(actual_percents / expected_percents))
+ return psi
+\end{lstlisting}
+
+\paragraph{모델 인벤토리(Model Inventory) 관리}
+
+모델 리스크 관리의 기본 전제는 기관 내 모든 AI 모델의 현황을 파악하는 것이다. 모델 인벤토리는 각 모델의 유형, 사용 목적, 리스크 등급, 검증 이력, 담당자 정보를 체계적으로 관리한다.
+
+\begin{lstlisting}[language=Python, caption={Financial AI Model Inventory Management System}, label={lst:model_inventory}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from datetime import datetime, timedelta
+from enum import Enum
+import json
+
+class ModelTier(Enum):
+    TIER_1 = "Critical"       # Credit scoring, FDS core
+    TIER_2 = "Important"      # Risk models, pricing
+    TIER_3 = "Standard"       # Marketing, analytics
+    TIER_4 = "Low Impact"     # Internal reporting
+
+class ModelStatus(Enum):
+    DEVELOPMENT = "development"
+    VALIDATION = "validation"
+    PRODUCTION = "production"
+    MONITORING = "monitoring"
+    RETIRED = "retired"
+
+@dataclass
+class ModelEntry:
+    model_id: str
+    model_name: str
+    tier: ModelTier
+    status: ModelStatus
+    business_purpose: str
+    algorithm: str
+    owner: str
+    validator: str
+    deploy_date: Optional[datetime] = None
+    last_validation: Optional[datetime] = None
+    next_validation: Optional[datetime] = None
+    psi_current: float = 0.0
+    auc_current: float = 0.0
+    issues: List[str] = field(default_factory=list)
+
+class ModelInventoryManager:
+    """Enterprise-wide financial AI model inventory"""
+
+    def __init__(self):
+        self.inventory: Dict[str, ModelEntry] = {}
+        self.validation_schedule = {
+            ModelTier.TIER_1: timedelta(days=90),    # Quarterly
+            ModelTier.TIER_2: timedelta(days=180),   # Semi-annually
+            ModelTier.TIER_3: timedelta(days=365),   # Annually
+            ModelTier.TIER_4: timedelta(days=730),   # Bi-annually
+        }
+
+    def register_model(self, entry: ModelEntry):
+        """Register a new model in the inventory"""
+        entry.next_validation = datetime.now() + self.validation_schedule[entry.tier]
+        self.inventory[entry.model_id] = entry
+
+    def get_overdue_validations(self) -> List[ModelEntry]:
+        """Identify models with overdue validation"""
+        overdue = []
+        for model in self.inventory.values():
+            if model.status == ModelStatus.PRODUCTION:
+                if model.next_validation and model.next_validation < datetime.now():
+                    overdue.append(model)
+        return sorted(overdue, key=lambda m: m.tier.value)
+
+    def get_high_risk_models(self) -> List[ModelEntry]:
+        """Identify models requiring immediate attention"""
+        high_risk = []
+        for model in self.inventory.values():
+            if model.status != ModelStatus.PRODUCTION:
+                continue
+            risk_flags = []
+            if model.psi_current >= 0.25:
+                risk_flags.append("PSI exceeds threshold")
+            if model.auc_current < 0.65:
+                risk_flags.append("AUC below minimum")
+            if model.next_validation and model.next_validation < datetime.now():
+                risk_flags.append("Validation overdue")
+            if risk_flags:
+                model.issues = risk_flags
+                high_risk.append(model)
+        return high_risk
+
+    def generate_board_report(self) -> Dict:
+        """Generate model risk summary for board reporting"""
+        total = len(self.inventory)
+        by_tier = {}
+        for tier in ModelTier:
+            models = [m for m in self.inventory.values() if m.tier == tier]
+            by_tier[tier.value] = {
+                "count": len(models),
+                "in_production": sum(1 for m in models if m.status == ModelStatus.PRODUCTION),
+                "overdue_validation": sum(1 for m in models if m.next_validation and m.next_validation < datetime.now()),
+                "high_psi": sum(1 for m in models if m.psi_current >= 0.25)
+            }
+        return {
+            "report_date": datetime.now().isoformat(),
+            "total_models": total,
+            "models_by_tier": by_tier,
+            "high_risk_models": len(self.get_high_risk_models()),
+            "overdue_validations": len(self.get_overdue_validations())
+        }
+\end{lstlisting}
+
+\subsection{공정 대출(Fair Lending)과 AI 편향}
+\label{sec:17.2.2}
+
+금융 AI에서 공리성(공정성)은 법적 의무이다. 제6장(6.2절)에서 소개한 \textbf{Fairlearn}과 같은 기술적 도구를 활용하여, 인구통계적 동등성(인구통계학적 공정성(DP))이나 균등 기회(Equal Opportunity) 지표를 정기적으로 점검해야 한다. 특히 '거주 지역'처럼 보호 속성과 상관관계가 높은 \textbf{대리 변수(Proxy Variable)}에 대한 철저한 배제가 요구된다.
+
+\paragraph{신용평가 AI 공정성 검증 상세}
+
+신용평가 모델의 공정성 검증은 단순 지표 확인을 넘어 체계적인 파이프라인(Pipeline)으로 구성되어야 한다. 아래는 Fairlearn 기반의 신용평가 공정성 검증 코드이다.
+
+\begin{lstlisting}[language=Python, caption={Credit Scoring Fairness Validation with Fairlearn}, label={lst:fairlearn_credit}]
+import numpy as np
+import pandas as pd
+from fairlearn.metrics import (
+    MetricFrame, demographic_parity_difference,
+    equalized_odds_difference, selection_rate
+)
+from fairlearn.reductions import ExponentiatedGradient, DemographicParity
+from sklearn.metrics import accuracy_score, recall_score, precision_score
+from typing import Dict, List, Tuple
+
+class CreditFairnessValidator:
+    """Comprehensive fairness validation for credit scoring AI"""
+
+    def __init__(self, protected_attributes: List[str],
+                 proxy_correlation_threshold: float = 0.3):
+        self.protected_attrs = protected_attributes
+        self.proxy_threshold = proxy_correlation_threshold
+
+    def detect_proxy_variables(self, df: pd.DataFrame,
+                                feature_columns: List[str]) -> Dict[str, List]:
+        """Detect proxy variables correlated with protected attributes"""
+        proxy_report = {}
+        for attr in self.protected_attrs:
+            if attr not in df.columns:
+                continue
+            proxies = []
+            for col in feature_columns:
+                if col == attr:
+                    continue
+                try:
+                    corr = abs(df[attr].astype(float).corr(df[col].astype(float)))
+                    if corr > self.proxy_threshold:
+                        proxies.append({
+                            "feature": col,
+                            "correlation": round(corr, 4),
+                            "action": "REMOVE" if corr > 0.5 else "MONITOR"
+                        })
+                except (ValueError, TypeError):
+                    pass
+            proxy_report[attr] = proxies
+        return proxy_report
+
+    def compute_fairness_metrics(self, y_true, y_pred,
+                                  sensitive_features) -> Dict:
+        """Compute comprehensive fairness metrics"""
+        metrics = {
+            "accuracy": accuracy_score,
+            "selection_rate": selection_rate,
+            "recall": recall_score,
+            "precision": precision_score
+        }
+
+        metric_frame = MetricFrame(
+            metrics=metrics,
+            y_true=y_true,
+            y_pred=y_pred,
+            sensitive_features=sensitive_features
+        )
+
+        dp_diff = demographic_parity_difference(
+            y_true, y_pred, sensitive_features=sensitive_features
+        )
+        eo_diff = equalized_odds_difference(
+            y_true, y_pred, sensitive_features=sensitive_features
+        )
+
+        # 4/5 rule (Disparate Impact): min_rate / max_rate >= 0.8
+        rates = metric_frame.by_group["selection_rate"]
+        disparate_impact = rates.min() / rates.max() if rates.max() > 0 else 0
+
+        return {
+            "demographic_parity_diff": round(dp_diff, 4),
+            "equalized_odds_diff": round(eo_diff, 4),
+            "disparate_impact_ratio": round(disparate_impact, 4),
+            "four_fifths_rule_pass": disparate_impact >= 0.8,
+            "by_group_metrics": metric_frame.by_group.to_dict(),
+            "overall_metrics": metric_frame.overall.to_dict()
+        }
+
+    def mitigate_bias(self, X_train, y_train, sensitive_features, estimator):
+        """Apply bias mitigation using Exponentiated Gradient"""
+        mitigator = ExponentiatedGradient(
+            estimator=estimator,
+            constraints=DemographicParity()
+        )
+        mitigator.fit(X_train, y_train, sensitive_features=sensitive_features)
+        return mitigator
+
+    def generate_fairness_report(self, y_true, y_pred,
+                                  sensitive_features, model_name: str) -> Dict:
+        """Generate regulatory-compliant fairness report"""
+        metrics = self.compute_fairness_metrics(y_true, y_pred, sensitive_features)
+
+        violations = []
+        if not metrics["four_fifths_rule_pass"]:
+            violations.append("4/5 Rule violation detected")
+        if abs(metrics["demographic_parity_diff"]) > 0.1:
+            violations.append("Demographic parity threshold exceeded")
+        if abs(metrics["equalized_odds_diff"]) > 0.1:
+            violations.append("Equalized odds threshold exceeded")
+
+        return {
+            "model_name": model_name,
+            "report_date": pd.Timestamp.now().isoformat(),
+            "protected_attributes": list(sensitive_features.unique()),
+            "metrics": metrics,
+            "violations": violations,
+            "overall_status": "PASS" if not violations else "FAIL",
+            "recommendation": "Model approved for production" if not violations
+                            else "Bias mitigation required before deployment"
+        }
+\end{lstlisting}
+
+\subsection{이상거래탐지(FDS) AI의 오탐/미탐 관리}
+\label{sec:17.2.3}
+
+FDS는 극심한 클래스 불균형과 오탐/미탐의 비대칭적 비용 구조를 가진다. 미탐(False Negative)은 실제 손실을 초래하므로 비용이 훨씬 크다. 이를 위해 \textbf{비용 민감 학습(Cost-sensitive Learning)}을 적용하여 손실 함수에서 미탐에 더 높은 가중치를 부여한다.
+
+\begin{lstlisting}[language=Python, caption={Cost-sensitive Learning for FDS Recall}, label={lst:cost_sensitive}]
+import torch.nn as nn
+
+class WeightedFDSLoss(nn.Module):
+    """
+    Weighted loss function for FDS recall enhancement
+    """
+    def __init__(self, fn_weight=50.0):
+        super().__init__()
+        self.fn_weight = fn_weight # Penalty for False Negatives
+
+    def forward(self, inputs, targets):
+        # Weighting for targets == 1
+        probs = nn.functional.sigmoid(inputs)
+        loss = -(self.fn_weight * targets * torch.log(probs) + \
+                (1 - targets) * torch.log(1 - probs))
+        return loss.mean()
+\end{lstlisting}
+
+\paragraph{FDS 실시간 탐지 아키텍처}
+
+현대적 FDS는 단순 규칙 기반 시스템을 넘어 실시간 스트리밍 아키텍처 위에서 다층적 AI 모델을 운영한다. 실시간 탐지 아키텍처는 세 가지 계층으로 구성된다.
+
+\begin{table}[htbp]
+\centering
+\caption{FDS 실시간 탐지 아키텍처 계층}
+\label{tab:17_fds_arch}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{3cm}Xp{2.5cm}}
+\toprule
+\textbf{계층} & \textbf{기능} & \textbf{기술 구성} & \textbf{응답 시간} \\
+\midrule
+1차 필터 & 규칙 기반 즉시 차단 & CEP(Complex Event Processing) 엔진 & < 10ms \\
+2차 분석 & ML 모델 기반 스코어링 & 실시간 피처 스토어 + 경량 모델 & < 100ms \\
+3차 심층 & 네트워크 분석, 행동 패턴 & 그래프 뉴럴 네트워크(GNN) & < 1000ms \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={FDS Real-time Detection Architecture: Multi-layer Fraud Scoring Pipeline}, label={lst:fds_realtime}]
+import time
+import numpy as np
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from enum import Enum
+from collections import deque
+
+class FraudDecision(Enum):
+    APPROVE = "approve"
+    BLOCK = "block"
+    REVIEW = "manual_review"
+    STEP_UP = "step_up_auth"
+
+@dataclass
+class Transaction:
+    txn_id: str
+    customer_id: str
+    amount: float
+    merchant_category: str
+    location: str
+    timestamp: datetime
+    channel: str
+    device_fingerprint: str
+
+@dataclass
+class FDSResult:
+    txn_id: str
+    decision: FraudDecision
+    risk_score: float
+    layer_scores: Dict[str, float]
+    explanation: List[str]
+    processing_time_ms: float
+
+class RealTimeFDSPipeline:
+    """Multi-layer real-time FDS architecture"""
+
+    def __init__(self, rule_engine, ml_model, gnn_model,
+                 block_threshold=0.9, review_threshold=0.7):
+        self.rule_engine = rule_engine
+        self.ml_model = ml_model
+        self.gnn_model = gnn_model
+        self.block_threshold = block_threshold
+        self.review_threshold = review_threshold
+        self.feature_store = {}
+        self.customer_history: Dict[str, deque] = {}
+
+    def _update_realtime_features(self, txn: Transaction):
+        """Update real-time feature store for customer"""
+        cid = txn.customer_id
+        if cid not in self.customer_history:
+            self.customer_history[cid] = deque(maxlen=100)
+        self.customer_history[cid].append(txn)
+
+        history = self.customer_history[cid]
+        recent = [t for t in history
+                  if (txn.timestamp - t.timestamp).seconds < 3600]
+
+        self.feature_store[cid] = {
+            "txn_count_1h": len(recent),
+            "total_amount_1h": sum(t.amount for t in recent),
+            "unique_merchants_1h": len(set(t.merchant_category for t in recent)),
+            "unique_locations_1h": len(set(t.location for t in recent)),
+            "max_amount_1h": max((t.amount for t in recent), default=0),
+            "amount_velocity": txn.amount / (np.mean([t.amount for t in history]) + 1)
+        }
+
+    def process_transaction(self, txn: Transaction) -> FDSResult:
+        """Process transaction through multi-layer detection"""
+        start = time.time()
+        explanations = []
+        layer_scores = {}
+
+        # Layer 1: Rule-based instant filter (< 10ms)
+        rule_score, rule_reasons = self.rule_engine.evaluate(txn)
+        layer_scores["rule_engine"] = rule_score
+        if rule_score >= 1.0:  # Hard block rules
+            explanations.extend(rule_reasons)
+            return FDSResult(
+                txn_id=txn.txn_id, decision=FraudDecision.BLOCK,
+                risk_score=1.0, layer_scores=layer_scores,
+                explanation=explanations,
+                processing_time_ms=(time.time() - start) * 1000
+            )
+
+        # Layer 2: ML model scoring (< 100ms)
+        self._update_realtime_features(txn)
+        features = self.feature_store.get(txn.customer_id, {})
+        ml_score = self.ml_model.predict_proba(features)
+        layer_scores["ml_model"] = ml_score
+
+        # Layer 3: GNN network analysis (< 1000ms, only for suspicious)
+        if ml_score > 0.5:
+            gnn_score = self.gnn_model.analyze_network(txn.customer_id, txn)
+            layer_scores["gnn_analysis"] = gnn_score
+        else:
+            gnn_score = 0.0
+            layer_scores["gnn_analysis"] = gnn_score
+
+        # Ensemble scoring with weighted combination
+        final_score = (0.2 * rule_score + 0.5 * ml_score + 0.3 * gnn_score)
+
+        # Decision logic
+        if final_score >= self.block_threshold:
+            decision = FraudDecision.BLOCK
+            explanations.append(f"High risk: combined score {final_score:.3f}")
+        elif final_score >= self.review_threshold:
+            decision = FraudDecision.REVIEW
+            explanations.append(f"Suspicious: manual review needed")
+        else:
+            decision = FraudDecision.APPROVE
+
+        elapsed = (time.time() - start) * 1000
+        return FDSResult(
+            txn_id=txn.txn_id, decision=decision,
+            risk_score=final_score, layer_scores=layer_scores,
+            explanation=explanations, processing_time_ms=elapsed
+        )
+\end{lstlisting}
+
+\subsection{로보어드바이저 적합성 검증 체계}
+\label{sec:17.2.4}
+
+로보어드바이저(Robo-Advisor)는 자본시장법상 투자일임업 규제가 적용되는 AI 시스템으로, 알고리즘의 \textbf{적합성 원칙(Suitability Principle)}과 포트폴리오 리밸런싱에 대한 설명 의무가 핵심 거버넌스 요건이다.
+
+\paragraph{적합성 원칙의 AI 적용}
+
+적합성 원칙은 투자자의 투자 목적, 재산 상황, 투자 경험 등을 고려하여 적합한 투자 권유를 해야 한다는 원칙이다. 로보어드바이저에서는 이를 자동화된 프로파일링(Profiling)과 포트폴리오 매칭 알고리즘으로 구현하되, 프로파일링의 정확성과 포트폴리오 추천의 적절성을 지속적으로 검증해야 한다.
+
+\begin{table}[htbp]
+\centering
+\caption{로보어드바이저 적합성 검증 체계}
+\label{tab:17_robo_suit}
+\begin{tabularx}{\textwidth}{p{2.5cm}Xp{3.5cm}p{2cm}}
+\toprule
+\textbf{검증 영역} & \textbf{검증 내용} & \textbf{기준} & \textbf{점검 주기} \\
+\midrule
+투자자 프로파일 & 투자 성향 분류 정확도 & 설문 응답과 실제 행동 일치율 > 85\% & 분기별 \\
+포트폴리오 적합도 & 투자 성향별 추천 적절성 & 리스크 예산 대비 실현 변동성 < 120\% & 월간 \\
+리밸런싱 적정성 & 리밸런싱 빈도 및 규모 & 과도 매매(Churning) 지표 점검 & 월간 \\
+성과 공시 & 벤치마크 대비 성과 & 동일 리스크 그룹 중위수 이상 & 분기별 \\
+스트레스 테스트 & 극단 시나리오 손실 & 최대 손실이 투자 성향별 한도 이내 & 반기별 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={Robo-Advisor Suitability Validation Framework}, label={lst:robo_suitability}]
+import numpy as np
+import pandas as pd
+from dataclasses import dataclass
+from typing import Dict, List, Tuple
+from enum import Enum
+from datetime import datetime
+
+class RiskProfile(Enum):
+    CONSERVATIVE = 1
+    MODERATE_CONSERVATIVE = 2
+    MODERATE = 3
+    MODERATE_AGGRESSIVE = 4
+    AGGRESSIVE = 5
+
+@dataclass
+class SuitabilityCheck:
+    customer_id: str
+    profile: RiskProfile
+    check_date: datetime
+    portfolio_volatility: float
+    max_allowed_volatility: float
+    churning_ratio: float
+    max_drawdown: float
+    is_suitable: bool
+    violations: List[str]
+
+class RoboAdvisorGovernance:
+    """Robo-Advisor suitability and governance validation"""
+
+    RISK_LIMITS = {
+        RiskProfile.CONSERVATIVE: {"max_vol": 0.05, "max_equity": 0.20, "max_dd": 0.05},
+        RiskProfile.MODERATE_CONSERVATIVE: {"max_vol": 0.08, "max_equity": 0.40, "max_dd": 0.08},
+        RiskProfile.MODERATE: {"max_vol": 0.12, "max_equity": 0.60, "max_dd": 0.12},
+        RiskProfile.MODERATE_AGGRESSIVE: {"max_vol": 0.16, "max_equity": 0.80, "max_dd": 0.18},
+        RiskProfile.AGGRESSIVE: {"max_vol": 0.22, "max_equity": 1.00, "max_dd": 0.25},
+    }
+
+    def __init__(self, churning_threshold: float = 6.0):
+        self.churning_threshold = churning_threshold  # Annual turnover limit
+        self.audit_log: List[SuitabilityCheck] = []
+
+    def validate_suitability(self, customer_id: str, profile: RiskProfile,
+                              portfolio_returns: np.ndarray,
+                              equity_weight: float,
+                              annual_turnover: float) -> SuitabilityCheck:
+        """Validate portfolio suitability against investor profile"""
+        limits = self.RISK_LIMITS[profile]
+        violations = []
+
+        # Volatility check
+        realized_vol = np.std(portfolio_returns) * np.sqrt(252)
+        if realized_vol > limits["max_vol"] * 1.2:  # 20% tolerance
+            violations.append(
+                f"Volatility {realized_vol:.2%} exceeds limit "
+                f"{limits['max_vol']:.2%} by > 20%"
+            )
+
+        # Equity weight check
+        if equity_weight > limits["max_equity"]:
+            violations.append(
+                f"Equity weight {equity_weight:.2%} exceeds "
+                f"limit {limits['max_equity']:.2%}"
+            )
+
+        # Maximum drawdown check
+        cumulative = np.cumprod(1 + portfolio_returns)
+        running_max = np.maximum.accumulate(cumulative)
+        drawdown = (running_max - cumulative) / running_max
+        max_dd = np.max(drawdown)
+        if max_dd > limits["max_dd"]:
+            violations.append(
+                f"Max drawdown {max_dd:.2%} exceeds limit {limits['max_dd']:.2%}"
+            )
+
+        # Churning check
+        if annual_turnover > self.churning_threshold:
+            violations.append(
+                f"Annual turnover {annual_turnover:.1f}x exceeds "
+                f"churning threshold {self.churning_threshold:.1f}x"
+            )
+
+        check = SuitabilityCheck(
+            customer_id=customer_id,
+            profile=profile,
+            check_date=datetime.now(),
+            portfolio_volatility=realized_vol,
+            max_allowed_volatility=limits["max_vol"],
+            churning_ratio=annual_turnover,
+            max_drawdown=max_dd,
+            is_suitable=len(violations) == 0,
+            violations=violations
+        )
+
+        self.audit_log.append(check)
+        return check
+
+    def generate_suitability_report(self) -> Dict:
+        """Generate suitability report for regulatory submission"""
+        total = len(self.audit_log)
+        suitable = sum(1 for c in self.audit_log if c.is_suitable)
+
+        violation_counts = {}
+        for check in self.audit_log:
+            for v in check.violations:
+                category = v.split(" ")[0]
+                violation_counts[category] = violation_counts.get(category, 0) + 1
+
+        return {
+            "report_date": datetime.now().isoformat(),
+            "total_accounts": total,
+            "suitable_accounts": suitable,
+            "suitability_rate": suitable / total if total > 0 else 1.0,
+            "violation_breakdown": violation_counts,
+            "status": "COMPLIANT" if suitable / total > 0.95 else "REVIEW_NEEDED"
+        }
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{레그테크(RegTech)와 섭테크(SupTech) 도구 활용}
+\label{sec:17.2.5}
+
+\subsection{레그테크(RegTech) 도구 활용}
+
+레그테크(RegTech, Regulatory Technology)는 규제 준수를 기술로 자동화하는 접근법이다. 금융 AI 거버넌스에서 레그테크는 모델 리스크 관리의 효율성을 획기적으로 높일 수 있다.
+
+\begin{table}[htbp]
+\centering
+\caption{금융 AI 거버넌스를 위한 레그테크 도구 분류}
+\label{tab:17_regtech}
+\begin{tabularx}{\textwidth}{p{3cm}Xp{4cm}}
+\toprule
+\textbf{도구 범주} & \textbf{기능} & \textbf{대표 도구/솔루션} \\
+\midrule
+모델 검증 자동화 & 모델 성능/공정성 자동 테스트 & Holistic AI, Credo AI, Arthur AI \\
+규제 매핑 & 규제 요건을 점검 항목으로 자동 매핑 & RegTech Solutions, Ascent \\
+문서 자동화 & MDD/MVR 자동 생성 & ModelOp, Domino Data Lab \\
+실시간 모니터링 & 모델 드리프트, 편향 실시간 감시 & Fiddler AI, WhyLabs, Arize AI \\
+보고서 생성 & 규제 보고서 자동 생성 & Suade, AxiomSL \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{섭테크(SupTech) 도구와 감독 혁신}
+
+섭테크(SupTech, Supervisory Technology)는 금융 감독 당국이 AI를 활용하여 감독 효율성을 높이는 기술이다. 금융감독원이 섭테크를 도입하면, 피감 기관은 더욱 정교한 검사에 대비해야 한다.
+
+\begin{table}[htbp]
+\centering
+\caption{섭테크 도입에 따른 금융기관 대응 전략}
+\label{tab:17_suptech}
+\begin{tabularx}{\textwidth}{p{3cm}Xp{4cm}}
+\toprule
+\textbf{섭테크 기능} & \textbf{감독 방식 변화} & \textbf{금융기관 대응} \\
+\midrule
+자동 보고서 분석 & 이상 징후 자동 탐지 & 보고서 일관성, 데이터 정합성 강화 \\
+실시간 데이터 수집 & 주기적 보고에서 상시 감시로 전환 & API 기반 실시간 데이터 제공 체계 \\
+NLP 기반 규정 해석 & 규제 변경의 자동 영향 분석 & 규제 변경 자동 추적 시스템 구축 \\
+네트워크 분석 & 시스템 리스크 상호연결성 분석 & 거래 상대방 리스크 가시성 확보 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%----------------------------------------------------------
+\section{금융 AI 감사와 검사 대응}
+\label{sec:17.3}
+
+\subsection{금융감독원 검사 대응 전략}
+\label{sec:17.3.1}
+
+금융감독원의 AI 검사는 모델 적정성, 운영 건전성, 소비자 보호의 세 가지 축으로 이루어진다. 검사 대응의 핵심은 개발 문서부터 운영 로그까지의 일관된 \textbf{계보(Lineage) 확보}와 체계적인 문서화이다. 이는 제9장(\ref{ch:data_ai_governance})에서 다룬 데이터 계보 시스템과 제12장(\ref{ch:model_retirement})의 운영 모니터링 로그와 연계되어야 한다.
+
+\paragraph{금융감독원 검사 대응 문서 준비 체크리스트}
+
+금융감독원의 AI 관련 검사에 효과적으로 대응하기 위해서는 사전에 체계적인 문서를 준비해야 한다. 아래는 검사 영역별 필수 준비 문서와 점검 사항을 정리한 것이다.
+
+\begin{table}[htbp]
+\centering
+\caption{금융감독원 AI 검사 대응 문서 체크리스트}
+\label{tab:17_fss_checklist}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{4cm}Xp{1.5cm}}
+\toprule
+\textbf{검사 영역} & \textbf{필수 문서} & \textbf{핵심 점검 사항} & \textbf{보관 기간} \\
+\midrule
+모델 개발 & 모델 개발 문서(MDD) & 변수 선택 근거, 방법론 적정성 & 모델 폐기 후 5년 \\
+모델 개발 & 데이터 품질 보고서 & 학습 데이터 대표성, 결측 처리 & 모델 폐기 후 5년 \\
+모델 검증 & 모델 검증 보고서(MVR) & 3단계 검증 수행 여부 & 모델 폐기 후 5년 \\
+모델 검증 & 챌린저 모델 비교 결과 & 벤치마킹 수행 증빙 & 모델 폐기 후 5년 \\
+운영 & 성능 모니터링 대시보드 & PSI/AUC/KS 추이 & 3년 \\
+운영 & 모델 변경 이력 & 재학습/파라미터 변경 기록 & 5년 \\
+공정성 & 편향성 점검 보고서 & 4/5 Rule, DP/EO 지표 & 5년 \\
+공정성 & 대리 변수 분석 결과 & 상관 분석, 제거 근거 & 5년 \\
+소비자보호 & 설명 제공 이력 & XAI 적용 현황, 고객 설명 건수 & 5년 \\
+소비자보호 & 이의제기 처리 대장 & 접수-처리-회신 전과정 기록 & 10년 \\
+비상 대응 & 비상 전환 절차서 & 수동 전환 훈련 기록 & 3년 \\
+비상 대응 & 장애 대응 보고서 & 장애 발생-대응-복구 이력 & 5년 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{3선 방어 모델의 AI 적용}
+\label{sec:17.3.2}
+
+금융기관의 내부 제어는 3선 방어 모델을 따른다. 1선(현업)은 자체 품질 관리를, 2선(리스크/준수)은 독립적 모델 검증을, 3선(감사)은 독립적 보증을 수행하여 AI 시스템의 리스크를 다층적으로 방어한다.
+
+\paragraph{3선 방어 모델 상세 구현}
+
+3선 방어 모델에서 각 방어선의 역할과 책임을 명확히 분리하고, 방어선 간 정보 흐름을 체계화하는 것이 핵심이다. 아래는 3선 방어 모델의 구현 코드이다.
+
+\begin{table}[htbp]
+\centering
+\caption{3선 방어 모델: 방어선별 AI 거버넌스 역할}
+\label{tab:17_3lines}
+\begin{tabularx}{\textwidth}{p{1.5cm}p{2.5cm}Xp{3.5cm}}
+\toprule
+\textbf{방어선} & \textbf{조직} & \textbf{AI 거버넌스 역할} & \textbf{주요 활동} \\
+\midrule
+1선 & 현업(개발/운영) & 자체 품질 관리, 일상 모니터링 & 모델 개발, 일일 성능 점검, 이상 보고 \\
+2선 & 리스크/준수 & 독립 검증, 정책 수립 & 모델 검증(MVR), 공정성 감사, 한도 설정 \\
+3선 & 내부감사 & 독립 보증, 프로세스 감사 & 전체 MRM 프로세스 적정성 검증 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={Three Lines of Defense Model Implementation for Financial AI}, label={lst:three_lines}]
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from datetime import datetime
+from enum import Enum
+import json
+
+class DefenseLine(Enum):
+    FIRST = "1st Line (Business)"
+    SECOND = "2nd Line (Risk/Compliance)"
+    THIRD = "3rd Line (Internal Audit)"
+
+class AlertSeverity(Enum):
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
+    EMERGENCY = "emergency"
+
+@dataclass
+class GovernanceAlert:
+    alert_id: str
+    source_line: DefenseLine
+    severity: AlertSeverity
+    model_id: str
+    description: str
+    timestamp: datetime = field(default_factory=datetime.now)
+    escalated_to: Optional[DefenseLine] = None
+    resolution: Optional[str] = None
+
+class FirstLineDefense:
+    """1st Line: Business unit self-governance"""
+
+    def __init__(self, model_id: str):
+        self.model_id = model_id
+        self.alerts: List[GovernanceAlert] = []
+
+    def daily_monitoring(self, psi: float, auc: float,
+                         error_rate: float) -> List[GovernanceAlert]:
+        """Daily performance monitoring by business unit"""
+        alerts = []
+
+        if psi >= 0.1:
+            severity = AlertSeverity.CRITICAL if psi >= 0.25 else AlertSeverity.WARNING
+            alerts.append(GovernanceAlert(
+                alert_id=f"1L-PSI-{datetime.now().strftime('%Y%m%d')}",
+                source_line=DefenseLine.FIRST,
+                severity=severity,
+                model_id=self.model_id,
+                description=f"PSI = {psi:.4f} (threshold: 0.1/0.25)"
+            ))
+
+        if auc < 0.70:
+            alerts.append(GovernanceAlert(
+                alert_id=f"1L-AUC-{datetime.now().strftime('%Y%m%d')}",
+                source_line=DefenseLine.FIRST,
+                severity=AlertSeverity.CRITICAL,
+                model_id=self.model_id,
+                description=f"AUC = {auc:.4f} below minimum threshold 0.70"
+            ))
+
+        if error_rate > 0.05:
+            alerts.append(GovernanceAlert(
+                alert_id=f"1L-ERR-{datetime.now().strftime('%Y%m%d')}",
+                source_line=DefenseLine.FIRST,
+                severity=AlertSeverity.WARNING,
+                model_id=self.model_id,
+                description=f"Error rate {error_rate:.2%} exceeds 5%"
+            ))
+
+        self.alerts.extend(alerts)
+        return alerts
+
+class SecondLineDefense:
+    """2nd Line: Independent risk management and compliance"""
+
+    def __init__(self):
+        self.validation_results: Dict[str, Dict] = {}
+        self.policy_violations: List[GovernanceAlert] = []
+
+    def independent_validation(self, model_id: str,
+                                validation_result: Dict) -> GovernanceAlert:
+        """Perform independent model validation"""
+        self.validation_results[model_id] = validation_result
+
+        if validation_result.get("overall_status") == "REJECTED":
+            alert = GovernanceAlert(
+                alert_id=f"2L-VAL-{model_id}",
+                source_line=DefenseLine.SECOND,
+                severity=AlertSeverity.EMERGENCY,
+                model_id=model_id,
+                description="Model validation REJECTED - immediate action required"
+            )
+            self.policy_violations.append(alert)
+            return alert
+        return None
+
+    def fairness_audit(self, model_id: str,
+                       fairness_report: Dict) -> Optional[GovernanceAlert]:
+        """Quarterly fairness audit"""
+        if fairness_report.get("overall_status") == "FAIL":
+            alert = GovernanceAlert(
+                alert_id=f"2L-FAIR-{model_id}",
+                source_line=DefenseLine.SECOND,
+                severity=AlertSeverity.CRITICAL,
+                model_id=model_id,
+                description=f"Fairness violation: {fairness_report.get('violations')}"
+            )
+            self.policy_violations.append(alert)
+            return alert
+        return None
+
+class ThirdLineDefense:
+    """3rd Line: Internal audit - independent assurance"""
+
+    def __init__(self):
+        self.audit_findings: List[Dict] = []
+
+    def process_audit(self, model_id: str,
+                      first_line: FirstLineDefense,
+                      second_line: SecondLineDefense) -> Dict:
+        """Comprehensive audit of the entire MRM process"""
+        findings = []
+
+        # Check if 1st line monitoring is being performed
+        if not first_line.alerts:
+            findings.append({
+                "category": "Monitoring Gap",
+                "severity": "HIGH",
+                "finding": "No 1st line monitoring alerts found - "
+                          "indicates potential monitoring failure"
+            })
+
+        # Check if 2nd line validation is current
+        validation = second_line.validation_results.get(model_id)
+        if not validation:
+            findings.append({
+                "category": "Validation Gap",
+                "severity": "HIGH",
+                "finding": "No independent validation record found"
+            })
+
+        # Check escalation effectiveness
+        critical_alerts = [a for a in first_line.alerts
+                          if a.severity in [AlertSeverity.CRITICAL, AlertSeverity.EMERGENCY]]
+        unescalated = [a for a in critical_alerts if not a.escalated_to]
+        if unescalated:
+            findings.append({
+                "category": "Escalation Failure",
+                "severity": "CRITICAL",
+                "finding": f"{len(unescalated)} critical alerts not escalated to 2nd line"
+            })
+
+        audit_result = {
+            "model_id": model_id,
+            "audit_date": datetime.now().isoformat(),
+            "findings_count": len(findings),
+            "findings": findings,
+            "overall_rating": "Satisfactory" if not findings
+                            else "Needs Improvement" if len(findings) <= 2
+                            else "Unsatisfactory"
+        }
+
+        self.audit_findings.append(audit_result)
+        return audit_result
+\end{lstlisting}
+
+%----------------------------------------------------------
+\section{구현 사례 연구}
+\label{sec:17.4}
+
+\subsection{신용평가모형 거버넌스}
+
+\begin{practicaltool}{K-Bank 개인신용평가 AI 거버넌스 사례}
+K-Bank는 XGBoost 기반 신용평가 모델을 도입하며 다음과 같은 체계를 구축했다.\\
+\textbf{개발}: 성별/연령 제외, 대리 변수(거주지 코드 등) 일반화 처리, SHAP 기반 해석력 확보.\\
+\textbf{검증}: 독립 검증팀의 백테스팅, PSI < 0.1 및 4/5 룰(Disparate Impact > 0.8) 검증.\\
+\textbf{운영}: 주간 성능 모니터링, 월간 PSI 점검, 분기별 공정성 감사 수행.
+\end{practicaltool}
+
+\subsection{이상거래탐지시스템(FDS) 거버넌스}
+
+\begin{practicaltool}{카드사 FDS AI 거버넌스}
+\textbf{적대적 방어}: 15장의 적대적 훈련을 FDS에 적용하여 공격 강건성 확보.\\
+\textbf{오탐 관리}: 비용 민감 학습(미탐 가중치 50배) 적용으로 실제 사기 탐지율 극대화.\\
+\textbf{설명력}: 탐지 사유를 3대 범주(패턴, 위치, 금액)로 분류하여 고객 및 조사관 안내.
+\end{practicaltool}
+
+\paragraph{FDS 운영 거버넌스 상세}
+
+FDS 운영 시 가장 중요한 거버넌스 과제는 오탐률(False Positive Rate, FPR) 관리이다. 오탐률이 높으면 정상 고객의 불편이 증가하고, 조사팀의 업무 과부하가 발생한다. 반대로 오탐률을 과도하게 줄이면 미탐률이 증가하여 실제 사기가 통과한다.
+
+\begin{table}[htbp]
+\centering
+\caption{FDS 오탐/미탐 관리 지표 및 기준}
+\label{tab:17_fds_metrics}
+\begin{tabularx}{\textwidth}{p{3cm}p{2cm}Xp{3cm}}
+\toprule
+\textbf{지표} & \textbf{목표값} & \textbf{의미} & \textbf{위반 시 조치} \\
+\midrule
+탐지율(Recall) & > 95\% & 실제 사기 건 중 탐지 비율 & 모델 긴급 재학습 \\
+정밀도(Precision) & > 30\% & 알림 건 중 실제 사기 비율 & 임계값 조정 \\
+오탐률(FPR) & < 0.5\% & 정상 건 중 오탐 비율 & 규칙 세분화 \\
+응답 시간 & < 200ms & 거래 승인까지 소요 시간 & 인프라 확장 \\
+조사 완료율 & > 90\% & 알림 건 중 당일 조사 완료 & 인력 보강 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{로보어드바이저 거버넌스}
+
+로보어드바이저는 자본시장법상 투자일임업 규제가 적용되므로, 알고리즘의 \textbf{적합성 원칙(Suitability)}과 포트폴리오 리밸런싱에 대한 설명 의무가 핵심 거버넌스 요건이 된다.
+
+\begin{practicaltool}{로보어드바이저 거버넌스 운영 체계}
+\textbf{적합성 검증}: 투자자 성향 프로파일링 정확도를 분기별로 검증하며, 실제 투자 행동과 설문 결과 간 괴리가 15\% 이상이면 재설문을 권유한다.\\
+\textbf{리밸런싱 통제}: 포트폴리오 리밸런싱 시 변경 내역과 근거를 고객에게 사전 통지하며, 과도 매매(Churning) 방지를 위해 연간 회전율 상한을 설정한다.\\
+\textbf{성과 공시}: 벤치마크 대비 성과를 분기별로 공시하며, 수수료 차감 전후 수익률을 모두 표시한다.\\
+\textbf{스트레스 테스트}: 반기별 극단 시나리오(금융 위기, 금리 급등 등)에서의 포트폴리오 손실을 시뮬레이션하고, 투자 성향별 한도를 초과하는 포트폴리오를 자동 조정한다.
+\end{practicaltool}
+
+%----------------------------------------------------------
+\section{금융 AI 거버넌스 종합 체크리스트}
+\label{sec:17.5}
+
+\begin{practicaltool}{금융 AI 거버넌스 종합 체크리스트}
+\textbf{1. 규제 준수 (Regulatory Compliance)}
+\begin{itemize}
+    \item 신용정보법 제36조의2 자동화 평가 설명 체계 구축 \checkmark / \texttimes
+    \item 금융위 AI 가이드라인 5대 원칙 이행 현황 문서화 \checkmark / \texttimes
+    \item AI 기본법 고위험 AI 영향평가 수행 여부 \checkmark / \texttimes
+    \item EU AI Act 적합성 평가 (해외 영업 시) \checkmark / \texttimes
+    \item 바젤 위원회 AI/ML 원칙 자체 진단 수행 \checkmark / \texttimes
+\end{itemize}
+
+\textbf{2. 모델 리스크 관리 (MRM)}
+\begin{itemize}
+    \item 모델 인벤토리 최신 상태 유지 \checkmark / \texttimes
+    \item SR 11-7 기반 3단계 모델 검증 수행 \checkmark / \texttimes
+    \item 모델 개발 문서(MDD) 작성 완료 \checkmark / \texttimes
+    \item 모델 검증 보고서(MVR) 작성 완료 \checkmark / \texttimes
+    \item PSI 모니터링 체계 구축 (월간 점검) \checkmark / \texttimes
+    \item 챌린저 모델 운영 여부 \checkmark / \texttimes
+\end{itemize}
+
+\textbf{3. 공정성 (Fairness)}
+\begin{itemize}
+    \item 보호 속성 및 대리 변수 식별/관리 \checkmark / \texttimes
+    \item 4/5 Rule (Disparate Impact) 정기 점검 \checkmark / \texttimes
+    \item Demographic Parity / Equalized Odds 모니터링 \checkmark / \texttimes
+    \item 편향 완화(Bias Mitigation) 절차 수립 \checkmark / \texttimes
+\end{itemize}
+
+\textbf{4. 설명가능성 (Explainability)}
+\begin{itemize}
+    \item XAI 도구(SHAP/LIME) 적용 여부 \checkmark / \texttimes
+    \item 고객 대상 설명 템플릿 구비 \checkmark / \texttimes
+    \item 반사실적 설명(Counterfactual) 제공 여부 \checkmark / \texttimes
+    \item 이의제기 접수/처리 체계 구축 \checkmark / \texttimes
+\end{itemize}
+
+\textbf{5. 운영 건전성 (Operational Soundness)}
+\begin{itemize}
+    \item 3선 방어 모델 역할 분리 명확화 \checkmark / \texttimes
+    \item 비상 시 수동 전환 절차 수립/훈련 \checkmark / \texttimes
+    \item 모델 변경 관리(Change Management) 절차 \checkmark / \texttimes
+    \item 데이터 계보(Lineage) 추적 체계 \checkmark / \texttimes
+    \item 금융감독원 검사 대응 문서 상시 준비 \checkmark / \texttimes
+\end{itemize}
+
+\textbf{6. 인프라 및 보안}
+\begin{itemize}
+    \item 망분리 규제 준수 여부 \checkmark / \texttimes
+    \item 데이터 패브릭/게이트웨이 접근 제어 \checkmark / \texttimes
+    \item 데이터 암호화(저장/전송) \checkmark / \texttimes
+    \item 클라우드 이용 시 인가/신고 여부 \checkmark / \texttimes
+\end{itemize}
+\end{practicaltool}
+
+%----------------------------------------------------------
+\subsection*{제17장 요약}
+
+본 장에서는 금융 AI 거버넌스의 규제 프레임워크와 리스크 관리 실무를 다루었다. 금융 AI는 신용정보법, SR 11-7, 바젤 위원회 가이드라인 등 중첩된 규제를 준수해야 하며, 설명가능성과 공정성은 법적 의무사항이다. SR 11-7의 모델 리스크 관리 라이프사이클(개발, 검증, 사용, 감사)과 3단계 모델 검증(개념 건전성, 결과 분석, 벤치마킹)을 상세히 분석하였으며, Fairlearn 기반 신용평가 공정성 검증, FDS 실시간 탐지 아키텍처, 로보어드바이저 적합성 검증 체계를 구현 코드와 함께 제시하였다. 3선 방어 모델의 상세 구현과 금융감독원 검사 대응 체크리스트를 통해 실무적 대응력을 강화하고, 레그테크/섭테크 도구를 활용한 거버넌스 효율화 방안을 모색하였다. 궁극적으로 금융 AI 거버넌스는 기술적 정교함과 제도적 건전성의 균형 위에서 지속적으로 발전해야 한다.
